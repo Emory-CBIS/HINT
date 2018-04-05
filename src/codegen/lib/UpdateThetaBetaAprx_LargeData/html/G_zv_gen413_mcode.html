@@ -1,0 +1,30 @@
+<html>
+<body>
+<script src="resources/eml_report_loadable_data.js"></script>
+<pre class="code">
+<span class="srcline"><span class="lineno"><a href="87,1" id="srcline1"> 1</a></span><span class="line"><span class="keyword">function</span> <span class="var type1" id="S2T6U3">G_zv</span> = G_zv_gen(<span class="var type1" id="S3T4U6">zv</span>, <span class="var type1" id="S4T3U7">m</span>, <span class="var type1" id="S5T3U8">q</span>) </span></span>
+<span class="srcline"><span class="lineno"><a href="87,2" id="srcline2"> 2</a></span><span class="line"><span class="comment">% G_zv_gen - Function to generate G_z matrix given vector z(v)</span></span></span>
+<span class="srcline"><span class="lineno"><a href="87,3" id="srcline3"> 3</a></span><span class="line"><span class="comment">%</span></span></span>
+<span class="srcline"><span class="lineno"><a href="87,4" id="srcline4"> 4</a></span><span class="line"><span class="comment">% Syntax:</span></span></span>
+<span class="srcline"><span class="lineno"><a href="87,5" id="srcline5"> 5</a></span><span class="line"><span class="comment">% G_zv = G_zv_gen(zv, m, q)</span></span></span>
+<span class="srcline"><span class="lineno"><a href="87,6" id="srcline6"> 6</a></span><span class="line"><span class="comment">%</span></span></span>
+<span class="srcline"><span class="lineno"><a href="87,7" id="srcline7"> 7</a></span><span class="line"><span class="comment">% Inputs:</span></span></span>
+<span class="srcline"><span class="lineno"><a href="87,8" id="srcline8"> 8</a></span><span class="line"><span class="comment">%    zv   - NT x V, orignial imaging data matrix</span></span></span>
+<span class="srcline"><span class="lineno"><a href="87,9" id="srcline9"> 9</a></span><span class="line"><span class="comment">%    m    - Number of Gaussian components in MoG</span></span></span>
+<span class="srcline"><span class="lineno"><a href="87,10" id="srcline10">10</a></span><span class="line"><span class="comment">%    q    - Number of Independent Components (IC)</span></span></span>
+<span class="srcline"><span class="lineno"><a href="87,11" id="srcline11">11</a></span><span class="line"><span class="comment">%</span></span></span>
+<span class="srcline"><span class="lineno"><a href="87,12" id="srcline12">12</a></span><span class="line"><span class="comment">% Outputs:</span></span></span>
+<span class="srcline"><span class="lineno"><a href="87,13" id="srcline13">13</a></span><span class="line"><span class="comment">%    G_zv   - G_z matrix of possible IC membership permutations</span></span></span>
+<span class="srcline"><span class="lineno"><a href="87,14" id="srcline14">14</a></span><span class="line"><span class="comment">%</span></span></span>
+<span class="srcline"><span class="lineno"><a href="87,15" id="srcline15">15</a></span><span class="line"><span class="comment">% See also: UpdateThetaBetaAprx_Vect.m, UpdateThetaBeta.m </span></span></span>
+<span class="srcline"><span class="lineno"><a href="87,16" id="srcline16">16</a></span><span class="line"></span></span>
+<span class="srcline"><span class="lineno"><a href="87,17" id="srcline17">17</a></span><span class="line">    <span class="mxinfo " id="T4:U5"><span class="var type1" id="S6T4U11">x</span>=<span class="mxinfo " id="T4:U7">(<span class="mxinfo " id="T38:U8">1:<span class="var type1" id="S5T3U16">q</span></span>)'</span></span>;</span></span>
+<span class="srcline"><span class="lineno"><a href="87,18" id="srcline18">18</a></span><span class="line">    <span class="mxinfo " id="T4:U10"><span class="var type1" id="S6T4U19">x</span> = double(<span class="var type1" id="S6T4U22">x</span>)</span>;</span></span>
+<span class="srcline"><span class="lineno"><a href="87,19" id="srcline19">19</a></span><span class="line">    <span class="mxinfo " id="T4:U13"><span class="var type1" id="S8T4U25">y</span>=<span class="mxinfo " id="T4:U15"><span class="mxinfo " id="T4:U16">(<span class="mxinfo " id="T4:U17"><span class="var type1" id="S6T4U30">x</span>-<span class="mxinfo " id="T3:U19">1</span></span>).*double(<span class="var type1" id="S4T3U34">m</span>)</span> + <span class="var type1" id="S3T4U35">zv</span></span></span>;</span></span>
+<span class="srcline"><span class="lineno"><a href="87,20" id="srcline20">20</a></span><span class="line">    <span class="mxinfo " id="T6:U22"><span class="var type1" id="S2T6U38">G_zv</span> = <span class="mxinfo " id="T6:U24">zeros (<span class="var type1" id="S5T3U41">q</span>, <span class="mxinfo " id="T3:U26"><span class="var type1" id="S4T3U43">m</span>*<span class="var type1" id="S5T3U44">q</span></span>)</span></span>;</span></span>
+<span class="srcline"><span class="lineno"><a href="87,21" id="srcline21">21</a></span><span class="line">    <span class="mxinfo " id="T4:U29"><span class="mxinfo " id="T4:U30"><span class="var type1" id="S2T6U48">G_zv</span>( <span class="mxinfo " id="T4:U32">sub2ind(<span class="mxinfo " id="T45:U33">size(<span class="var type1" id="S2T6U53">G_zv</span>)</span>, <span class="var type1" id="S6T4U54">x</span>, <span class="var type1" id="S8T4U55">y</span>)</span> )</span> = <span class="mxinfo " id="T3:U37">1</span></span>;</span></span>
+<span class="srcline"><span class="lineno"><a href="87,22" id="srcline22">22</a></span><span class="line"><span class="keyword">end</span></span></span>
+<span class="srcline"><span class="lineno"><a href="87,23" id="srcline23">23</a></span><span class="line"> </span></span>
+</pre>
+</body>
+</html>
