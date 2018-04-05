@@ -11,7 +11,11 @@ function [ niifiles, finalCov ] = matchCovariatesToNiifiles( fls, cov, matchOn )
 %   cov         - covariate file
 %   matchOn     - Fileparts location where the subject name is stored
 %
-% See also: refCellCode
+% Outputs:
+%   niifiles    - sorted list of nifti files
+%   finalCov    - the final design matrix
+%
+% See also: refCellCode, auto_identify_covariate_types
 
 % Get the dimensions of the data
 [~, nNiiInput] = size(fls);

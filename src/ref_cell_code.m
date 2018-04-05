@@ -1,7 +1,23 @@
 function [ X, varNamesX ] = ref_cell_code( covariates, covTypes,...
     interactions, includeInteractions  )
-%UNTITLED4 Summary of this function goes here
-%   Detailed explanation goes here
+% ref_cell_code - Function to perform reference cell coding of the
+% covariates
+%
+% Syntax:
+% [ X, varNamesX ] = ref_cell_code( covariates, covTypes,...
+%    interactions, includeInteractions  )
+%
+% Inputs:
+%   covariates   - matrix of covariate settings
+%   covTypes     - vector that is 1 if a covariate is categorical
+%   interactions - matrix of user-specified interactions
+%   includeInteractions - 1 if interactions are to be calculated
+%
+% Outputs:
+%   X         - reference cell coded design matrix
+%   varNamesX - auto-determined variable names for covariates 
+%
+% See also: auto_identify_covariate_types.m
 
 [N, ~] = size(covariates);
 
