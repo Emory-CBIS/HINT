@@ -3,7 +3,7 @@
 
 The Hierarchical INdependent component analysis Toolbox (HINT), is Matlab toolbox that serves as a platform for hierarchical ICA techniques. The toolbox currently supports hierarchical ICA as described in Shi and Guo (2017). 
 
-## Built With
+## Toolboxes Included
 
 * [GIFT] (http://mialab.mrn.org/software/gift/) - Used to obtain an initial guess for the EM algorithm.\
 * [BSMAC] (http://web1.sph.emory.edu/bios/CBIS/software.html#) - Used for several of the UI elements in the display window.\
