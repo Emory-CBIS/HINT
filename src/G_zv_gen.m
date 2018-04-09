@@ -1,6 +1,7 @@
 function G_zv = G_zv_gen(zv, m, q) 
 
-% G_zv_gen - Function to generate G_z matrix given vector z(v)
+% G_zv_gen - Function to generate G_z matrix given vector z(v). These are
+% the latent state settings for the S0 maps.
 %
 % Syntax:
 % G_zv = G_zv_gen(zv, m, q)
