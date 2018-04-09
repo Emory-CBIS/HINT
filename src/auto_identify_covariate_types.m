@@ -3,7 +3,7 @@ function [ covTypes ] = auto_identify_covariate_types( covariates )
 % is continuous or categorical
 %
 % Syntax:
-% [covTypes] = auto_identify_covariate_types ( cpvariates )
+% [covTypes] = auto_identify_covariate_types ( covariates )
 %
 % Inputs:
 %    covariates  - matrix of covariate settings

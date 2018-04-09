@@ -1,7 +1,16 @@
 function [ output_args ] = move_iniguess_to_folder( path, prefix )
 %move_iniguess_to_folder
-%   Function to take the initial guess from gift and move it to a folder
-%   out of the way.
+%   Function to take the initial guess from gift and move it to a separate
+%   folder to avoid clogging up the primary output folder.
+%
+% Syntax:
+% [ output_args ] = move_iniguess_to_folder( path, prefix )
+%
+% Inputs:
+%   path   - path to the output folder
+%   prefix - prefix for the analysis
+%
+% See also: ref_cell_code.m
 
 % Get the current location to return to
 currentPath = pwd();
