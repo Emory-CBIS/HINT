@@ -33,7 +33,9 @@ function varargout = main(varargin)
         figure(hs);
     end;
     data = struct();
+    % Initial progress states
     data.preprocessingComplete = 0;
+    data.tempiniGuessObtained = 0;
     data.iniGuessComplete = 0;
     data.dataLoaded = 0;
 
@@ -541,6 +543,7 @@ function varargout = main(varargin)
             set(findobj('tag', 'analysisFolder'), 'string', num2str(runinfo.outfolder));
             data.preprocessingComplete = 1;
             data.iniGuessComplete = 1;
+            data.tempiniGuessObtained = 1;
             set(findobj('tag', 'runButton'), 'enable', 'on');
             
             % Fill in the blanks to reflect what was loaded
@@ -628,6 +631,8 @@ function varargout = main(varargin)
         else
         
             data.preprocessingComplete = 0;
+            data.tempiniGuessObtained = 0;
+            data.iniGuessComplete = 0;
             set(findobj('tag', 'saveContinueButton'), 'enable', 'off');
 
             data.q = str2double(get(findobj('Tag', 'numICA'), 'String'));
@@ -657,93 +662,104 @@ function varargout = main(varargin)
     % Calculate the initial guess parameters for hc-ICA. 2 options: tc-gica
     % and GIFT. GIFT is the better option.
     function calculateInitialParams(~,~)
-        data.iniGuessComplete = 0;
-        set(findobj('tag', 'saveContinueButton'), 'enable', 'off');
-        data.q = str2double(get(findobj('Tag', 'numICA'), 'String'));
-        global keeplist;
-        keeplist = ones(data.q,1);
-        addpath('FastICA_25');
-        numberOfPCs = findobj('Tag', 'numPCA');
-        data.prefix = get(findobj('Tag', 'prefix'), 'String');
-        data.outpath = get(findobj('Tag', 'analysisFolder'), 'String');
         
-        % Perform GIFT
-        % Generate the text parameter file used by GIFT
-        hcicadir = pwd;
-        % run GIFT to get the initial guess. This function also outputs nifti files
-        % with initial values.
-        [ data.theta0, data.beta0, data.s0, s0_agg ] = runGIFT(data.niifiles, data.maskf, ...
-            get(findobj('Tag', 'prefix'), 'String'),...
-            get(findobj('Tag', 'analysisFolder'), 'String'),...
-            str2double(numberOfPCs.String),...
-            data.N, data.q, data.X, data.Ytilde, hcicadir);
-      
-        % Write to log file that initial guess stage is complete.
-        if (writelog == 1)
-            outfile = fopen(outfilename, 'a' );
-            fprintf(outfile, strcat('\nCalculated initial guess values '));
+        if data.preprocessingComplete == 1
+            data.iniGuessComplete = 0;
+            data.tempiniGuessObtained = 0;
+            set(findobj('tag', 'saveContinueButton'), 'enable', 'off');
+            data.q = str2double(get(findobj('Tag', 'numICA'), 'String'));
+            global keeplist;
+            keeplist = ones(data.q,1);
+            addpath('FastICA_25');
+            numberOfPCs = findobj('Tag', 'numPCA');
+            data.prefix = get(findobj('Tag', 'prefix'), 'String');
+            data.outpath = get(findobj('Tag', 'analysisFolder'), 'String');
+
+            % Perform GIFT
+            % Generate the text parameter file used by GIFT
+            hcicadir = pwd;
+            % run GIFT to get the initial guess. This function also outputs nifti files
+            % with initial values.
+            [ data.theta0, data.beta0, data.s0, s0_agg ] = runGIFT(data.niifiles, data.maskf, ...
+                get(findobj('Tag', 'prefix'), 'String'),...
+                get(findobj('Tag', 'analysisFolder'), 'String'),...
+                str2double(numberOfPCs.String),...
+                data.N, data.q, data.X, data.Ytilde, hcicadir);
+
+            % Write to log file that initial guess stage is complete.
+            if (writelog == 1)
+                outfile = fopen(outfilename, 'a' );
+                fprintf(outfile, strcat('\nCalculated initial guess values '));
+            end
+
+            % Turn all the initial group ICs into nifti files to allow user to
+            % view and select the ICs for hc-ICA.
+            template = zeros(data.voxSize);
+            template = reshape(template, [prod(data.voxSize), 1]);
+
+            anat = load_nii(data.maskf);
+            for ic=1:data.q
+                newIC = template;
+                newIC(data.validVoxels) = s0_agg(ic, :)';
+                IC = reshape(newIC, data.voxSize);
+                newIC = make_nii(IC)
+                newIC.hdr.hist.originator = anat.hdr.hist.originator
+                save_nii(newIC, [get(findobj('Tag', 'analysisFolder'), 'String') '/' get(findobj('Tag', 'prefix'), 'String') '_iniIC_' num2str(ic) '.nii' ], 'IC');
+            end
+
+            % Update the gui main window to show that initial values
+            % calculation is completed.
+            set(findobj('Tag','iniProgress'),'BackgroundColor',[51/256,153/256,0/256],...
+                'ForegroundColor',[0.9255,0.9255,0.9255],...
+                'enable','on');
+            data.tempiniGuessObtained = 1;
+
+            chooseIC;
+        else
+            warndlg('Please complete preprocessing before obtaining an initial guess.');
         end
-        
-        % Turn all the initial group ICs into nifti files to allow user to
-        % view and select the ICs for hc-ICA.
-        template = zeros(data.voxSize);
-        template = reshape(template, [prod(data.voxSize), 1]);
-        
-        anat = load_nii(data.maskf);
-        for ic=1:data.q
-            newIC = template;
-            newIC(data.validVoxels) = s0_agg(ic, :)';
-            IC = reshape(newIC, data.voxSize);
-            newIC = make_nii(IC)
-            newIC.hdr.hist.originator = anat.hdr.hist.originator
-        	save_nii(newIC, [get(findobj('Tag', 'analysisFolder'), 'String') '/' get(findobj('Tag', 'prefix'), 'String') '_iniIC_' num2str(ic) '.nii' ], 'IC');
-        end
-        
-        % Update the gui main window to show that initial values
-        % calculation is completed.
-        set(findobj('Tag','iniProgress'),'BackgroundColor',[51/256,153/256,0/256],...
-            'ForegroundColor',[0.9255,0.9255,0.9255],...
-            'enable','on');
-        
-        chooseIC;
     end
 
     % Open viewer to allow user to select which ICs to use for hc-ICA.
     function chooseIC(~)
-        global keeplist;
-        keeplist = ones(data.q,1);
-        displayResults(data.q, data.outpath, data.prefix,...
-            data.N, 'icsel', data.covariates, data.X, data.covTypes, 999,...
-            999, data.interactions);
-        uiwait()
-        % qStar <= q contains the number of selected ICs.
-        data.qstar = sum(keeplist);
-        % If the user selected all ICs, then there is no reason to
-        % re-estimate the values. Save the current set of values and lock
-        % the user out of the re-estimate buttons.
-        if (data.qstar == data.q)
-            data.thetaStar = data.theta0;
-            data.beta0Star = data.beta0;
-            data.YtildeStar = data.Ytilde;
-            data.CmatStar = data.C_matrix_diag;
-            % Lock user out of re-restimate buttons
-            set( findobj('Tag', 'reEstButton') ,'Enable','Off') 
-            set( findobj('Tag', 'viewReduced') ,'Enable','Off')
-            % Fill in the progress bar to let the user know that they can
-            % move on to the analysis
-            set(findobj('Tag','icProgress'),'BackgroundColor',[51/256,153/256,0/256],...
-            'ForegroundColor',[0.9255,0.9255,0.9255],...
-            'enable','on');
-            data.iniGuessComplete = 1;
-            set(findobj('tag', 'saveContinueButton'), 'enable', 'on');
-        end
-        % Else, if the user did select only a subset of ICs, allow them to
-        % re-estimate the intial guess
-        if (data.qstar < data.q)
-            data.iniGuessComplete = 0;
-            set(findobj('tag', 'saveContinueButton'), 'enable', 'off');
-            set( findobj('Tag', 'reEstButton') ,'Enable','On') 
-            set( findobj('Tag', 'viewReduced') ,'Enable','On') 
+        if data.tempiniGuessObtained == 1
+            global keeplist;
+            keeplist = ones(data.q,1);
+            displayResults(data.q, data.outpath, data.prefix,...
+                data.N, 'icsel', data.covariates, data.X, data.covTypes, 999,...
+                999, data.interactions);
+            uiwait()
+            % qStar <= q contains the number of selected ICs.
+            data.qstar = sum(keeplist);
+            % If the user selected all ICs, then there is no reason to
+            % re-estimate the values. Save the current set of values and lock
+            % the user out of the re-estimate buttons.
+            if (data.qstar == data.q)
+                data.thetaStar = data.theta0;
+                data.beta0Star = data.beta0;
+                data.YtildeStar = data.Ytilde;
+                data.CmatStar = data.C_matrix_diag;
+                % Lock user out of re-restimate buttons
+                set( findobj('Tag', 'reEstButton') ,'Enable','Off') 
+                set( findobj('Tag', 'viewReduced') ,'Enable','Off')
+                % Fill in the progress bar to let the user know that they can
+                % move on to the analysis
+                set(findobj('Tag','icProgress'),'BackgroundColor',[51/256,153/256,0/256],...
+                'ForegroundColor',[0.9255,0.9255,0.9255],...
+                'enable','on');
+                data.iniGuessComplete = 1;
+                set(findobj('tag', 'saveContinueButton'), 'enable', 'on');
+            end
+            % Else, if the user did select only a subset of ICs, allow them to
+            % re-estimate the intial guess
+            if (data.qstar < data.q)
+                data.iniGuessComplete = 0;
+                set(findobj('tag', 'saveContinueButton'), 'enable', 'off');
+                set( findobj('Tag', 'reEstButton') ,'Enable','On') 
+                set( findobj('Tag', 'viewReduced') ,'Enable','On') 
+            end
+        else
+            warndlg('Please obtain initial guess before selecting ICs for analysis.');
         end
     end
 
@@ -754,9 +770,13 @@ function varargout = main(varargin)
     end
 
     function test_Callback(~,~)
-        global keeplist;
-        keeplist = ones(data.q, 1);
-        chooseIC;
+        if data.tempiniGuessObtained == 1
+            global keeplist;
+            keeplist = ones(data.q, 1);
+            chooseIC;
+        else
+            warndlg('Please obtain initial guess before selecting ICs for analysis.');
+        end
     end
 
     function reEstimate_Callback(~,~)
@@ -794,6 +814,10 @@ function varargout = main(varargin)
         close(hs);
         hs = addcomponents;
         data = struct();
+        % Initial progress states
+        data.preprocessingComplete = 0;
+        data.tempiniGuessObtained = 0;
+        data.iniGuessComplete = 0;
         data.dataLoaded = 0;
     end
 
