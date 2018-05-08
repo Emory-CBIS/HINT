@@ -12,7 +12,7 @@ function [theta, beta, z_mode, subICmean, subICvar, grpICmean, grpICvar,...
 %                       epsilon1, epsilon2, algo)
 %
 % Inputs:
-%    Y          - NT x V, orignial imaging data matrix
+%    Y          - NQ x V, orignial imaging data matrix
 %    X          - N x p, covariate matrix
 %    theta0     - Object containing initial estimates for the EM algorithm
 %    C_matrix_diag  - Gives the product of whitening matrix and its
