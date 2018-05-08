@@ -1166,10 +1166,4 @@ function varargout = main(varargin)
         waitfor(compileIterationResultsWindow)
     end
 
-    % Function allowing the user to create a run script from a runinfo
-    % file.
-    function createScriptAnalysis(~,~)
-        waitfor(createAScriptAnalysis)
-    end
-
 end
