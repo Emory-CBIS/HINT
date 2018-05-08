@@ -75,10 +75,6 @@ function [ theta, beta, grpSig, s0_agg ] = runGIFT( subjfl, maskfl, prefix, outd
     fprintf(fid, '%s \n', 'doEstimation = 0;');
     fprintf(fid, '%s%s%s \n', 'numOfPC1 =' , num2str(numpc) , ';' );
     fprintf(fid, '%s%s%s \n', 'numOfPC2 =' , num2str(q) , ';' );
-    % FLIPPED WAY IN NEW GIFT????? XXX
-    %fprintf(fid, '%s%s%s \n', 'numOfPC1 =' , num2str(q) , ';' );
-    %fprintf(fid, '%s%s%s \n', 'numOfPC2 =' , num2str(numpc) , ';' );
-    
     fprintf(fid, '%s \n', 'scaleType = 0;');
     fprintf(fid, '%s \n', 'algoType = ''Infomax'';');
     
@@ -125,16 +121,6 @@ function [ theta, beta, grpSig, s0_agg ] = runGIFT( subjfl, maskfl, prefix, outd
         epsilon2temp(:,v,:) = squeeze(S_i(:,v,:)) - (Xint * estimate)';
     end
     sigma2_sq = var(reshape(epsilon2temp, [q,V*N]), 0, 2);
-    
-    % The below code can save the dual regression beta maps if of interest
-%     emptyImage = zeros(size(mask.img));
-%     for i=1:q
-%         for j=1:p
-%             emptyImage(validVoxels) = beta(j,i,:);
-%             new_image = make_nii( emptyImage );
-%             save_nii( new_image, [outdir '/' prefix '_BETAgiftest_ic', num2str(i), '_covariate_', num2str(j), '.nii'] )
-%         end
-%     end
 
     % Get the subject level mixing matrices
     A = zeros(q,q,N);

@@ -85,7 +85,6 @@ function [ theta, beta, Ytilde, CmatStar ] = reEstimateIniGuess( N, p, outpath, 
 
     Ytilde = zeros( size(whiteM * Zbar) );
     
-    % Josh changed this 3/19
     for iSubj = 1:N
         ind1 = (iSubj-1)*p+1; ind2 = iSubj*p;
         Ytilde( ((iSubj-1)*qstar)+1:(iSubj*qstar),:) = whiteM(:,ind1:ind2) * Zbar(ind1:ind2,:);
@@ -93,7 +92,7 @@ function [ theta, beta, Ytilde, CmatStar ] = reEstimateIniGuess( N, p, outpath, 
 
     % Back Reconstruction
 
-    % can use old dewhitening matrix and old whitening matrix?
+    % can use old dewhitening matrix and old whitening matrix
     icInfo = {eye(size(W, 2), size(W, 2))};
     tcInfo = icInfo;
     numOfPCBeforeCAT = p;
@@ -128,18 +127,8 @@ function [ theta, beta, Ytilde, CmatStar ] = reEstimateIniGuess( N, p, outpath, 
     end        
     
     waitbar(4/steps);
-    
-    ttt = load([filepath '_reduced_br_subj_' num2str(iSubj)]);
-    % XXX delete this, save the subject level ICs
-    %emptyImage = zeros(size(mask.img));
-    %for i=1:qstar
-    %    emptyImage(validVoxels) = ttt.ic(i,:);
-    %    new_image = make_nii( emptyImage );
-    %    save_nii( new_image, [filepath '_reducedIniGuess_SUBJ_IC_', num2str(i) '.nii'] )
-    %end
 
     % Initial Value Re-Estimation
-
     [~, p] = size(X);
     V = sum(mask.img(:),'omitnan');
     S_i = zeros(qstar, V, N);   % empty matrix for initial ICs
@@ -167,19 +156,8 @@ function [ theta, beta, Ytilde, CmatStar ] = reEstimateIniGuess( N, p, outpath, 
     sigma2_sq = var(reshape(epsilon2temp, [qstar,V*N]), 0, 2);
     
     waitbar(6/steps);
-    
-    % XXX delete this
-    %emptyImage = zeros(size(mask.img));
-    %for i=1:qstar
-    %    for j=1:p
-    %        emptyImage(validVoxels) = beta(j,i,:);
-    %        new_image = make_nii( emptyImage );
-    %        save_nii( new_image, [filepath '_reduced_BETA_ic', num2str(i), '_covariate_', num2str(j), '.nii'] )
-    %    end
-    %end
 
-
-    % Get the mixing matrices USING THE NEW YTILDE
+    % Get the mixing matrices using the new ytilde
     A = zeros(qstar, qstar, N);
     for i = 1:N
         cS_i = S_i(:,:,i); sInd = qstar*(i-1)+1; eInd = i*qstar;
