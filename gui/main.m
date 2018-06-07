@@ -33,7 +33,11 @@ function varargout = main(varargin)
         figure(hs);
     end;
     data = struct();
-    dataLoaded = 0;
+    % Initial progress states
+    data.preprocessingComplete = 0;
+    data.tempiniGuessObtained = 0;
+    data.iniGuessComplete = 0;
+    data.dataLoaded = 0;
 
     function hs = addcomponents
         % Add components, save handles in a struct
@@ -272,16 +276,6 @@ function varargout = main(varargin)
             'Title', 'Analysis Setup','FontSize',myfont, 'tag', 'analysisSetup');
         t2p1 = uipanel('Parent',t2p,'Position',[.1 .2 .8 .7],...
             'Title','hc-ICA Parameters','FontSize',myfont);
-%         % ICA Algorithm Selection
-%         t2text1 = uicontrol('Parent',t2p1,'Style','text',...
-%             'String','ICA Algorithm','FontSize',myfont,...
-%             'units', 'normalized','Position',[0.01 0.7 0.4 0.1],...
-%             'HorizontalAlignment','right'); %#ok<NASGU>
-%         popupmenu1 = uicontrol('Parent',t2p1,'Style','popupmenu',...
-%             'units', 'normalized',...
-%             'String',{'EM-Approx','EM-Exact'},'FontSize',myfont,...
-%             'Tag', 'algoSelection', ...
-%             'Position',[0.45 0.7 0.5 0.1],'Value',1); %#ok<NASGU>
         % Max Iteration Selection
         t2text2 = uicontrol('Parent',t2p1,'Style','text',...
             'units', 'normalized','Position',[0.01, 0.55, 0.4, 0.1],...
@@ -318,7 +312,6 @@ function varargout = main(varargin)
             'units', 'normalized',...
             'enable', 'off',...
             'FontSize',myfont,'Position',[0.4, 0.1, 0.2, 0.1]); %#ok<NASGU>
-        %set(tgroup,'SelectedTab',tab2)
         
         analysisProgressPanel = uipanel('Parent',tab2,'Position',[.45 .15 .5 .8],...
             'FontSize',myfont, 'tag', 'analysisProgressPanel', 'Title', 'Analysis Progress');
@@ -425,7 +418,6 @@ function varargout = main(varargin)
             'Tag','displayPrefix',...
             'BackgroundColor','white'); %#ok<NASGU>
         
-        data.preprocessingComplete = 0;
         set(findobj('tag', 'saveContinueButton'), 'enable', 'off');
         
     end
@@ -440,11 +432,6 @@ function varargout = main(varargin)
     end
 
     function axes2_CreateFcn(~,~)
-        %axis( findobj('tag', 'hintAxis') );
-        %[im, ~, alpha] = imread('hintLogo.png');
-        %h = imshow(im);
-        %set(h, 'AlphaData', alpha);
-        
         axes(findobj('tag', 'hintAxis'))
         matlabImage = imread('hintLogo.png');
         image(matlabImage)
@@ -496,6 +483,7 @@ function varargout = main(varargin)
     function loadDataButton_Callback(~,~)
         
         data.preprocessingComplete = 0;
+        data.iniGuessComplete = 0;
         set(findobj('tag', 'saveContinueButton'), 'enable', 'off');
         
         % Update the progress bar to reflect loading new data
@@ -554,6 +542,8 @@ function varargout = main(varargin)
             set(findobj('tag', 'prefix'), 'string', num2str(runinfo.prefix));
             set(findobj('tag', 'analysisFolder'), 'string', num2str(runinfo.outfolder));
             data.preprocessingComplete = 1;
+            data.iniGuessComplete = 1;
+            data.tempiniGuessObtained = 1;
             set(findobj('tag', 'runButton'), 'enable', 'on');
             
             % Fill in the blanks to reflect what was loaded
@@ -571,7 +561,7 @@ function varargout = main(varargin)
             set(findobj('Tag','icProgress'),'BackgroundColor',[51/256,153/256,0/256],...
                 'ForegroundColor',[0.9255,0.9255,0.9255],...
                 'enable','on');
-            dataLoaded = 1;
+            data.dataLoaded = 1;
             
         % Handle data in nifti form.
         elseif (strcmp(dataType, 'niftiData') == 1)
@@ -620,7 +610,7 @@ function varargout = main(varargin)
                     data.N = N;
                     data.validVoxels = validVoxels;
                     data.voxSize = size(mask.img);
-                    dataLoaded = 1;
+                    data.dataLoaded = 1;
                 end
                 
                 % Update main gui window to show that data has been loaded.
@@ -636,52 +626,57 @@ function varargout = main(varargin)
     %    H_matrix_inv, H_matrix, and deWhite.
     function calculatePCA(~,~)
         
-        data.preprocessingComplete = 0;
-        set(findobj('tag', 'saveContinueButton'), 'enable', 'off');
+        if data.dataLoaded == 0;
+            warndlg('Please load data before preprocessing.');
+        else
         
-        data.q = str2double(get(findobj('Tag', 'numICA'), 'String'));
-        [data.Ytilde, data.C_matrix_diag, data.H_matrix_inv,  data.H_matrix, data.deWhite]...
-            = PreProcICA(data.niifiles, data.validVoxels, data.q, data.time_num, data.N);
-        
-        % Update GUI to show PCA completed
-        data.dispPCA.String = 'PCA Completed';
-        set(findobj('Tag','pcaProgress'),'BackgroundColor',[51/256,153/256,0/256],...
-            'ForegroundColor',[0.9255,0.9255,0.9255],...
-            'enable','on');
-        
-        % write PCA information to log file.
-        if (writelog == 1)
-            outfile = fopen(outfilename, 'a' );
-            fprintf(outfile, strcat('\n\n----------------- Preprocessing -----------------'));
-            fprintf(outfile, strcat('\nPerformed PCA reduction to ', [' ',num2str(data.q),], ' components') );
+            data.preprocessingComplete = 0;
+            data.tempiniGuessObtained = 0;
+            data.iniGuessComplete = 0;
+            set(findobj('tag', 'saveContinueButton'), 'enable', 'off');
+
+            data.q = str2double(get(findobj('Tag', 'numICA'), 'String'));
+            [data.Ytilde, data.C_matrix_diag, data.H_matrix_inv,  data.H_matrix, data.deWhite]...
+                = PreProcICA(data.niifiles, data.validVoxels, data.q, data.time_num, data.N);
+
+            % Update GUI to show PCA completed
+            data.dispPCA.String = 'PCA Completed';
+            set(findobj('Tag','pcaProgress'),'BackgroundColor',[51/256,153/256,0/256],...
+                'ForegroundColor',[0.9255,0.9255,0.9255],...
+                'enable','on');
+
+            % Update the data structure to know that preprocessing is
+            % complete
+            data.preprocessingComplete = 1;
+            
+            % write PCA information to log file.
+            if (writelog == 1)
+                outfile = fopen(outfilename, 'a' );
+                fprintf(outfile, strcat('\n\n----------------- Preprocessing -----------------'));
+                fprintf(outfile, strcat('\nPerformed PCA reduction to ', [' ',num2str(data.q),], ' components') );
+            end
+            
         end
     end
 
     % Calculate the initial guess parameters for hc-ICA. 2 options: tc-gica
     % and GIFT. GIFT is the better option.
     function calculateInitialParams(~,~)
-        data.preprocessingComplete = 0;
-        set(findobj('tag', 'saveContinueButton'), 'enable', 'off');
-        data.q = str2double(get(findobj('Tag', 'numICA'), 'String'));
-        global keeplist;
-        keeplist = ones(data.q,1);
-        addpath('FastICA_25');
-        numberOfPCs = findobj('Tag', 'numPCA');
-        data.prefix = get(findobj('Tag', 'prefix'), 'String');
-        data.outpath = get(findobj('Tag', 'analysisFolder'), 'String');
         
-        % Perform tc-gica, this code should never execute
-        if get(findobj('Tag', 'iniGuessType'), 'Value') == 999
-            disp('using old ini guess method');
-            [data.theta0, data.beta0, ~] = IniGuess(data.data_sim,...
-                data.Ytilde,  data.X, data.q, data.time_num, str2double(numberOfPCs.String));
-        
-        % Perform GIFT
-        else
-            % Generate the text parameter file used by GIFT to run the
-            % analysis
-            %genParameterFile(data.niifiles, data.maskf, data.covf,...
-            %    data.q, data.N, data.prefix, data.outpath);
+        if data.preprocessingComplete == 1
+            data.iniGuessComplete = 0;
+            data.tempiniGuessObtained = 0;
+            set(findobj('tag', 'saveContinueButton'), 'enable', 'off');
+            data.q = str2double(get(findobj('Tag', 'numICA'), 'String'));
+            global keeplist;
+            keeplist = ones(data.q,1);
+            addpath('FastICA_25');
+            numberOfPCs = findobj('Tag', 'numPCA');
+            data.prefix = get(findobj('Tag', 'prefix'), 'String');
+            data.outpath = get(findobj('Tag', 'analysisFolder'), 'String');
+
+            % Perform GIFT
+            % Generate the text parameter file used by GIFT
             hcicadir = pwd;
             % run GIFT to get the initial guess. This function also outputs nifti files
             % with initial values.
@@ -690,79 +685,81 @@ function varargout = main(varargin)
                 get(findobj('Tag', 'analysisFolder'), 'String'),...
                 str2double(numberOfPCs.String),...
                 data.N, data.q, data.X, data.Ytilde, hcicadir);
+
+            % Write to log file that initial guess stage is complete.
+            if (writelog == 1)
+                outfile = fopen(outfilename, 'a' );
+                fprintf(outfile, strcat('\nCalculated initial guess values '));
+            end
+
+            % Turn all the initial group ICs into nifti files to allow user to
+            % view and select the ICs for hc-ICA.
+            template = zeros(data.voxSize);
+            template = reshape(template, [prod(data.voxSize), 1]);
+
+            anat = load_nii(data.maskf);
+            for ic=1:data.q
+                newIC = template;
+                newIC(data.validVoxels) = s0_agg(ic, :)';
+                IC = reshape(newIC, data.voxSize);
+                newIC = make_nii(IC)
+                newIC.hdr.hist.originator = anat.hdr.hist.originator
+                save_nii(newIC, [get(findobj('Tag', 'analysisFolder'), 'String') '/' get(findobj('Tag', 'prefix'), 'String') '_iniIC_' num2str(ic) '.nii' ], 'IC');
+            end
+
+            % Update the gui main window to show that initial values
+            % calculation is completed.
+            set(findobj('Tag','iniProgress'),'BackgroundColor',[51/256,153/256,0/256],...
+                'ForegroundColor',[0.9255,0.9255,0.9255],...
+                'enable','on');
+            data.tempiniGuessObtained = 1;
+
+            chooseIC;
+        else
+            warndlg('Please complete preprocessing before obtaining an initial guess.');
         end
-        
-        % Save the inital guess values to a .mat file. Can be loaded later
-        % in place of rerunning the initial guess.
-        %theta0 = data.theta0; beta0 = data.beta0; s0 = data.s0;
-        %save [data.outpath '/medtini.mat'] theta0 beta0 s0;
-                
-        % Write to log file that initial guess stage is complete.
-        if (writelog == 1)
-            outfile = fopen(outfilename, 'a' );
-            fprintf(outfile, strcat('\nCalculated initial guess values '));
-        end
-        
-        % Turn all the initial group ICs into nifti files to allow user to
-        % view and select the ICs for hc-ICA.
-        template = zeros(data.voxSize);
-        template = reshape(template, [prod(data.voxSize), 1]);
-        
-        anat = load_nii(data.maskf);
-        for ic=1:data.q
-            newIC = template;
-            newIC(data.validVoxels) = s0_agg(ic, :)';
-            IC = reshape(newIC, data.voxSize);
-            newIC = make_nii(IC)
-            newIC.hdr.hist.originator = anat.hdr.hist.originator
-        	save_nii(newIC, [get(findobj('Tag', 'analysisFolder'), 'String') '/' get(findobj('Tag', 'prefix'), 'String') '_iniIC_' num2str(ic) '.nii' ], 'IC');
-        end
-        
-        % Update the gui main window to show that initial values
-        % calculation is completed.
-        set(findobj('Tag','iniProgress'),'BackgroundColor',[51/256,153/256,0/256],...
-            'ForegroundColor',[0.9255,0.9255,0.9255],...
-            'enable','on');
-        
-        chooseIC;
     end
 
     % Open viewer to allow user to select which ICs to use for hc-ICA.
     function chooseIC(~)
-        global keeplist;
-        keeplist = ones(data.q,1);
-        displayResults(data.q, data.outpath, data.prefix,...
-            data.N, 'icsel', data.covariates, data.X, data.covTypes, 999,...
-            999, data.interactions);
-        uiwait()
-        % qStar <= q contains the number of selected ICs.
-        data.qstar = sum(keeplist);
-        % If the user selected all ICs, then there is no reason to
-        % re-estimate the values. Save the current set of values and lock
-        % the user out of the re-estimate buttons.
-        if (data.qstar == data.q)
-            data.thetaStar = data.theta0;
-            data.beta0Star = data.beta0;
-            data.YtildeStar = data.Ytilde;
-            data.CmatStar = data.C_matrix_diag;
-            % Lock user out of re-restimate buttons
-            set( findobj('Tag', 'reEstButton') ,'Enable','Off') 
-            set( findobj('Tag', 'viewReduced') ,'Enable','Off')
-            % Fill in the progress bar to let the user know that they can
-            % move on to the analysis
-            set(findobj('Tag','icProgress'),'BackgroundColor',[51/256,153/256,0/256],...
-            'ForegroundColor',[0.9255,0.9255,0.9255],...
-            'enable','on');
-            data.preprocessingComplete = 1;
-            set(findobj('tag', 'saveContinueButton'), 'enable', 'on');
-        end
-        % Else, if the user did select only a subset of ICs, allow them to
-        % re-estimate the intial guess
-        if (data.qstar < data.q)
-            data.preprocessingComplete = 0;
-            set(findobj('tag', 'saveContinueButton'), 'enable', 'off');
-            set( findobj('Tag', 'reEstButton') ,'Enable','On') 
-            set( findobj('Tag', 'viewReduced') ,'Enable','On') 
+        if data.tempiniGuessObtained == 1
+            global keeplist;
+            keeplist = ones(data.q,1);
+            displayResults(data.q, data.outpath, data.prefix,...
+                data.N, 'icsel', data.covariates, data.X, data.covTypes, 999,...
+                999, data.interactions);
+            uiwait()
+            % qStar <= q contains the number of selected ICs.
+            data.qstar = sum(keeplist);
+            % If the user selected all ICs, then there is no reason to
+            % re-estimate the values. Save the current set of values and lock
+            % the user out of the re-estimate buttons.
+            if (data.qstar == data.q)
+                data.thetaStar = data.theta0;
+                data.beta0Star = data.beta0;
+                data.YtildeStar = data.Ytilde;
+                data.CmatStar = data.C_matrix_diag;
+                % Lock user out of re-restimate buttons
+                set( findobj('Tag', 'reEstButton') ,'Enable','Off') 
+                set( findobj('Tag', 'viewReduced') ,'Enable','Off')
+                % Fill in the progress bar to let the user know that they can
+                % move on to the analysis
+                set(findobj('Tag','icProgress'),'BackgroundColor',[51/256,153/256,0/256],...
+                'ForegroundColor',[0.9255,0.9255,0.9255],...
+                'enable','on');
+                data.iniGuessComplete = 1;
+                set(findobj('tag', 'saveContinueButton'), 'enable', 'on');
+            end
+            % Else, if the user did select only a subset of ICs, allow them to
+            % re-estimate the intial guess
+            if (data.qstar < data.q)
+                data.iniGuessComplete = 0;
+                set(findobj('tag', 'saveContinueButton'), 'enable', 'off');
+                set( findobj('Tag', 'reEstButton') ,'Enable','On') 
+                set( findobj('Tag', 'viewReduced') ,'Enable','On') 
+            end
+        else
+            warndlg('Please obtain initial guess before selecting ICs for analysis.');
         end
     end
 
@@ -773,9 +770,13 @@ function varargout = main(varargin)
     end
 
     function test_Callback(~,~)
-        global keeplist;
-        keeplist = ones(data.q, 1);
-        chooseIC;
+        if data.tempiniGuessObtained == 1
+            global keeplist;
+            keeplist = ones(data.q, 1);
+            chooseIC;
+        else
+            warndlg('Please obtain initial guess before selecting ICs for analysis.');
+        end
     end
 
     function reEstimate_Callback(~,~)
@@ -803,7 +804,7 @@ function varargout = main(varargin)
         set(findobj('Tag','icProgress'),'BackgroundColor',[51/256,153/256,0/256],...
             'ForegroundColor',[0.9255,0.9255,0.9255],...
             'enable','on');
-        data.preprocessingComplete = 1;
+        data.iniGuessComplete = 1;
         set(findobj('tag', 'saveContinueButton'), 'enable', 'on');
         
     end
@@ -813,7 +814,11 @@ function varargout = main(varargin)
         close(hs);
         hs = addcomponents;
         data = struct();
-        dataLoaded = 0;
+        % Initial progress states
+        data.preprocessingComplete = 0;
+        data.tempiniGuessObtained = 0;
+        data.iniGuessComplete = 0;
+        data.dataLoaded = 0;
     end
 
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -1110,7 +1115,7 @@ function varargout = main(varargin)
 
     % Open the window to allow the user to view the covariate files.
     function openCovWindow_Callback(~,~)
-        if (dataLoaded == 1)
+        if (data.dataLoaded == 1)
             waitfor(viewCovariateDisplay(data.X, data.varNamesX, data.niifiles,...
                 data.covTypes, data.varNamesX, data.covariates, data.interactions))
         else
@@ -1183,12 +1188,6 @@ function varargout = main(varargin)
     % convert them into the approporiate maps
     function compileIterationResults(~,~)
         waitfor(compileIterationResultsWindow)
-    end
-
-    % Function allowing the user to create a run script from a runinfo
-    % file.
-    function createScriptAnalysis(~,~)
-        waitfor(createAScriptAnalysis)
     end
 
 end

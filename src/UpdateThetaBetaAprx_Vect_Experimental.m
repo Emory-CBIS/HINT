@@ -11,7 +11,7 @@ function [theta_new, beta_new, z_mode, subICmean, subICvar,...
 %                                   N, T, q, p, m, V)
 %
 % Inputs:
-%    Y          - NT x V, orignial imaging data matrix
+%    Y          - NQ x V, orignial imaging data matrix
 %    X_mtx      - N x p, covariate matrix (transposed)
 %    theta      - Object containing estimates for the EM algorithm
 %    C_matrix_diag  - Gives the product of whitening matrix and its
@@ -37,35 +37,29 @@ function [theta_new, beta_new, z_mode, subICmean, subICvar,...
 %
 % See also: UpdateThetaBeta.m, CoeffpICA_EM.m    
 
+    % Preallocate Space
     subICvar = 0;
-
     err = 0;
     theta_new.A = zeros(T, q, N);
     theta_new.sigma1_sq = 0;
-
     theta_new.sigma2_sq = zeros(q, 1);
     theta_new.miu3 = zeros( (m * q), 1);
     theta_new.sigma3_sq = zeros( (m * q), 1);
     theta_new.pi = zeros( (m * q), 1);
-
     beta_new = zeros(p, q, V);
-
     A_ProdPart1 = zeros(T, q, N);  %first part of the product format for Ai
     A_ProdPart2 = zeros(q, q, N);  %second part of the product format for Ai
     A_ProdPart1_vec = zeros(T*q*N, 1);  %first part of the product format for Ai
     A_ProdPart2_Vec = zeros(q, q, N);  %second part of the product format for Ai
     sigma2_sq_all_V = zeros(q, q, V); 
-    
     sumXiXiT_inv  = eye(p) / (X_mtx * X_mtx');
-
     subICmean = zeros(q, N, V);
-    %subICvar = zeros(q*q*N, V);
     grpICmean = zeros(q, V);
     grpICvar = zeros(q, q, V);
-
     A = zeros( (N * T), (N * q) ) ;
     C_inv = zeros(T, N);
     
+    % Store the mixing matrix (A) in proper format
     for i = 1:N
         A((i-1)*T+1 : (i-1)*T+T, (i-1)*q+1 : (i-1)*q+q) = theta.A(:,:,i);
         C_inv(:,i) = 1 ./ C_matrix_diag((T*(i-1)+1) : (T*i));
@@ -75,9 +69,11 @@ function [theta_new, beta_new, z_mode, subICmean, subICvar,...
     W2 = [ eye(N * q), B];
     P = [ eye(N * q), B; zeros(q, N * q), eye(q) ];
     
+    % First level variance
     Sigma1 = diag( C_matrix_diag .* theta.sigma1_sq);
     Sigma1_inv = diag(1 ./ diag(Sigma1));
     
+    % Second level variance
     Sigma2 = kron( eye(N), diag(theta.sigma2_sq));
     Sigma_gamma0 = W2' * Sigma1_inv * W2 ;
 
@@ -90,29 +86,40 @@ function [theta_new, beta_new, z_mode, subICmean, subICvar,...
 
     Sigma23z = zeros( (N + 1) * q, (N + 1) * q, q + 1);
 
+    % Calculate the possible mean configurations
     miu3z = mtimesx(G_z_dict, theta.miu3);
 
+    % Covariate effects times the design matrix
     betaTimesXtemp = mtimesx( X_mtx, 't', beta);
     betaTimesX = reshape(permute(betaTimesXtemp, [2 1 3]), [N * q, V]);
     clear('betaTimesXtemp');
+    
+    % Obtain the corresponding IC means
     BX = mtimesx(B, miu3z);
+    
+    % Add together the grpICmean and the covariate effects for each subejct
     miu_temp_ALT = bsxfun(@plus, BX, betaTimesX);
     clear('betaTimesX');
+    
+    % Observed data with mean subtracted off
     Y_star_alt = bsxfun(@minus, mtimesx(A', Y),  miu_temp_ALT );
 
+    % Second and third level variance
     for i = 1:(q + 1)
         Sigma23z(:,:,i) = diag([ diag(Sigma2);...
                                 (G_z_dict(:,:,i) * theta.sigma3_sq)]);
     end
+    
+    % Calculate the probability of each configuration
     pi_z_prod = squeeze( prod( mtimesx( G_z_dict, theta.pi)))';
 
+    % Calculate the covariance
     mvn_cov = sqrt(bsxfun( @plus, mtimesx( W2, mtimesx( Sigma23z, W2')), Sigma1));
     mvn_cov_wide = reshape( mvn_cov, [q * N, q * (q + 1) * N] );
     mvn_cov_tran_wide = reshape( mvn_cov_wide( find( kron(...
                repmat( eye(N), [1, (q + 1)]), ones(q)))), q, [], N * (q + 1)); 
     
-    %%% Calculating the probability of belonging to ICs by looping over
-    %%% subjects
+    % Calculate the probability of belonging to ICs over subjects
     probBelong = bsxfun( @plus ,zeros(1, q+1, V), log(pi_z_prod) );
     probBelong = permute(probBelong, [1,3,2]);
     subj_sd = zeros(q, 1, q+1);
@@ -124,20 +131,22 @@ function [theta_new, beta_new, z_mode, subICmean, subICvar,...
         for ii=1:(q+1)
             subj_sd(:,:,ii) = diag(subj_sd_temp(:,:,ii));
         end
-
         % Calculate the probabilities
         prob = normpdf(Y_star_subj, 0, subj_sd) + 0.00000000000000000001;
         probBelong = probBelong + sum( log(prob), 1 );
     end
-        
+    
+    % Remove things no longer needed
     clear('prob')
     clear('Y_star_subj')
 
+    % Calculate the IC each voxel belongs to as the mode
     [~, maxid_all_new] = max( probBelong,[], 3);
     VoxelIC = squeeze( maxid_all_new);
     clear('maxid_all_new')
     z_mode = VoxelIC;
 
+    % Variance and mean terms for calculating expectation of s0, si, beta
     sigma23z_diag = bsxfun( @rdivide, eye((N + 1) * q ), Sigma23z);
     sigma23z_diag( isnan( sigma23z_diag)) = 0;
     denom = bsxfun( @plus, sigma23z_diag, Sigma_gamma0 );
@@ -148,6 +157,8 @@ function [theta_new, beta_new, z_mode, subICmean, subICvar,...
     miu_gamma_all = zeros((N + 1) * q, V );
     miu_temp_add = zeros((N + 1) * q, V );
         
+    % Store the needed terms for s0, si, beta only for the mode z
+    % configuration
     for ic = 1:(q + 1)
         Sigma_gamma_all(:,:,ic) = eye((N + 1) * q) / denom(:,:,ic);
         Sigma_star_all(:,:,ic) =  P * Sigma_gamma_all(:,:,ic) * P';
@@ -162,9 +173,11 @@ function [theta_new, beta_new, z_mode, subICmean, subICvar,...
     clear('miu_temp_ALT')
     pMiuGamma = P * miu_gamma_all;
     clear('miu_gamma_all')
+    
+    % overall mean
     miu_star_all = pMiuGamma + miu_temp_add;
 
-    % Update the group IC information, no need to have this in the loop
+    % Update the group IC information
     grpICmean = miu_star_all( (q*N+1):(q*(N+1)), :);
     grpICvar = mtimesx(reshape(grpICmean, [q, 1, V]), reshape(grpICmean, [1, q, V])) + Sigma_star_all((q*N+1):(q*(N+1)), (q*N+1):(q*(N+1)),VoxelIC);
     
@@ -178,7 +191,6 @@ function [theta_new, beta_new, z_mode, subICmean, subICvar,...
         endv = iSubj*q;
                 
         miu_star_subj = miu_star_all(startv:endv, :);  
-        %Sigma_star = PSP(startv:endv, startv:endv, :);
         miu_sv_all = miu_star_subj; 
         miu_sv_svT_all = mtimesx(reshape(miu_star_subj, [q, 1, V]),...
             reshape(miu_star_subj, [1, q, V])) + Sigma_star_all(startv:endv, startv:endv, VoxelIC);
@@ -186,15 +198,11 @@ function [theta_new, beta_new, z_mode, subICmean, subICvar,...
             reshape(grpICmean, [1, q, V])) + Sigma_star_all(startv:endv, (q*N+1):(N+1)*q , VoxelIC);
         
         % Increment term for sigma2 sq
-        addedVariance = addedVariance + miu_sv_svT_all - 2*noise_columns;
-        
-        % This part should now be a V loop, which we vectorize PREALLOCATE!
+        addedVariance = addedVariance + miu_sv_svT_all - 2*noise_columns;   
         miu_svi = miu_sv_all;
-
         subICmean(:,iSubj,:) = squeeze( miu_svi);
-        
         mtSum =  Y(startv:endv,:) * miu_svi';
-        
+        % This subject's contribution to the mixing matrix
         A_ProdPart1(:,:,iSubj) = A_ProdPart1(:,:,iSubj) + mtSum;
         A_ProdPart2(:,:,iSubj) = A_ProdPart2(:,:,iSubj) + sum(miu_sv_svT_all, 3);
         
@@ -205,21 +213,22 @@ function [theta_new, beta_new, z_mode, subICmean, subICvar,...
     % Update beta coefficients
     beta_new = mtimesx(reshape(X_mtx, [a,N] ), permute(diff(:,:,:), [2,1,3]) );   
     beta_new = mtimesx(sumXiXiT_inv, beta_new);
-        
+    
+    % Xbeta squared for the second level variance calculation
     xprimeBetatemp = mtimesx(X_mtx', beta_new);
     xprimeBeta = xprimeBetatemp;
     xBetaSquared = mtimesx( xprimeBetatemp, 'T', xprimeBetatemp);
-        
+    
+    % Update second level variance
      sigma2_sq_all_V = addedVariance +...
          mtimesx( 2*bsxfun( @minus, reshape(grpICmean, [q, 1, V]), subICmean),...
          xprimeBeta ) + ...
-         xBetaSquared;
-    
+         xBetaSquared; 
     sigma2_sq_all = sum( sigma2_sq_all_V,3);
     clear('sigma2_sq_all_V');
     theta_new.sigma2_sq = 1 / double(N * V) * diag( sigma2_sq_all); 
 
-%     % original way of doing these calculations
+    % Update mixture of gaussians
     for l = 1:q
         act = find( VoxelIC == l);
         nois = find( VoxelIC ~= l);
@@ -239,6 +248,7 @@ function [theta_new, beta_new, z_mode, subICmean, subICvar,...
         theta_new.miu3( nanid) = theta.miu3( nanid);
     end
 
+    % Update mixing matrix
     for i = 1:N
         theta_new.A(:,:,i) = A_ProdPart1(:,:,i) / (A_ProdPart2(:,:,i));
         theta_new.A(:,:,i) = theta_new.A(:,:,i) ...
@@ -261,11 +271,13 @@ function [theta_new, beta_new, z_mode, subICmean, subICvar,...
     ACA = mtimesx( AtimesC, theta_new.A);
 
     theta_new_sigma1_sq_alt = 0.0;
+    
     % ACA is a qxq x N matrix
     finalqcol = N*q+1;
     finalcol = (N+1)*q;
     Sigma_Star_allVoxel = zeros( (q), (q), V);
     
+    % Loop through subjects for subject level variance update
     trace_term = zeros(1, 1, V);
     for iSubj = 1:N
         C_i = diag(C_inv(:,iSubj));
@@ -285,7 +297,7 @@ function [theta_new, beta_new, z_mode, subICmean, subICvar,...
     end
     
     
-    % now need to sum all diagonal elements
+    % now need to sum all diagonal elements to get final sigma1
     theta_new.sigma1_sq = firstRow - second_term + sum(trace_term);
     theta_new.sigma1_sq = 1 / double(N * T * V) * theta_new.sigma1_sq;
 
