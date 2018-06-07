@@ -144,7 +144,7 @@ function [theta, beta, z_mode, subICmean, subICvar, grpICmean, grpICvar,...
             set(gca,'NextPlot','add');
             plot(err1vec);
             xticks(1:5:itr);
-            title('Change in Theta'); xlabel('Iteration');
+            title('Global Parameter'); xlabel('Iteration');
             print(gcf, [outpath '/' prefix '_theta_progress_plot'],'-dpng')
             
             % Beta change plot
@@ -152,7 +152,7 @@ function [theta, beta, z_mode, subICmean, subICvar, grpICmean, grpICvar,...
             set(gca, 'NextPlot', 'add');
             plot(err2vec);
             xticks( [1:5:itr] );
-            title('Change in Beta'); xlabel('Iteration');
+            title('Local Parameter'); xlabel('Iteration');
             print(gcf, [outpath '/' prefix '_beta_progress_plot'],'-dpng')
             
             % Update the embedded waitbar
