@@ -111,8 +111,8 @@ handles.covFileDisplay.ColumnName = ['Subject',...
 % they are categorical
 handles.totalVarNum = numel(handles.covTypes);
 handles.nCategorical = sum(handles.covTypes);
-set( findobj( 'tag', 'intMenu1' ), 'String', handles.covariates.Properties.VariableNames );
-set( findobj( 'tag', 'intMenu2' ), 'String', handles.covariates.Properties.VariableNames );
+set( findobj( 'tag', 'intMenu1' ), 'String', handles.covariates.Properties.VariableNames(handles.varInModel==1) );
+set( findobj( 'tag', 'intMenu2' ), 'String', handles.covariates.Properties.VariableNames(handles.varInModel==1) );
 
 
 % Update handles structure
@@ -142,6 +142,13 @@ function interactionButton_Callback(hObject, eventdata, handles)
 % User input two variables for interactions
 val1 = get( findobj( 'tag', 'intMenu1' ), 'value');
 val2 = get( findobj( 'tag', 'intMenu2' ), 'value');
+
+% Find the element of "varInModel" this corresponds to
+sumVar = cumsum(handles.varInModel);
+ind1Val = find(sumVar == val1);
+ind2Val = find(sumVar == val2);
+val1 = ind1Val(1);
+val2 = ind2Val(1);
 
 % Check for same covariate issue
 if val1 == val2
@@ -245,6 +252,14 @@ function removeInteractionButton_Callback(hObject, eventdata, handles)
 % User input two variables for interactions
 val1 = get( findobj( 'tag', 'intMenu1' ), 'value');
 val2 = get( findobj( 'tag', 'intMenu2' ), 'value');
+
+% Find the element of "varInModel" this corresponds to
+sumVar = cumsum(handles.varInModel);
+ind1Val = find(sumVar == val1);
+ind2Val = find(sumVar == val2);
+val1 = ind1Val(1);
+val2 = ind2Val(1);
+
 
 [nInt, nCol] = size(handles.interactions);
 
@@ -392,6 +407,8 @@ if strcmp(get(gcf,'selectiontype'),'open')
         % Update the list of variables for interactions, have to consider
         % special case where no variables included.
         if length(handles.includedCovariateList) > 0
+            set( findobj( 'tag', 'intMenu1' ), 'Value', 1 );
+            set( findobj( 'tag', 'intMenu2' ), 'Value', 1 );
             set( findobj( 'tag', 'intMenu1' ), 'String', handles.includedCovariateList );
             set( findobj( 'tag', 'intMenu2' ), 'String', handles.includedCovariateList );
         else

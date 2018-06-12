@@ -1107,19 +1107,22 @@ function varargout = main(varargin)
         covariates = data.covariates;                               %#ok<NASGU>
         covTypes = data.covTypes;                                      %#ok<NASGU>
         varNamesX = data.varNamesX;                                 %#ok<NASGU>
-        interactions = data.interactions                            %#ok<NASGU>
+        interactions = data.interactions  ;                          %#ok<NASGU>
         thetaStar = data.thetaStar;                                 %#ok<NASGU>
         YtildeStar = data.YtildeStar;                               %#ok<NASGU>
         CmatStar = data.CmatStar;                                   %#ok<NASGU>
         beta0Star = data.beta0Star;                                 %#ok<NASGU>
         voxSize = data.voxSize;                                     %#ok<NASGU>
         N = data.N;                                                 %#ok<NASGU>
-        qold = data.q;                                              %#ok<NASGU>        
+        qold = data.q;                                              %#ok<NASGU> 
+        varInModel = data.varInModel;%#ok<NASGU> 
+        varInCovFile = data.varInCovFile;%#ok<NASGU> 
         
         save([data.outpath '/' data.prefix '_runinfo.mat'], 'q', ...
             'time_num', 'X', 'validVoxels', 'niifiles', 'maskf', 'covfile', 'numPCA', ...
             'outfolder', 'prefix', 'covariates', 'covTypes', 'beta0Star', 'CmatStar',...
-            'YtildeStar', 'thetaStar', 'voxSize', 'N', 'qold', 'varNamesX', 'interactions');
+            'YtildeStar', 'thetaStar', 'voxSize', 'N', 'qold', 'varNamesX',...
+            'interactions', 'varInModel', 'varInCovFile');
     end
 
     % Open the window to allow the user to view the covariate files.
@@ -1168,6 +1171,8 @@ function varargout = main(varargin)
         data.covTypes = tempData.covTypes; 
         data.varNamesX = tempData.varNamesX;
         data.interactions = tempData.interactions;
+        data.varInModel = tempData.varInModel;
+        data.varInCovFile = tempData.varInCovFile;
         
         tempSeEst = load( [filepath '/' data.prefix '_beta_se_est.mat'] );
         data.beta_se_est = tempSeEst.beta_se_est;
