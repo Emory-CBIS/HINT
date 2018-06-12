@@ -28,7 +28,7 @@ function varargout = viewCovariateDisplay(varargin)
 
 % Edit the above text to modify the response to help viewCovariateDisplay
 
-% Last Modified by GUIDE v2.5 12-Jun-2018 11:15:20
+% Last Modified by GUIDE v2.5 12-Jun-2018 16:17:41
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -64,6 +64,7 @@ handles.output = hObject;
 % Get the arguments from varargin
 handles.X = varargin{1};
 handles.covariateNames = varargin{2};
+handles.varNamesX = varargin{2};
 handles.niifilesFull = varargin{3};
 handles.covTypes = varargin{4};
 handles.covariates = varargin{5};
@@ -71,16 +72,13 @@ handles.interactions = varargin{6};
 handles.varInModel = varargin{7};
 handles.varInCovFile = varargin{8};
 
-disp('this is for testing, revert this!')
-handles.interactions = zeros(0, 3);
-disp('this is for testing, revert this!')
-
 % List of all covariates included in the design matrix, the covariates for
 % the hcica model are selected from this list
 handles.rawCovariateList = handles.covariates.Properties.VariableNames(handles.varInCovFile==1);
 handles.includedCovariateList = handles.covariates.Properties.VariableNames(handles.varInModel==1);
 
-handles.N = size(handles.X); handles.ncov = handles.N(2); handles.N=handles.N(1);
+
+handles.N = size(handles.X); handles.ncov = size(handles.varInCovFile, 1); handles.N=handles.N(1);
 
 % Set the listbox of parameters in the design matrix
 handles.varsInCovFile.String = handles.rawCovariateList;
@@ -88,35 +86,33 @@ handles.varsInCovFile.String = handles.rawCovariateList;
 % Set the listbox of parameters in the hc-ICA model
 handles.varsInModel.String = handles.includedCovariateList;
 
+% Fill out the continuous and categorical covariate listboxes
+handles.catListbox.String = handles.rawCovariateList(handles.covTypes == 1);
+handles.contListbox.String = handles.rawCovariateList(handles.covTypes == 0);
+
+
 % Make the table the correct dimension
-newTable = cell(handles.N, handles.ncov+1);
+newTable = cell(handles.N, size(handles.X, 2)+1);
 % fill out all of the covariates
 for row = 1:handles.N
     [pathstr,name, ext] = fileparts(handles.niifilesFull{row});
     newTable(row, 1) = {name};
-    for col=1:handles.ncov
+    for col=1:size(handles.X, 2)
         newTable(row, col+1) = {handles.X(row, col)};
     end
 end
 handles.covFileDisplay.Data = newTable;
 
 % set the column names of the display table to be correct
-handles.covFileDisplay.ColumnName = ['Subject', handles.covariateNames];
-
-% Edit the properties of the display lists
-% set(findobj('tag', 'continuousVarList'),'min',0);
-% set(findobj('tag', 'continuousVarList'),'max',length(handles.isCat));
-% set(findobj('tag', 'continuousVarList'),'value',[]);
-% set(findobj('tag', 'categoricalVarList'),'min',0);
-% set(findobj('tag', 'categoricalVarList'),'max',length(handles.isCat));
-% set(findobj('tag', 'categoricalVarList'),'value',[]);
+handles.covFileDisplay.ColumnName = ['Subject',...
+    handles.covariateNames];
 
 % Go through the headers and assign them to lists based on whether or not
 % they are categorical
 handles.totalVarNum = numel(handles.covTypes);
 handles.nCategorical = sum(handles.covTypes);
-set( findobj( 'tag', 'intMenu1' ), 'String', handles.covariateNames );
-set( findobj( 'tag', 'intMenu2' ), 'String', handles.covariateNames );
+set( findobj( 'tag', 'intMenu1' ), 'String', handles.covariates.Properties.VariableNames );
+set( findobj( 'tag', 'intMenu2' ), 'String', handles.covariates.Properties.VariableNames );
 
 
 % Update handles structure
@@ -159,29 +155,13 @@ else
         warndlg('Interaction term already exists.')
     else
         handles.interactions = [handles.interactions; newIntRow];
-        % Update the appropriate matrices
-        [ handles.X, handles.varNamesX ] = ref_cell_code( handles.covariates, handles.covTypes,...
-        handles.varInModel, handles.interactions, 1  );
-    
-    newTable = cell(handles.N, handles.ncov+1);
-    [~, nCol] = size(handles.X);
-    % fill out all of the covariates
-    for row = 1:handles.N
-        [pathstr,name, ext] = fileparts(handles.niifilesFull{row});
-        newTable(row, 1) = {name};
-        for col=1:nCol
-            newTable(row, col+1) = {handles.X(row, col)};
-        end
-    end
-    handles.covFileDisplay.Data = newTable;
 
-    % set the column names of the display table to be correct
-    handles.covFileDisplay.ColumnName = ['Subject', handles.varNamesX];
+        % Press the invisible update button
+        guidata(hObject, handles);
+        updateDisplayButtonInvisible_Callback(handles.updateDisplayButtonInvisible, 1, handles);
     
     end
 end
-
-guidata(hObject, handles);
 
 
 %updateCodingScheme;
@@ -193,12 +173,17 @@ function closeButton_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-global data;
-data.X = handles.X
-data.interactions = handles.interactions;
-data.varNamesX = handles.covariateNames;
-
-delete(handles.figure1)
+if sum(handles.varInModel) > 0
+    global data;
+    data.X = handles.X;
+    data.interactions = handles.interactions;
+    data.varNamesX = handles.varNamesX;
+    data.covTypes = handles.covTypes;
+    data.varInModel = handles.varInModel;
+    delete(handles.figure1);
+else
+    warndlg('Warning: At least one covariate must be included in the model.')
+end
 
 
  
@@ -286,7 +271,7 @@ else
                 handles.covTypes, handles.varInModel, handles.interactions, 0  );
         end
         
-        newTable = cell(handles.N, handles.ncov+1);
+        newTable = cell(handles.N, size(handles.X, 2)+1);
         [~, nCol] = size(handles.X);
         % fill out all of the covariates
         for row = 1:handles.N
@@ -345,30 +330,13 @@ if strcmp(get(gcf,'selectiontype'),'open')
         set( findobj( 'tag', 'interactionButton' ), 'Enable', 'on' );
         set( findobj( 'tag', 'removeInteractionButton' ), 'Enable', 'on' );
         
-        % Update the reference cell coding
-        [ handles.X, handles.varNamesX ] = ref_cell_code( handles.covariates,...
-                handles.covTypes, handles.varInModel, handles.interactions, 1  );
-            
-        % Update the table
-        newTable = cell(handles.N, handles.ncov+1);
-        [~, nCol] = size(handles.X);
-        % fill out all of the covariates
-        for row = 1:handles.N
-            [pathstr,name, ext] = fileparts(handles.niifilesFull{row});
-            newTable(row, 1) = {name};
-            for col=1:nCol
-                newTable(row, col+1) = {handles.X(row, col)};
-            end
-        end
-        handles.covFileDisplay.Data = newTable;
+        % Press the invisible update button
+        guidata(hObject, handles);
+        updateDisplayButtonInvisible_Callback(handles.updateDisplayButtonInvisible, 1, handles);
 
-        % set the column names of the display table to be correct
-        handles.covFileDisplay.ColumnName = ['Subject', handles.varNamesX];
-        
     end
     
 end 
-guidata(hObject, handles);
 
 
 
@@ -398,8 +366,11 @@ if strcmp(get(gcf,'selectiontype'),'open')
 
     % Get the covariate selected by the user
     selectedCovariate = hObject.Value;
+    
     % Make sure the listbox is not already empty
     if ~isempty(hObject.Value)
+        
+        % Reset the listbox selection to avoid an error
         handles.varsInModel.Value = 1;
 
         % Find the element of "varInModel" this corresponds to
@@ -426,6 +397,8 @@ if strcmp(get(gcf,'selectiontype'),'open')
         else
             set( findobj( 'tag', 'intMenu1' ), 'String', 'N/A' );
             set( findobj( 'tag', 'intMenu2' ), 'String', 'N/A' );
+            set( findobj( 'tag', 'intMenu1' ), 'Value', 1 );
+            set( findobj( 'tag', 'intMenu2' ), 'Value', 1 );
             % Disable the interaction menu and the corresponding buttons
             set( findobj( 'tag', 'intMenu1' ), 'Enable', 'off' );
             set( findobj( 'tag', 'intMenu2' ), 'Enable', 'off' );
@@ -433,29 +406,12 @@ if strcmp(get(gcf,'selectiontype'),'open')
             set( findobj( 'tag', 'removeInteractionButton' ), 'Enable', 'off' );
         end
 
-        % Update the reference cell coding
-        [ handles.X, handles.varNamesX ] = ref_cell_code( handles.covariates,...
-                handles.covTypes, handles.varInModel, handles.interactions, 1  );
-
-        % Update the table
-        newTable = cell(handles.N, handles.ncov+1);
-        [~, nCol] = size(handles.X);
-        % fill out all of the covariates
-        for row = 1:handles.N
-            [pathstr,name, ext] = fileparts(handles.niifilesFull{row});
-            newTable(row, 1) = {name};
-            for col=1:nCol
-                newTable(row, col+1) = {handles.X(row, col)};
-            end
-        end
-        handles.covFileDisplay.Data = newTable;
-
-        % set the column names of the display table to be correct
-        handles.covFileDisplay.ColumnName = ['Subject', handles.varNamesX];
+        % Press the invisible update button
+        guidata(hObject, handles);
+        updateDisplayButtonInvisible_Callback(handles.updateDisplayButtonInvisible, 1, handles);
     end
 
 end 
-guidata(hObject, handles);
 
 
 % --- Executes during object creation, after setting all properties.
@@ -470,3 +426,240 @@ if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgr
     set(hObject,'BackgroundColor','white');
 end
 
+
+% --- Executes on selection change in catListbox.
+function catListbox_Callback(hObject, eventdata, handles)
+% hObject    handle to catListbox (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: contents = cellstr(get(hObject,'String')) returns catListbox contents as cell array
+%        contents{get(hObject,'Value')} returns selected item from catListbox
+
+if strcmp(get(gcf,'selectiontype'),'open') 
+    
+    % Make sure the listbox is not already empty
+    if ~isempty(hObject.Value)
+        
+        % Numbering of the selected value
+        selectedCovariate = hObject.Value;
+        hObject.Value = 1; % reset value to avoid invalid integer range
+        
+        % Match it to a value in the ORIGINAL covTypes
+        % 1 - covTypes gives indicator of continuous covariate
+        sumVar = cumsum(handles.covTypes);
+        selIndex = find(sumVar == selectedCovariate);
+        selIndex = selIndex(1);
+        
+        % Make sure that it is reasonable to change this to continuous
+        % - check to make sure the variable is not a string
+        columnTypes = varfun(@class,handles.covariates,'OutputFormat','cell');
+        if strcmp(columnTypes{selIndex}, 'cell')
+            warndlg('Error: This factor is a string, cannot convert to numeric.')
+        else
+            % Change the covTypes coding
+            handles.covTypes(selIndex) = 0;
+            
+            % Update the categorical and continuous listboxes
+            handles.catListbox.String = handles.rawCovariateList(handles.covTypes == 1);
+            handles.contListbox.String = handles.rawCovariateList(handles.covTypes == 0);
+            
+            % Press the invisible update button
+            guidata(hObject, handles);
+            updateDisplayButtonInvisible_Callback(handles.updateDisplayButtonInvisible, 1, handles);  
+        end
+    
+    end
+    
+end
+
+
+
+
+% --- Executes during object creation, after setting all properties.
+function catListbox_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to catListbox (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: listbox controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+% --- Executes on selection change in contListbox.
+function contListbox_Callback(hObject, eventdata, handles)
+% hObject    handle to contListbox (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: contents = cellstr(get(hObject,'String')) returns contListbox contents as cell array
+%        contents{get(hObject,'Value')} returns selected item from contListbox
+
+if strcmp(get(gcf,'selectiontype'),'open') 
+    
+    % Make sure the listbox is not already empty
+    if ~isempty(hObject.Value)
+        
+        % Numbering of the selected value
+        selectedCovariate = hObject.Value;
+        hObject.Value = 1; % reset value to avoid invalid integer range
+        
+        % Match it to a value in the ORIGINAL covTypes
+        % 1 - covTypes gives indicator of continuous covariate
+        sumVar = cumsum(1 - handles.covTypes);
+        selIndex = find(sumVar == selectedCovariate);
+        
+        % Make sure that it is reasonable to change this to categorical
+        % - check that the number of unique values is not equal to the
+        % number of subjects
+        if height(unique(handles.covariates(:, selIndex))) == handles.N
+            warndlg('Error: The number of unique levels of this factor is equal to the number of subjects, not creating categorical coding.')
+        else
+            % Change the covTypes coding
+            handles.covTypes(selIndex) = 1;
+            
+            % Update the categorical and continuous listboxes
+            handles.catListbox.String = handles.rawCovariateList(handles.covTypes == 1);
+            handles.contListbox.String = handles.rawCovariateList(handles.covTypes == 0);
+            
+            % Press the invisible update button
+            guidata(hObject, handles);
+            updateDisplayButtonInvisible_Callback(handles.updateDisplayButtonInvisible, 1, handles);
+   
+        end
+    
+    end
+    
+end
+
+
+
+% --- Executes during object creation, after setting all properties.
+function contListbox_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to contListbox (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: listbox controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+% --- Executes on button press in addAllButton.
+function addAllButton_Callback(hObject, eventdata, handles)
+% hObject    handle to addAllButton (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+checkAns = questdlg('Are you sure you want to add all covariates to the model?');
+if checkAns
+    handles.varInModel = ones(size(handles.varInModel));
+    handles.includedCovariateList = handles.covariates.Properties.VariableNames(handles.varInModel==1);
+    handles.varsInModel.String = handles.includedCovariateList;
+    
+    % Update the list of variables for interactions, have to consider
+    % special case where no variables included.
+    set( findobj( 'tag', 'intMenu1' ), 'String', handles.includedCovariateList );
+    set( findobj( 'tag', 'intMenu2' ), 'String', handles.includedCovariateList );
+    % Enable the interaction menu and the corresponding buttons
+    set( findobj( 'tag', 'intMenu1' ), 'Enable', 'on' );
+    set( findobj( 'tag', 'intMenu2' ), 'Enable', 'on' );
+    set( findobj( 'tag', 'interactionButton' ), 'Enable', 'on' );
+    set( findobj( 'tag', 'removeInteractionButton' ), 'Enable', 'on' );
+    
+    guidata(hObject, handles);
+
+    % Press the invisible update button
+    updateDisplayButtonInvisible_Callback(handles.updateDisplayButtonInvisible, 1, handles);
+    
+end
+
+
+% --- Executes on button press in removeAllButton.
+function removeAllButton_Callback(hObject, eventdata, handles)
+% hObject    handle to removeAllButton (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+checkAns = questdlg('Are you sure you want to remove all covariates from the model?');
+if checkAns
+    
+    % Move cursor to avoid an error
+    handles.varsInModel.Value = 1;
+    
+    handles.varInModel = zeros(size(handles.varInModel));
+    handles.includedCovariateList = handles.covariates.Properties.VariableNames(handles.varInModel==1);
+    handles.varsInModel.String = handles.includedCovariateList;
+    
+    handles.interactions = zeros(0, handles.ncov);
+    
+    % disable the list of variables for interactions
+    set( findobj( 'tag', 'intMenu1' ), 'String', 'N/A' );
+    set( findobj( 'tag', 'intMenu2' ), 'String', 'N/A' );
+    set( findobj( 'tag', 'intMenu1' ), 'Value', 1 );
+    set( findobj( 'tag', 'intMenu2' ), 'Value', 1 );
+    % Disable the interaction menu and the corresponding buttons
+    set( findobj( 'tag', 'intMenu1' ), 'Enable', 'off' );
+    set( findobj( 'tag', 'intMenu2' ), 'Enable', 'off' );
+    set( findobj( 'tag', 'interactionButton' ), 'Enable', 'off' );
+    set( findobj( 'tag', 'removeInteractionButton' ), 'Enable', 'off' );
+    
+    guidata(hObject, handles);
+    
+    % Press the invisible update button
+    updateDisplayButtonInvisible_Callback(handles.updateDisplayButtonInvisible, 1, handles);
+
+end
+
+
+% --- Executes on button press in updateDisplayButtonInvisible.
+function updateDisplayButtonInvisible_Callback(hObject, eventdata, handles)
+% hObject    handle to updateDisplayButtonInvisible (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Update the reference cell coding
+[ handles.X, handles.varNamesX ] = ref_cell_code( handles.covariates,...
+        handles.covTypes, handles.varInModel, handles.interactions, 1  );
+
+% Update the table
+newTable = cell(handles.N, size(handles.X, 2)+1);
+[~, nCol] = size(handles.X);
+% fill out all of the covariates
+for row = 1:handles.N
+    [pathstr,name, ext] = fileparts(handles.niifilesFull{row});
+    newTable(row, 1) = {name};
+    for col=1:nCol
+        newTable(row, col+1) = {handles.X(row, col)};
+    end
+end
+handles.covFileDisplay.Data = newTable;
+
+% set the column names of the display table to be correct
+handles.covFileDisplay.ColumnName = ['Subject', handles.varNamesX];
+
+guidata(hObject, handles);
+
+
+% --- Executes when user attempts to close figure1.
+function figure1_CloseRequestFcn(hObject, eventdata, handles)
+% hObject    handle to figure1 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hint: delete(hObject) closes the figure
+if sum(handles.varInModel) > 0
+    global data;
+    data.X = handles.X;
+    data.interactions = handles.interactions;
+    data.varNamesX = handles.varNamesX;
+    data.covTypes = handles.covTypes;
+    data.varInModel = handles.varInModel;
+    delete(hObject);
+else
+    warndlg('Warning: At least one covariate must be included in the model.')
+end

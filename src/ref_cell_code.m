@@ -32,11 +32,24 @@ for iCov = 1:numel(covTypes)
     if varInModel(iCov) == 1
         if covTypes(iCov) == 1
             covLevels = unique(covariates{:, iCov} );
+            % if the covariate is originally numeric, need to force it to
+            % be a cell array
             nLevel = numel(covLevels);
+            numFlag = 0;
+            if ~iscell(covLevels)
+                numFlag = 1;
+                covLevels = cellstr(num2str(covLevels));
+            end
             varLevels(iCov) = nLevel - 1;
             rcCovariate = zeros(N, nLevel-1);
             for iLevel = 1:(nLevel-1)
-                rcCovariate(:,iLevel) = strcmp(covariates{:,iCov}, covLevels{iLevel});
+                % Perform string conversion if originally numeric
+                if numFlag == 1
+                    rcCovariate(:,iLevel) = strcmp(cellstr(num2str(covariates{:,iCov})), covLevels{iLevel});
+                else
+                    rcCovariate(:,iLevel) = strcmp(covariates{:,iCov}, covLevels{iLevel});
+                end
+      
                 % Get the name for this reference factor
                 factorName = strcat( covariates.Properties.VariableNames{iCov},...
                     '=', covLevels(iLevel)  );
