@@ -46,7 +46,7 @@ for iCov = 1:numel(covTypes)
         else
             varLevels(iCov) = 1;
             X = [X, table2array(covariates(:, iCov) )];
-            varNamesX = [varNamesX, covariates.Properties.VariableNames{iCov}];
+            varNamesX = [varNamesX, covariates.Properties.VariableNames(iCov)];
         end
     end % end of check that covariate is to be included in the model
 end

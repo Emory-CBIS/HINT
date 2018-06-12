@@ -66,11 +66,14 @@ handles.X = varargin{1};
 handles.covariateNames = varargin{2};
 handles.niifilesFull = varargin{3};
 handles.covTypes = varargin{4};
-%handles.covariateNames = varargin{5};
 handles.covariates = varargin{5};
 handles.interactions = varargin{6};
 handles.varInModel = varargin{7};
 handles.varInCovFile = varargin{8};
+
+disp('this is for testing, revert this!')
+handles.interactions = zeros(0, 3);
+disp('this is for testing, revert this!')
 
 % List of all covariates included in the design matrix, the covariates for
 % the hcica model are selected from this list
@@ -158,7 +161,7 @@ else
         handles.interactions = [handles.interactions; newIntRow];
         % Update the appropriate matrices
         [ handles.X, handles.varNamesX ] = ref_cell_code( handles.covariates, handles.covTypes,...
-        handles.interactions, 1  );
+        handles.varInModel, handles.interactions, 1  );
     
     newTable = cell(handles.N, handles.ncov+1);
     [~, nCol] = size(handles.X);
@@ -332,9 +335,19 @@ if strcmp(get(gcf,'selectiontype'),'open')
         handles.includedCovariateList = handles.covariates.Properties.VariableNames(handles.varInModel==1);
         handles.varsInModel.String = handles.includedCovariateList;
         
+        % Update the list of variables for interactions, have to consider
+        % special case where no variables included.
+        set( findobj( 'tag', 'intMenu1' ), 'String', handles.includedCovariateList );
+        set( findobj( 'tag', 'intMenu2' ), 'String', handles.includedCovariateList );
+        % Enable the interaction menu and the corresponding buttons
+        set( findobj( 'tag', 'intMenu1' ), 'Enable', 'on' );
+        set( findobj( 'tag', 'intMenu2' ), 'Enable', 'on' );
+        set( findobj( 'tag', 'interactionButton' ), 'Enable', 'on' );
+        set( findobj( 'tag', 'removeInteractionButton' ), 'Enable', 'on' );
+        
         % Update the reference cell coding
         [ handles.X, handles.varNamesX ] = ref_cell_code( handles.covariates,...
-                handles.covTypes, handles.varInModel, handles.interactions, 0  );
+                handles.covTypes, handles.varInModel, handles.interactions, 1  );
             
         % Update the table
         newTable = cell(handles.N, handles.ncov+1);
@@ -385,39 +398,61 @@ if strcmp(get(gcf,'selectiontype'),'open')
 
     % Get the covariate selected by the user
     selectedCovariate = hObject.Value;
-    handles.varsInModel.Value = 1;
-    
-    % Find the element of "varInModel" this corresponds to
-    sumVar = cumsum(handles.varInModel);
-    indexRemove = find(sumVar == selectedCovariate);
-    indexRemove = indexRemove(1);
-        
-    % update varInModel
-    handles.varInModel( indexRemove ) = 0;
+    % Make sure the listbox is not already empty
+    if ~isempty(hObject.Value)
+        handles.varsInModel.Value = 1;
 
-    % Update the listbox of included covariates
-    handles.includedCovariateList = handles.covariates.Properties.VariableNames(handles.varInModel==1);
-    handles.varsInModel.String = handles.includedCovariateList;
+        % Find the element of "varInModel" this corresponds to
+        sumVar = cumsum(handles.varInModel);
+        indexRemove = find(sumVar == selectedCovariate);
+        indexRemove = indexRemove(1);
 
-    % Update the reference cell coding
-    [ handles.X, handles.varNamesX ] = ref_cell_code( handles.covariates,...
-            handles.covTypes, handles.varInModel, handles.interactions, 0  );
+        % update varInModel
+        handles.varInModel( indexRemove ) = 0;
 
-    % Update the table
-    newTable = cell(handles.N, handles.ncov+1);
-    [~, nCol] = size(handles.X);
-    % fill out all of the covariates
-    for row = 1:handles.N
-        [pathstr,name, ext] = fileparts(handles.niifilesFull{row});
-        newTable(row, 1) = {name};
-        for col=1:nCol
-            newTable(row, col+1) = {handles.X(row, col)};
+        % Update the listbox of included covariates
+        handles.includedCovariateList = handles.covariates.Properties.VariableNames(handles.varInModel==1);
+        handles.varsInModel.String = handles.includedCovariateList;
+
+        % Remove any interactions with this variable
+        removeList = (handles.interactions * (handles.varInModel==0)) > 0;
+        handles.interactions = handles.interactions( (1-removeList) == 1, :);
+
+        % Update the list of variables for interactions, have to consider
+        % special case where no variables included.
+        if length(handles.includedCovariateList) > 0
+            set( findobj( 'tag', 'intMenu1' ), 'String', handles.includedCovariateList );
+            set( findobj( 'tag', 'intMenu2' ), 'String', handles.includedCovariateList );
+        else
+            set( findobj( 'tag', 'intMenu1' ), 'String', 'N/A' );
+            set( findobj( 'tag', 'intMenu2' ), 'String', 'N/A' );
+            % Disable the interaction menu and the corresponding buttons
+            set( findobj( 'tag', 'intMenu1' ), 'Enable', 'off' );
+            set( findobj( 'tag', 'intMenu2' ), 'Enable', 'off' );
+            set( findobj( 'tag', 'interactionButton' ), 'Enable', 'off' );
+            set( findobj( 'tag', 'removeInteractionButton' ), 'Enable', 'off' );
         end
-    end
-    handles.covFileDisplay.Data = newTable;
 
-    % set the column names of the display table to be correct
-    handles.covFileDisplay.ColumnName = ['Subject', handles.varNamesX];
+        % Update the reference cell coding
+        [ handles.X, handles.varNamesX ] = ref_cell_code( handles.covariates,...
+                handles.covTypes, handles.varInModel, handles.interactions, 1  );
+
+        % Update the table
+        newTable = cell(handles.N, handles.ncov+1);
+        [~, nCol] = size(handles.X);
+        % fill out all of the covariates
+        for row = 1:handles.N
+            [pathstr,name, ext] = fileparts(handles.niifilesFull{row});
+            newTable(row, 1) = {name};
+            for col=1:nCol
+                newTable(row, col+1) = {handles.X(row, col)};
+            end
+        end
+        handles.covFileDisplay.Data = newTable;
+
+        % set the column names of the display table to be correct
+        handles.covFileDisplay.ColumnName = ['Subject', handles.varNamesX];
+    end
 
 end 
 guidata(hObject, handles);
