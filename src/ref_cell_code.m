@@ -1,4 +1,4 @@
-function [ X, varNamesX ] = ref_cell_code( covariates, covTypes,...
+function [ X, varNamesX ] = ref_cell_code( covariates, covTypes, varInModel,...
     interactions, includeInteractions  )
 % ref_cell_code - Function to perform reference cell coding of the
 % covariates
@@ -10,6 +10,8 @@ function [ X, varNamesX ] = ref_cell_code( covariates, covTypes,...
 % Inputs:
 %   covariates   - matrix of covariate settings
 %   covTypes     - vector that is 1 if a covariate is categorical
+%   varInModel   - vector that is 1 if a covariate should be included in
+%                   the model
 %   interactions - matrix of user-specified interactions
 %   includeInteractions - 1 if interactions are to be calculated
 %
@@ -27,24 +29,26 @@ varLevels = zeros(numel(covTypes), 1);
 varNamesX = [];
 for iCov = 1:numel(covTypes)
     % Get the name of this covariate
-    if covTypes(iCov) == 1
-        covLevels = unique(covariates{:, iCov} );
-        nLevel = numel(covLevels);
-        varLevels(iCov) = nLevel - 1;
-        rcCovariate = zeros(N, nLevel-1);
-        for iLevel = 1:(nLevel-1)
-            rcCovariate(:,iLevel) = strcmp(covariates{:,iCov}, covLevels{iLevel});
-            % Get the name for this reference factor
-            factorName = strcat( covariates.Properties.VariableNames{iCov},...
-                '=', covLevels(iLevel)  );
-            varNamesX = [varNamesX, factorName];
+    if varInModel(iCov) == 1
+        if covTypes(iCov) == 1
+            covLevels = unique(covariates{:, iCov} );
+            nLevel = numel(covLevels);
+            varLevels(iCov) = nLevel - 1;
+            rcCovariate = zeros(N, nLevel-1);
+            for iLevel = 1:(nLevel-1)
+                rcCovariate(:,iLevel) = strcmp(covariates{:,iCov}, covLevels{iLevel});
+                % Get the name for this reference factor
+                factorName = strcat( covariates.Properties.VariableNames{iCov},...
+                    '=', covLevels(iLevel)  );
+                varNamesX = [varNamesX, factorName];
+            end
+            X = [X, rcCovariate];
+        else
+            varLevels(iCov) = 1;
+            X = [X, table2array(covariates(:, iCov) )];
+            varNamesX = [varNamesX, covariates.Properties.VariableNames{iCov}];
         end
-        X = [X, rcCovariate];
-    else
-        varLevels(iCov) = 1;
-        X = [X, table2array(covariates(:, iCov) )];
-        varNamesX = [varNamesX, covariates.Properties.VariableNames{iCov}];
-    end
+    end % end of check that covariate is to be included in the model
 end
 
 % Now handle interactions

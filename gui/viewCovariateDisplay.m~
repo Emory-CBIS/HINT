@@ -3,7 +3,7 @@ function varargout = viewCovariateDisplay(varargin)
 % Created to view the covariates and make sure they are lined up
 %   properly with the nii files.
 %
-% order of varargin is: covariates (X), covariateNames, niifiles
+% order of varargin is: covariates (X), headers, niifiles
 
 % VIEWCOVARIATEDISPLAY MATLAB code for viewCovariateDisplay.fig
 %      VIEWCOVARIATEDISPLAY, by itself, creates a new VIEWCOVARIATEDISPLAY or raises the existing
@@ -28,7 +28,7 @@ function varargout = viewCovariateDisplay(varargin)
 
 % Edit the above text to modify the response to help viewCovariateDisplay
 
-% Last Modified by GUIDE v2.5 12-Jun-2018 11:15:20
+% Last Modified by GUIDE v2.5 07-Jun-2018 14:17:40
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -63,27 +63,21 @@ handles.output = hObject;
 
 % Get the arguments from varargin
 handles.X = varargin{1};
-handles.covariateNames = varargin{2};
+handles.headers = varargin{2};
 handles.niifilesFull = varargin{3};
 handles.covTypes = varargin{4};
-%handles.covariateNames = varargin{5};
-handles.covariates = varargin{5};
-handles.interactions = varargin{6};
-handles.varInModel = varargin{7};
-handles.varInCovFile = varargin{8};
-
+handles.covariateNames = varargin{5};
+handles.covariates = varargin{6};
+handles.interactions = varargin{7};
 % List of all covariates included in the design matrix, the covariates for
 % the hcica model are selected from this list
-handles.rawCovariateList = handles.covariates.Properties.VariableNames(handles.varInCovFile==1);
-handles.includedCovariateList = handles.covariates.Properties.VariableNames(handles.varInModel==1);
+handles.rawCovariateList = varargin{6}.Properties.VariableNames
+handles.includedCovariateList = {};
 
 handles.N = size(handles.X); handles.ncov = handles.N(2); handles.N=handles.N(1);
 
 % Set the listbox of parameters in the design matrix
 handles.varsInCovFile.String = handles.rawCovariateList;
-
-% Set the listbox of parameters in the hc-ICA model
-handles.varsInModel.String = handles.includedCovariateList;
 
 % Make the table the correct dimension
 newTable = cell(handles.N, handles.ncov+1);
@@ -98,7 +92,7 @@ end
 handles.covFileDisplay.Data = newTable;
 
 % set the column names of the display table to be correct
-handles.covFileDisplay.ColumnName = ['Subject', handles.covariateNames];
+handles.covFileDisplay.ColumnName = ['Subject', handles.headers];
 
 % Edit the properties of the display lists
 % set(findobj('tag', 'continuousVarList'),'min',0);
@@ -112,8 +106,8 @@ handles.covFileDisplay.ColumnName = ['Subject', handles.covariateNames];
 % they are categorical
 handles.totalVarNum = numel(handles.covTypes);
 handles.nCategorical = sum(handles.covTypes);
-set( findobj( 'tag', 'intMenu1' ), 'String', handles.covariateNames );
-set( findobj( 'tag', 'intMenu2' ), 'String', handles.covariateNames );
+set( findobj( 'tag', 'intMenu1' ), 'String', handles.headers );
+set( findobj( 'tag', 'intMenu2' ), 'String', handles.headers );
 
 
 % Update handles structure
@@ -274,13 +268,13 @@ else
         if nInt == 1
             handles.interactions = zeros(0, nCol);
             [ handles.X, handles.varNamesX ] = ref_cell_code( handles.covariates,...
-                handles.covTypes, handles.varInModel, handles.interactions, 0  );
+                handles.covTypes, handles.interactions, 0  );
         else
             intToBeRemoved = find(sum(sum(newIntRow ==...
                 handles.interactions, 2) == width(handles.covariates) ));
             handles.interactions(intToBeRemoved,:) = [];
             [ handles.X, handles.varNamesX ] = ref_cell_code( handles.covariates,...
-                handles.covTypes, handles.varInModel, handles.interactions, 0  );
+                handles.covTypes, handles.interactions, 0  );
         end
         
         newTable = cell(handles.N, handles.ncov+1);
@@ -324,39 +318,8 @@ if strcmp(get(gcf,'selectiontype'),'open')
     % Add the selected variable to the model, if it is already included
     % then do nothing
     if handles.varInModel(selectedCovariate) == 0
-        
-        % update varInModel
-        handles.varInModel(selectedCovariate) = 1;
-        
-        % Update the listbox of included covariates
-        handles.includedCovariateList = handles.covariates.Properties.VariableNames(handles.varInModel==1);
-        handles.varsInModel.String = handles.includedCovariateList;
-        
-        % Update the reference cell coding
-        [ handles.X, handles.varNamesX ] = ref_cell_code( handles.covariates,...
-                handles.covTypes, handles.varInModel, handles.interactions, 0  );
-            
-        % Update the table
-        newTable = cell(handles.N, handles.ncov+1);
-        [~, nCol] = size(handles.X);
-        % fill out all of the covariates
-        for row = 1:handles.N
-            [pathstr,name, ext] = fileparts(handles.niifilesFull{row});
-            newTable(row, 1) = {name};
-            for col=1:nCol
-                newTable(row, col+1) = {handles.X(row, col)};
-            end
-        end
-        handles.covFileDisplay.Data = newTable;
-
-        % set the column names of the display table to be correct
-        handles.covFileDisplay.ColumnName = ['Subject', handles.varNamesX];
-        
     end
-    
 end 
-guidata(hObject, handles);
-
 
 
 % --- Executes during object creation, after setting all properties.
@@ -381,47 +344,6 @@ function varsInModel_Callback(hObject, eventdata, handles)
 % Hints: contents = cellstr(get(hObject,'String')) returns varsInModel contents as cell array
 %        contents{get(hObject,'Value')} returns selected item from varsInModel
 
-if strcmp(get(gcf,'selectiontype'),'open')  
-
-    % Get the covariate selected by the user
-    selectedCovariate = hObject.Value;
-    handles.varsInModel.Value = 1;
-    
-    % Find the element of "varInModel" this corresponds to
-    sumVar = cumsum(handles.varInModel);
-    indexRemove = find(sumVar == selectedCovariate);
-    indexRemove = indexRemove(1);
-        
-    % update varInModel
-    handles.varInModel( indexRemove ) = 0;
-
-    % Update the listbox of included covariates
-    handles.includedCovariateList = handles.covariates.Properties.VariableNames(handles.varInModel==1);
-    handles.varsInModel.String = handles.includedCovariateList;
-
-    % Update the reference cell coding
-    [ handles.X, handles.varNamesX ] = ref_cell_code( handles.covariates,...
-            handles.covTypes, handles.varInModel, handles.interactions, 0  );
-
-    % Update the table
-    newTable = cell(handles.N, handles.ncov+1);
-    [~, nCol] = size(handles.X);
-    % fill out all of the covariates
-    for row = 1:handles.N
-        [pathstr,name, ext] = fileparts(handles.niifilesFull{row});
-        newTable(row, 1) = {name};
-        for col=1:nCol
-            newTable(row, col+1) = {handles.X(row, col)};
-        end
-    end
-    handles.covFileDisplay.Data = newTable;
-
-    % set the column names of the display table to be correct
-    handles.covFileDisplay.ColumnName = ['Subject', handles.varNamesX];
-
-end 
-guidata(hObject, handles);
-
 
 % --- Executes during object creation, after setting all properties.
 function varsInModel_CreateFcn(hObject, eventdata, handles)
@@ -434,4 +356,3 @@ function varsInModel_CreateFcn(hObject, eventdata, handles)
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
-
