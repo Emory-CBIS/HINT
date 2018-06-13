@@ -277,13 +277,13 @@ else
         if nInt == 1
             handles.interactions = zeros(0, nCol);
             [ handles.X, handles.varNamesX ] = ref_cell_code( handles.covariates,...
-                handles.covTypes, handles.varInModel, handles.interactions, 0  );
+                handles.covTypes, handles.varInModel, handles.interactions, 1  );
         else
             intToBeRemoved = find(sum(sum(newIntRow ==...
                 handles.interactions, 2) == width(handles.covariates) ));
             handles.interactions(intToBeRemoved,:) = [];
             [ handles.X, handles.varNamesX ] = ref_cell_code( handles.covariates,...
-                handles.covTypes, handles.varInModel, handles.interactions, 0  );
+                handles.covTypes, handles.varInModel, handles.interactions, 1  );
         end
         
         newTable = cell(handles.N, size(handles.X, 2)+1);

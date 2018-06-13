@@ -37,6 +37,7 @@ ddat.X = varargin{7};
 ddat.covTypes = varargin{8};
 ddat.seEst = varargin{9};
 ddat.seEst_theo = varargin{10};
+ddat.betaVarEst = 0;
 ddat.interactions = varargin{11};
 [~, ddat.p] = size(ddat.X);
 global keeplist;
@@ -736,28 +737,45 @@ end
         dim = size(ddat.img{1});
         ddat.xdim = dim(1); ddat.ydim = dim(2); ddat.zdim = dim(3);
         
-        % Now that we have the mask, update the beta map standard errors
         if strcmp(ddat.type, 'beta')
-            [x y z] = size(ddat.seEst);
-            [xx yy zz] = size(ddat.img{1});
-            ddat.seMapBeta = zeros(x,y, xx, yy, zz );
-            ddat.seMapBeta_theo = zeros(x,y, xx, yy, zz );
-            % Get the proper mask dimensions
-            for iseMap = 1:x
-                for iseIC = 1:x
-                    % Empirical Estimator
-                    newMap = zeros( size(ddat.img{1}) );
-                    tempData = squeeze(ddat.seEst(iseMap, iseIC, :));
-                    newMap( abs(ddat.img{1})>0 ) = tempData;
-                    ddat.seMapBeta(iseMap, iseIC, :, :, :) = newMap;
-                    % Theoretical estimator
-                    newMap = zeros( size(ddat.img{1}) );
-                    tempData = squeeze(ddat.seEst_theo(iseMap, iseIC, :));
-                    newMap( abs(ddat.img{1})>0 ) = tempData;
-                    ddat.seMapBeta_theo(iseMap, iseIC, :, :, :) = newMap;
-                end
-            end
+        %%% Create the beta variance estimate map
+        ddat.betaVarEst = zeros(ddat.p, ddat.p, ddat.xdim, ddat.ydim, ddat.zdim);
+        % Fill out the beta map for the current IC
+        currentIC = get(findobj('Tag', 'ICselect'), 'val');
+        % Create an indexing array to grab the right elements of the
+        % estimates
+        indArrStart = (currentIC+ddat.q);
+        indArr = indArrStart:ddat.q:size(ddat.seEst_theo, 1);
+        % Fill out the variance estimate
+        newMap = zeros( [ddat.p, ddat.p, size(ddat.img{1})] ); % empty for intermediate var map
+        tempData = squeeze(ddat.seEst_theo(indArr, indArr, :));
+        newMap( :,:,abs(ddat.img{1})>0 ) = tempData;
+        ddat.betaVarEst = newMap;
         end
+        
+        
+        % Now that we have the mask, update the beta map standard errors
+%         if strcmp(ddat.type, 'beta')
+%             [x y z] = size(ddat.seEst);
+%             [xx yy zz] = size(ddat.img{1});
+%             ddat.seMapBeta = zeros(x,y, xx, yy, zz );
+%             ddat.seMapBeta_theo = zeros(x,y, xx, yy, zz );
+%             % Get the proper mask dimensions
+%             for iseMap = 1:x
+%                 for iseIC = 1:x
+%                     % Empirical Estimator
+%                     newMap = zeros( size(ddat.img{1}) );
+%                     tempData = squeeze(ddat.seEst(iseMap, iseIC, :));
+%                     newMap( abs(ddat.img{1})>0 ) = tempData;
+%                     ddat.seMapBeta(iseMap, iseIC, :, :, :) = newMap;
+%                     % Theoretical estimator
+%                     newMap = zeros( size(ddat.img{1}) );
+%                     tempData = squeeze(ddat.seEst_theo(iseMap, iseIC, :));
+%                     newMap( abs(ddat.img{1})>0 ) = tempData;
+%                     ddat.seMapBeta_theo(iseMap, iseIC, :, :, :) = newMap;
+%                 end
+%             end
+%         end
         
         % Load the brain region information
         brodmannMap = load('templates/BrodmannRegionMap.mat');
@@ -1066,6 +1084,17 @@ end
                 ndata = load_nii([ddat.outdir '/' ddat.outpre...
                     '_beta_cov' num2str(covnum) '_IC' num2str(newIC) '.nii']);
                 ddat.img{1} = ndata.img; ddat.oimg{1} = ndata.img;
+                        % Fill out the beta map for the current IC
+                newIC = get(findobj('Tag', 'ICselect'), 'val');
+                % Create an indexing array to grab the right elements of the
+                % estimates
+                indArrStart = (newIC+ddat.q);
+                indArr = indArrStart:ddat.q:size(ddat.seEst_theo, 1);
+                % Fill out the variance estimate
+                newMap = zeros( [ddat.p, ddat.p, size(ddat.img{1})] ); % empty for intermediate var map
+                tempData = squeeze(ddat.seEst_theo(indArr, indArr, :));
+                newMap( :,:,abs(ddat.img{1})>0 ) = tempData;
+                ddat.betaVarEst = newMap;
         elseif strcmp(ddat.type, 'subj')
             generateSingleSubjMap;
         elseif strcmp(ddat.type, 'icsel')
@@ -1182,35 +1211,37 @@ end
                     % get the current IC map
                     cIC = get(findobj('Tag', 'ICselect'), 'Value');
                     % get the index of the se matrix needed
-                    seIndex = (ddat.q)*cBeta + cIC;
+                    %seIndex = (ddat.q)*cBeta + cIC;
                     if (ddat.viewingContrast == 0)
                         % Scale using the theoretical variance estimate
                         % theoretical estimate is q(p+1) * q(p+1)
                         ddat.img{subPop} = ddat.oimg{subPop} ./...
-                            sqrt(squeeze(ddat.seMapBeta_theo( seIndex, seIndex, :,:,: )));
+                            sqrt(squeeze(ddat.betaVarEst( cBeta, cBeta, :,:,: )));
                     end
                     if (ddat.viewingContrast == 1)
                         contrastSettings = get(findobj('Tag', 'contrastDisplay'), 'Data');
                         % Load the contrast
                         c = zeros(ddat.p,1);
-                        seIndex = zeros(ddat.p,1);
+                        %seIndex = zeros(ddat.p,1);
                         for xi = 1:ddat.p
                             c(xi) = str2double(contrastSettings( get(findobj('Tag',...
                                 ['contrastSelect' num2str(1)]), 'Value') , xi));
-                            seIndex(xi) = (ddat.q)*xi + cIC;
+                            %seIndex(xi) = (ddat.q)*xi + cIC;
                         end
                         % Get the variance estimate; loop over each voxel
-                        [~,~,I,J,K] = size(ddat.seMapBeta_theo);
-                        seContrast = zeros(I,J,K);
-                        seVoxel = zeros(ddat.p, ddat.p);                        
-                        for i=1:I
-                            for j=1:J
-                                for k=1:K
-                                    seVoxel = ddat.seMapBeta_theo(seIndex, seIndex, i,j,k);
-                                    seContrast(i,j,k) = sqrt(c'*seVoxel*c);
-                                end
-                            end
-                        end
+                        %seContrast = c' * ddat.betaVarEst * c;
+                        seContrast = sqrt(squeeze(mtimesx(mtimesx(c', ddat.betaVarEst), c)));
+                        %[~,~,I,J,K] = size(ddat.seMapBeta_theo);
+                        %seContrast = zeros(I,J,K);
+                        %seVoxel = zeros(ddat.p, ddat.p);                        
+%                         for i=1:I
+%                             for j=1:J
+%                                 for k=1:K
+%                                     seVoxel = ddat.seMapBeta_theo(seIndex, seIndex, i,j,k);
+%                                     seContrast(i,j,k) = sqrt(c'*seVoxel*c);
+%                                 end
+%                             end
+%                         end
                         ddat.img{subPop} = ddat.oimg{subPop} ./...
                             squeeze(seContrast);
                     end
