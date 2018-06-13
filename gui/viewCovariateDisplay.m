@@ -184,6 +184,27 @@ function closeButton_Callback(hObject, eventdata, handles)
 
 if sum(handles.varInModel) > 0
     global data;
+    
+    % Verify that something has changed
+    hasChanged = 0;
+    if ~all(size(data.interactions) == size(handles.interactions))
+        hasChanged = 1;
+    else
+        if ~all(all(data.interactions == handles.interactions))
+            hasChanged = 1;
+        elseif ~all(all(data.covTypes == handles.covTypes))
+            hasChanged = 1;
+        elseif ~all(all(data.varInModel == handles.varInModel))
+            hasChanged = 1;
+        end
+    end
+    
+    if hasChanged == 1
+        data.preprocessingComplete = 0;
+        data.tempiniGuessObtained = 0;
+        data.iniGuessComplete = 0;
+    end
+    
     data.X = handles.X;
     data.interactions = handles.interactions;
     data.varNamesX = handles.varNamesX;

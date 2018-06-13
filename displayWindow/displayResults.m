@@ -76,7 +76,7 @@ end
         uimenu(fileMenu,'Label','Quit','Callback','disp(''exit'')',...
             'Separator','on','Accelerator','Q');
         viewerMenu = uimenu('Label', 'View', 'Tag', 'viewerMenu');
-        uimenu(viewerMenu, 'Label', 'Aggregate', 'Separator', 'On', 'Callback', @stGrp);
+        uimenu(viewerMenu, 'Label', 'Population', 'Separator', 'On', 'Callback', @stGrp);
         uimenu(viewerMenu, 'Label', 'Sub-Population', 'Callback', @stSubPop);
         uimenu(viewerMenu, 'Label', 'Single Subject', 'Callback', @stSubj);
         uimenu(viewerMenu, 'Label', 'Covariate Effect', 'Callback', @stBeta);

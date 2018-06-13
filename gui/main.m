@@ -671,10 +671,20 @@ function varargout = main(varargin)
             set(findobj('Tag','pcaProgress'),'BackgroundColor',[51/256,153/256,0/256],...
                 'ForegroundColor',[0.9255,0.9255,0.9255],...
                 'enable','on');
+            
+            % Make sure the further progress is not shown
+            set(findobj('Tag','iniProgress'),'BackgroundColor',[0.94,0.94,0.94],...
+                'ForegroundColor',[0.9255,0.9255,0.9255],...
+                'enable','on');
+            set(findobj('Tag','icProgress'),'BackgroundColor',[0.94,0.94,0.94],...
+                'ForegroundColor',[0.9255,0.9255,0.9255],...
+                'enable','on');
 
             % Update the data structure to know that preprocessing is
             % complete
             data.preprocessingComplete = 1;
+            data.tempiniGuessObtained = 0;
+            data.iniGuessComplete = 0;
             
             % write PCA information to log file.
             if (writelog == 1)
@@ -740,6 +750,10 @@ function varargout = main(varargin)
                 'ForegroundColor',[0.9255,0.9255,0.9255],...
                 'enable','on');
             data.tempiniGuessObtained = 1;
+            data.iniGuessComplete = 0;
+            set(findobj('Tag','icProgress'),'BackgroundColor',[0.94,0.94,0.94],...
+                'ForegroundColor',[0.9255,0.9255,0.9255],...
+                'enable','on');
 
             chooseIC;
         else
@@ -856,6 +870,11 @@ function varargout = main(varargin)
     % Run the selected algorithm.
     function runButton_Callback(~, ~)
         
+        % Enable the stop button and disable the run button
+        set(findobj('tag','stopButton'),'enable','on');   
+        set(findall(findobj('tag', 'analysisSetup'),...
+            '-property', 'enable'), 'enable', 'off')
+        
         % Clear the progress bar
         axes(findobj('tag','analysisWaitbar'));
         cla
@@ -868,11 +887,6 @@ function varargout = main(varargin)
         axes(findobj('tag','iterChangeAxis2'));
         cla
         pause(1)
-
-        % Enable the stop button and disable the run button
-        set(findobj('tag','stopButton'),'enable','on');   
-        set(findall(findobj('tag', 'analysisSetup'),...
-            '-property', 'enable'), 'enable', 'off')
         
         % Get all the settings.
         global prefix;
@@ -984,7 +998,7 @@ function varargout = main(varargin)
             
         end
         
-        waitbar((data.qstar+1) / (2+data.qstar), waitSave, ['Estimating variance of covariate effects...'])
+        waitbar((data.qstar+1) / (2+data.qstar), waitSave, ['Estimating variance of covariate effects. This may take a minute.'])
         
         % Calculate the standard error estimates for the beta maps
         [theory_var, beta_se_est] = VarEst_hcica(data.theta_est, data.beta_est, data.X,...
@@ -1006,6 +1020,7 @@ function varargout = main(varargin)
         % Re-enable the analysis buttons
         set(findall(findobj('tag', 'analysisSetup'),...
             '-property', 'enable'), 'enable', 'on');
+        set(findobj('tag','runButton'),'enable','on');   
         % Enable the display results button
         %set(findobj('Tag','displayResultsButton'),'enable','off'); 
         
@@ -1029,6 +1044,10 @@ function varargout = main(varargin)
         set( findobj('tag', 'displayButton'), 'enable', 'on' );
         set( findobj('tag', 'displayButton'), 'string', 'Display' );
         set( findobj('tag', 'displayResultsButton'), 'enable', 'on');
+        set(findobj('tag','stopButton'),'enable','off');   
+        set(findall(findobj('tag', 'analysisSetup'),...
+            '-property', 'enable'), 'enable', 'on')
+        msgbox('EM Algorithm terminated early.')
     end
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -1127,33 +1146,57 @@ function varargout = main(varargin)
     function saveContinueButton_Callback(~,~)
         set(findobj('Tag', 'runButton'), 'enable', 'on');
         set(findobj('Tag','tabGroup'),'SelectedTab',findobj('Tag','tab2'))
+        
+        % Waitbar to let the user know data is saving
+        waitSave = waitbar(0,'Please wait while the analysis setup saves to the runinfo file');
 
         %  save the run info, hide the warning that the variables are
         %  unused
         q = data.qstar; time_num = data.time_num; X = data.X;       %#ok<NASGU>
+        waitbar(1/20)
         validVoxels=data.validVoxels; niifiles = data.niifiles;     %#ok<NASGU>
+        waitbar(2/20)
         maskf = data.maskf; covfile = data.covf;                    %#ok<NASGU>
+        waitbar(3/20)
         numPCA = num2str(get(findobj('Tag', 'numPCA'), 'String'));  %#ok<NASGU>
+        waitbar(4/20)
         outfolder = data.outpath; prefix = data.prefix;             %#ok<NASGU>
+        waitbar(5/20)
         covariates = data.covariates;                               %#ok<NASGU>
+        waitbar(6/20)
         covTypes = data.covTypes;                                   %#ok<NASGU>
+        waitbar(7/20)
         varNamesX = data.varNamesX;                                 %#ok<NASGU>
+        waitbar(8/20)
         interactions = data.interactions  ;                         %#ok<NASGU>
+        waitbar(9/20)
         thetaStar = data.thetaStar;                                 %#ok<NASGU>
+        waitbar(10/20)
         YtildeStar = data.YtildeStar;                               %#ok<NASGU>
+        waitbar(11/20)
         CmatStar = data.CmatStar;                                   %#ok<NASGU>
+        waitbar(12/20)
         beta0Star = data.beta0Star;                                 %#ok<NASGU>
+        waitbar(13/20)
         voxSize = data.voxSize;                                     %#ok<NASGU>
+        waitbar(14/20)
         N = data.N;                                                 %#ok<NASGU>
+        waitbar(15/20)
         qold = data.q;                                              %#ok<NASGU> 
+        waitbar(16/20)
         varInModel = data.varInModel;%#ok<NASGU> 
+        waitbar(17/20)
         varInCovFile = data.varInCovFile;%#ok<NASGU> 
+        waitbar(18/20)
         
         save([data.outpath '/' data.prefix '_runinfo.mat'], 'q', ...
             'time_num', 'X', 'validVoxels', 'niifiles', 'maskf', 'covfile', 'numPCA', ...
             'outfolder', 'prefix', 'covariates', 'covTypes', 'beta0Star', 'CmatStar',...
             'YtildeStar', 'thetaStar', 'voxSize', 'N', 'qold', 'varNamesX',...
             'interactions', 'varInModel', 'varInCovFile');
+        waitbar(20/20)
+        close(waitSave)
+        
     end
 
     % Open the window to allow the user to view the covariate files.
@@ -1162,6 +1205,19 @@ function varargout = main(varargin)
             waitfor(viewCovariateDisplay(data.X, data.varNamesX, data.niifiles,...
                 data.covTypes, data.covariates, data.interactions,...
                 data.varInModel, data.varInCovFile))
+            % Check if, as a result, further stages have been invalidated
+            if data.preprocessingComplete == 0
+                % Remove the progressbar
+                set(findobj('Tag','pcaProgress'),'BackgroundColor',[0.94,0.94,0.94],...
+                    'ForegroundColor',[0.9255,0.9255,0.9255],...
+                    'enable','on');
+                set(findobj('Tag','iniProgress'),'BackgroundColor',[0.94,0.94,0.94],...
+                    'ForegroundColor',[0.9255,0.9255,0.9255],...
+                    'enable','on');
+                set(findobj('Tag','icProgress'),'BackgroundColor',[0.94,0.94,0.94],...
+                    'ForegroundColor',[0.9255,0.9255,0.9255],...
+                    'enable','on');
+            end
         else
             msgbox('No data loaded');
         end
