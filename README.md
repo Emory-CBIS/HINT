@@ -27,3 +27,5 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ## References
 
 Shi, R., & Guo, Y. (2016). INVESTIGATING DIFFERENCES IN BRAIN FUNCTIONAL NETWORKS USING HIERARCHICAL COVARIATE-ADJUSTED INDEPENDENT COMPONENT ANALYSIS. The Annals of Applied Statistics, 10(4), 1930–1957. http://doi.org/10.1214/16-AOAS946
+
+Zhang, L., Agravat, S., Derado, G., Chen, S., McIntosh, B. J., & Bowman, F. D. (2012). BSMac: A MATLAB toolbox implementing a Bayesian spatial model for brain activation and connectivity. Journal of neuroscience methods, 204(1), 133-143.

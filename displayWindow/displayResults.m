@@ -753,33 +753,18 @@ end
         ddat.betaVarEst = newMap;
         end
         
-        
-        % Now that we have the mask, update the beta map standard errors
-%         if strcmp(ddat.type, 'beta')
-%             [x y z] = size(ddat.seEst);
-%             [xx yy zz] = size(ddat.img{1});
-%             ddat.seMapBeta = zeros(x,y, xx, yy, zz );
-%             ddat.seMapBeta_theo = zeros(x,y, xx, yy, zz );
-%             % Get the proper mask dimensions
-%             for iseMap = 1:x
-%                 for iseIC = 1:x
-%                     % Empirical Estimator
-%                     newMap = zeros( size(ddat.img{1}) );
-%                     tempData = squeeze(ddat.seEst(iseMap, iseIC, :));
-%                     newMap( abs(ddat.img{1})>0 ) = tempData;
-%                     ddat.seMapBeta(iseMap, iseIC, :, :, :) = newMap;
-%                     % Theoretical estimator
-%                     newMap = zeros( size(ddat.img{1}) );
-%                     tempData = squeeze(ddat.seEst_theo(iseMap, iseIC, :));
-%                     newMap( abs(ddat.img{1})>0 ) = tempData;
-%                     ddat.seMapBeta_theo(iseMap, iseIC, :, :, :) = newMap;
-%                 end
-%             end
-%         end
-        
         % Load the brain region information
         brodmannMap = load('templates/BrodmannRegionMap.mat');
         RegionMap = load_nii('templates/brodmann_RPI_MNI_2mm.nii');
+        % Load the correct Region Map if not in 2mm space
+        if ddat.xdim == 182 && ddat.ydim == 218 && ddat.zdim == 182
+            RegionMap = load_nii('templates/brodmann_RPI_MNI_1mm.nii');
+        elseif ddat.xdim == 61 && ddat.ydim == 73 && ddat.zdim == 61
+            RegionMap = load_nii('templates/brodmann_RPI_MNI_3mm.nii');
+        elseif ddat.xdim == 45 && ddat.ydim == 54 && ddat.zdim == 45
+            RegionMap = load_nii('templates/brodmann_RPI_MNI_4mm.nii');
+        end
+            
         RegionName = brodmannMap.brodmann(:, 1:2);
         ddat.total_region_name = RegionName;
         ddat.region_struct = RegionMap;
@@ -928,8 +913,14 @@ end
     function setupAnatomical(hObject, callbackdata)
         
         % 2mm voxel case
-        if ddat.xdim == 91 & ddat.ydim == 109 & ddat.zdim == 91
+        if ddat.xdim == 182 && ddat.ydim == 218 && ddat.zdim == 182
+            ddat.mri_struct = load_nii('templates/MNI152_T1_1mm.nii');
+        elseif ddat.xdim == 91 && ddat.ydim == 109 && ddat.zdim == 91
             ddat.mri_struct = load_nii('templates/MNI152_T1_2mm.nii');
+        elseif ddat.xdim == 61 && ddat.ydim == 73 && ddat.zdim == 61
+            ddat.mri_struct = load_nii('templates/MNI152_T1_3mm.nii');
+        elseif ddat.xdim == 45 && ddat.ydim == 54 && ddat.zdim == 45
+            ddat.mri_struct = load_nii('templates/MNI152_T1_4mm.nii');
         % Handle case where no mask was found.
         else
             mriHolder = ones(ddat.xdim, ddat.ydim, ddat.zdim);
