@@ -1013,6 +1013,17 @@ function varargout = main(varargin)
         data.outpath = path;
         data.prefix = prefix;
         
+        % Write out a text file to the output directory with what covariate
+        % each beta map corresponds to
+        nBeta = size(data.X, 2);
+        fname = [data.outpath, data.prefix, '_Beta_File_List'];
+        fileID = fopen(fname,'w');
+        formatSpec = 'Beta %4.2i is %s \r\n';
+        for i = 1:nBeta
+            fprintf(fileID,formatSpec,i,data.varNamesX{i});
+        end
+        fclose(fileID);
+        
         % Disable the stop button
         set(findobj('Tag','stopButton'),'enable','off'); 
         % Enable the "Display Results" button

@@ -34,6 +34,8 @@ voxSize = size(mask.img);
 vxl = voxSize;
 locs = validVoxels;
 
+waitSave = waitbar(0, 'Compiling Results - Subject Level IC Estimates')
+
 % Save a file with the subject level IC map information
 subjFilename = [outdir '/' prefix '_subject_IC_estimates.mat'];
 subICmean = iterResults.subICmean;
@@ -41,10 +43,12 @@ save(subjFilename, 'subICmean');
 
 for i=1:runinfo.q
     
+    waitbar(i/(runinfo.q+1), waitSave, ['Compiling Results for IC ', num2str(i)])
+    
     % Save the S0 map
     gfilename = [prefix '_S0_IC_' num2str(i) '.nii'];
     nmat = nan(vxl);
-    nmat(locs) = iterResults.grpICmean(:,i,:);
+    nmat(locs) = iterResults.grpICmean(i,:);
     nii = make_nii(nmat);
     save_nii(nii,strcat(outdir,'/',gfilename));
     
@@ -70,6 +74,8 @@ for i=1:runinfo.q
    
 end
 
+waitbar(1, waitSave, 'Estimating variance of covariate effects. This may take a minute.')
+
 % Calculate the standard error estimates for the beta maps
 [theory_var, beta_se_est] = VarEst_hcica(iterResults.theta, iterResults.beta,...
     runinfo.X, iterResults.z_mode, runinfo.YtildeStar,...
@@ -85,7 +91,20 @@ end
 % Move the user to the view results tab
 set(findobj('Tag','tabGroup'),'SelectedTab',findobj('Tag','tab3'));
 
+% Write out a text file to the output directory with what covariate
+% each beta map corresponds to
+nBeta = size(runinfo.X, 2);
+fname = [outdir '/' prefix '_Beta_File_List'];
+fileID = fopen(fname,'w');
+formatSpec = 'Beta %4.2i is %s \r\n';
+for i = 1:nBeta
+    fprintf(fileID,formatSpec,i, runinfo.varNamesX{i});
+end
+fclose(fileID);
+
 disp('Result Compilation Complete')
+
+msgbox('Result Compilation Complete')
 
 end
 
