@@ -28,7 +28,7 @@ function varargout = viewCovariateDisplay(varargin)
 
 % Edit the above text to modify the response to help viewCovariateDisplay
 
-% Last Modified by GUIDE v2.5 12-Jun-2018 16:17:41
+% Last Modified by GUIDE v2.5 13-Jun-2018 17:47:54
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -116,6 +116,17 @@ handles.nCategorical = sum(handles.covTypes);
 set( findobj( 'tag', 'intMenu1' ), 'String', handles.covariates.Properties.VariableNames(handles.varInModel==1) );
 set( findobj( 'tag', 'intMenu2' ), 'String', handles.covariates.Properties.VariableNames(handles.varInModel==1) );
 
+% Update the interactions listbox
+nInt = size(handles.interactions, 1);
+interactionList = {};
+for i = 1:nInt
+    currentInt = squeeze(handles.interactions(i, :));
+    activeInds = find(currentInt);
+    factorName = strcat( '(', handles.rawCovariateList{activeInds(1)}, ')_x_(',...
+                    handles.rawCovariateList{activeInds(2)}, ')' );
+    interactionList{i} = factorName;
+end
+handles.interactionListbox.String = interactionList;
 
 % Update handles structure
 guidata(hObject, handles);
@@ -328,6 +339,19 @@ else
     else
         warndlg('Interaction does not exist.')
     end
+    
+    % Update the interactions listbox
+    nInt = size(handles.interactions, 1);
+    interactionList = {};
+    for i = 1:nInt
+        currentInt = squeeze(handles.interactions(i, :));
+        activeInds = find(currentInt);
+        factorName = strcat( '(', handles.rawCovariateList{activeInds(1)}, ')_x_(',...
+                        handles.rawCovariateList{activeInds(2)}, ')' );
+        interactionList{i} = factorName;
+    end
+    handles.interactionListbox.String = interactionList;
+
 end
 
 guidata(hObject, handles);
@@ -682,6 +706,18 @@ handles.covFileDisplay.Data = newTable;
 % set the column names of the display table to be correct
 handles.covFileDisplay.ColumnName = ['Subject', handles.varNamesX];
 
+% Update the interactions listbox
+nInt = size(handles.interactions, 1);
+interactionList = {};
+for i = 1:nInt
+    currentInt = squeeze(handles.interactions(i, :));
+    activeInds = find(currentInt);
+    factorName = strcat( '(', handles.rawCovariateList{activeInds(1)}, ')_x_(',...
+                    handles.rawCovariateList{activeInds(2)}, ')' );
+    interactionList{i} = factorName;
+end
+handles.interactionListbox.String = interactionList;
+
 guidata(hObject, handles);
 
 
@@ -702,4 +738,27 @@ if sum(handles.varInModel) > 0
     delete(hObject);
 else
     warndlg('Warning: At least one covariate must be included in the model.')
+end
+
+
+% --- Executes on selection change in interactionListbox.
+function interactionListbox_Callback(hObject, eventdata, handles)
+% hObject    handle to interactionListbox (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: contents = cellstr(get(hObject,'String')) returns interactionListbox contents as cell array
+%        contents{get(hObject,'Value')} returns selected item from interactionListbox
+
+
+% --- Executes during object creation, after setting all properties.
+function interactionListbox_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to interactionListbox (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: listbox controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
 end
