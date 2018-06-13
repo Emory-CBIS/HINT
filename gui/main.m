@@ -510,9 +510,14 @@ function varargout = main(varargin)
         if (strcmp(dataType, 'matData') == 1)
             % Direct the user to load a runinfo file
             [fname pathname] = uigetfile('.mat');
+            
+            % Waitbar while the data loads
+            waitLoad = waitbar(0,'Please wait while the data load');
+            
             runinfo = load([pathname fname]);
             
             % Update the appropriate data structures
+            waitbar(1/10)
             data.qstar = runinfo.q;
             data.q = runinfo.qold;
             data.CmatStar = runinfo.CmatStar;
@@ -536,7 +541,9 @@ function varargout = main(varargin)
             data.interactions = runinfo.interactions;
             data.varInCovFile = runinfo.varInCovFile;
             data.varInModel = runinfo.varInModel;
-            
+            waitbar(1)
+            close(waitLoad);
+                        
             % Populate the display fields
             %set(findobj('tag', ''), 'string', num2str());
             set(findobj('tag', 'numICA'), 'string', num2str(runinfo.qold));
@@ -571,11 +578,13 @@ function varargout = main(varargin)
             % outer check makes sure anything was input
             if (~isempty(fls))
             if (~isempty(fls{1}) && ~isempty(fls{2}) && ~isempty(fls{3}))
+                waitLoad = waitbar(0,'Please wait while the data load');
                 niifiles = fls{1}; data.niifiles_raw = niifiles;
                 maskf = fls{2}; data.maskf = maskf;
                 covf = fls{3}; data.covf = covf;
                 N = length(niifiles);
                 if (N > 0)
+                    waitbar(1/10, waitLoad, 'Loading and sorting covariates')
                     % Match up each covariate with its row in the covariate
                     % file
                     data.covariateTable = readtable(covf);
@@ -608,6 +617,7 @@ function varargout = main(varargin)
                     data.interactions = zeros(0, nCol);
                     
                     % Load the first data file and get its size.
+                    waitbar(5/10, waitLoad, 'Loading the mask')
                     image = load_nii(niifiles{1});
                     [m,n,l,k] = size(image.img);
                     
@@ -626,6 +636,8 @@ function varargout = main(varargin)
                     data.validVoxels = validVoxels;
                     data.voxSize = size(mask.img);
                     data.dataLoaded = 1;
+                    waitbar(1)
+                    close(waitLoad);
                 end
                 
                 % Update main gui window to show that data has been loaded.
@@ -929,12 +941,19 @@ function varargout = main(varargin)
         locs = data.validVoxels;
         path = [data.outpath '/'];
         
+        % Open a waitbar showing the user that the results are being saved
+        waitSave = waitbar(0,'Please wait while the results are saved');
+        
         % Save a file with the subject level IC map information
         subjFilename = [path prefix '_subject_IC_estimates.mat'];
         subICmean = data.subICmean;
         save(subjFilename, 'subICmean');
         
+        waitbar(1 / (2+data.qstar))
+        
         for i=1:data.qstar
+            
+            waitbar((1+i) / (2+data.qstar), waitSave, ['Saving results for IC ', num2str(i)])
             
             % Save the S0 map
             gfilename = [prefix '_S0_IC_' num2str(i) '.nii'];
@@ -962,7 +981,10 @@ function varargout = main(varargin)
             gfilename = [prefix '_aggregateIC_' num2str(i) '.nii'];
             nii = make_nii(nullAggregateMatrix);
             save_nii(nii,strcat(data.outpath,'/',gfilename));
+            
         end
+        
+        waitbar((data.qstar+1) / (2+data.qstar), waitSave, ['Estimating variance of covariate effects...'])
         
         % Calculate the standard error estimates for the beta maps
         [theory_var, beta_se_est] = VarEst_hcica(data.theta_est, data.beta_est, data.X,...
@@ -970,6 +992,9 @@ function varargout = main(varargin)
         data.theoretical_beta_se_est = theory_var;
         data.beta_se_est = beta_se_est;
         save( [path prefix '_beta_se_est.mat' ], 'beta_se_est', 'theory_var' );
+        
+        waitbar(1)
+        close(waitSave)
         
         data.outpath = path;
         data.prefix = prefix;
@@ -1037,6 +1062,9 @@ function varargout = main(varargin)
                     'ListString',{runinfofiles.name});
             end
             
+            % Create a waitbar while the runinfo file loads
+            waitLoad = waitbar(0, 'Please wait while the runinfo file loads...');
+            
             data.prefix = runinfofiles(sel).name;
             preEdit = findobj('Tag', 'displayPrefix');
             preEdit.String = data.prefix;
@@ -1044,6 +1072,7 @@ function varargout = main(varargin)
             % Read the runinfo .m file. Update "data" information.
             data.prefix = get(preEdit,'String');
             runInfo = load([folderName '/' data.prefix '_runinfo.mat']);
+            waitbar(5/10)
             data.covariates = runInfo.covariates;
             data.covTypes = runInfo.covTypes;
             data.X = runInfo.X;
@@ -1054,6 +1083,8 @@ function varargout = main(varargin)
             data.qstar = runInfo.q;
             tempSeEst = load( [folderName '/' data.prefix '_beta_se_est.mat'] );
             data.beta_se_est = tempSeEst.beta_se_est;
+            waitbar(1)
+            close(waitLoad);
             
             %Force the keeplist variable to reflect the number of ICs
             global keeplist
@@ -1105,9 +1136,9 @@ function varargout = main(varargin)
         numPCA = num2str(get(findobj('Tag', 'numPCA'), 'String'));  %#ok<NASGU>
         outfolder = data.outpath; prefix = data.prefix;             %#ok<NASGU>
         covariates = data.covariates;                               %#ok<NASGU>
-        covTypes = data.covTypes;                                      %#ok<NASGU>
+        covTypes = data.covTypes;                                   %#ok<NASGU>
         varNamesX = data.varNamesX;                                 %#ok<NASGU>
-        interactions = data.interactions  ;                          %#ok<NASGU>
+        interactions = data.interactions  ;                         %#ok<NASGU>
         thetaStar = data.thetaStar;                                 %#ok<NASGU>
         YtildeStar = data.YtildeStar;                               %#ok<NASGU>
         CmatStar = data.CmatStar;                                   %#ok<NASGU>
@@ -1146,7 +1177,7 @@ function varargout = main(varargin)
         runinfoLoc = [filepath, '/', fileprefix, '_runinfo.mat'];
         
         % Open the waitbar
-        waitLoad = waitbar(0,'Please wait while the results load')
+        waitLoad = waitbar(0,'Please wait while the results load');
         
         % Run the runinfo file
         tempData = load(runinfoLoc);

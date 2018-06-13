@@ -58,6 +58,8 @@ function viewCovariateDisplay_OpeningFcn(hObject, eventdata, handles, varargin)
 % handles    structure with handles and user data (see GUIDATA)
 % varargin   command line arguments to viewCovariateDisplay (see VARARGIN)
 
+movegui(hObject, 'center')
+
 % Choose default command line output for viewCovariateDisplay
 handles.output = hObject;
 

@@ -1222,26 +1222,12 @@ end
                         contrastSettings = get(findobj('Tag', 'contrastDisplay'), 'Data');
                         % Load the contrast
                         c = zeros(ddat.p,1);
-                        %seIndex = zeros(ddat.p,1);
                         for xi = 1:ddat.p
                             c(xi) = str2double(contrastSettings( get(findobj('Tag',...
                                 ['contrastSelect' num2str(1)]), 'Value') , xi));
-                            %seIndex(xi) = (ddat.q)*xi + cIC;
                         end
                         % Get the variance estimate; loop over each voxel
-                        %seContrast = c' * ddat.betaVarEst * c;
                         seContrast = sqrt(squeeze(mtimesx(mtimesx(c', ddat.betaVarEst), c)));
-                        %[~,~,I,J,K] = size(ddat.seMapBeta_theo);
-                        %seContrast = zeros(I,J,K);
-                        %seVoxel = zeros(ddat.p, ddat.p);                        
-%                         for i=1:I
-%                             for j=1:J
-%                                 for k=1:K
-%                                     seVoxel = ddat.seMapBeta_theo(seIndex, seIndex, i,j,k);
-%                                     seContrast(i,j,k) = sqrt(c'*seVoxel*c);
-%                                 end
-%                             end
-%                         end
                         ddat.img{subPop} = ddat.oimg{subPop} ./...
                             squeeze(seContrast);
                     end
