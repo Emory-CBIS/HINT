@@ -60,6 +60,8 @@ function varargout = main(varargin)
         tab2 = uitab('Parent', tgroup, 'Tag','tab2','Title', 'Run analysis');
         tab3 = uitab('Parent', tgroup, 'Tag','tab3','Title', 'Visualize');
         
+        movegui('center')
+        
         axes1 = axes('Units','Pixels',...
             'units', 'character', ...
             'Position',[76,26.8, 27,3.5],'CreateFcn',@axes1_CreateFcn); %#ok<NASGU>

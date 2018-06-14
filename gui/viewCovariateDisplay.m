@@ -730,12 +730,33 @@ function figure1_CloseRequestFcn(hObject, eventdata, handles)
 % Hint: delete(hObject) closes the figure
 if sum(handles.varInModel) > 0
     global data;
+    
+    % Verify that something has changed
+    hasChanged = 0;
+    if ~all(size(data.interactions) == size(handles.interactions))
+        hasChanged = 1;
+    else
+        if ~all(all(data.interactions == handles.interactions))
+            hasChanged = 1;
+        elseif ~all(all(data.covTypes == handles.covTypes))
+            hasChanged = 1;
+        elseif ~all(all(data.varInModel == handles.varInModel))
+            hasChanged = 1;
+        end
+    end
+    
+    if hasChanged == 1
+        data.preprocessingComplete = 0;
+        data.tempiniGuessObtained = 0;
+        data.iniGuessComplete = 0;
+    end
+    
     data.X = handles.X;
     data.interactions = handles.interactions;
     data.varNamesX = handles.varNamesX;
     data.covTypes = handles.covTypes;
     data.varInModel = handles.varInModel;
-    delete(hObject);
+    delete(handles.figure1);
 else
     warndlg('Warning: At least one covariate must be included in the model.')
 end
