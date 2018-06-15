@@ -28,7 +28,7 @@ function varargout = viewCovariateDisplay(varargin)
 
 % Edit the above text to modify the response to help viewCovariateDisplay
 
-% Last Modified by GUIDE v2.5 13-Jun-2018 17:47:54
+% Last Modified by GUIDE v2.5 14-Jun-2018 17:57:42
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -782,4 +782,178 @@ function interactionListbox_CreateFcn(hObject, eventdata, handles)
 %       See ISPC and COMPUTER.
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
+end
+
+
+% --- Executes on button press in addCovariateButton. HAS the same callback
+% as double clicking the listbox
+function addCovariateButton_Callback(hObject, eventdata, handles)
+% hObject    handle to addCovariateButton (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Get the covariate selected by the user
+selectedCovariate = handles.varsInCovFile.Value;
+
+% Add the selected variable to the model, if it is already included
+% then do nothing
+if handles.varInModel(selectedCovariate) == 0
+
+    % update varInModel
+    handles.varInModel(selectedCovariate) = 1;
+
+    % Update the listbox of included covariates
+    handles.includedCovariateList = handles.covariates.Properties.VariableNames(handles.varInModel==1);
+    handles.varsInModel.String = handles.includedCovariateList;
+
+    % Update the list of variables for interactions, have to consider
+    % special case where no variables included.
+    set( findobj( 'tag', 'intMenu1' ), 'String', handles.includedCovariateList );
+    set( findobj( 'tag', 'intMenu2' ), 'String', handles.includedCovariateList );
+    % Enable the interaction menu and the corresponding buttons
+    set( findobj( 'tag', 'intMenu1' ), 'Enable', 'on' );
+    set( findobj( 'tag', 'intMenu2' ), 'Enable', 'on' );
+    set( findobj( 'tag', 'interactionButton' ), 'Enable', 'on' );
+    set( findobj( 'tag', 'removeInteractionButton' ), 'Enable', 'on' );
+
+    % Press the invisible update button
+    guidata(hObject, handles);
+    updateDisplayButtonInvisible_Callback(handles.updateDisplayButtonInvisible, 1, handles);
+
+end
+
+
+% --- Executes on button press in removeCovariateButton.
+function removeCovariateButton_Callback(hObject, eventdata, handles)
+% hObject    handle to removeCovariateButton (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Get the covariate selected by the user
+selectedCovariate = handles.varsInModel.Value;
+
+% Make sure the listbox is not already empty
+if ~isempty(hObject.Value)
+
+    % Reset the listbox selection to avoid an error
+    handles.varsInModel.Value = 1;
+
+    % Find the element of "varInModel" this corresponds to
+    sumVar = cumsum(handles.varInModel);
+    indexRemove = find(sumVar == selectedCovariate);
+    indexRemove = indexRemove(1);
+
+    % update varInModel
+    handles.varInModel( indexRemove ) = 0;
+
+    % Update the listbox of included covariates
+    handles.includedCovariateList = handles.covariates.Properties.VariableNames(handles.varInModel==1);
+    handles.varsInModel.String = handles.includedCovariateList;
+
+    % Remove any interactions with this variable
+    removeList = (handles.interactions * (handles.varInModel==0)) > 0;
+    handles.interactions = handles.interactions( (1-removeList) == 1, :);
+
+    % Update the list of variables for interactions, have to consider
+    % special case where no variables included.
+    if length(handles.includedCovariateList) > 0
+        set( findobj( 'tag', 'intMenu1' ), 'Value', 1 );
+        set( findobj( 'tag', 'intMenu2' ), 'Value', 1 );
+        set( findobj( 'tag', 'intMenu1' ), 'String', handles.includedCovariateList );
+        set( findobj( 'tag', 'intMenu2' ), 'String', handles.includedCovariateList );
+    else
+        set( findobj( 'tag', 'intMenu1' ), 'String', 'N/A' );
+        set( findobj( 'tag', 'intMenu2' ), 'String', 'N/A' );
+        set( findobj( 'tag', 'intMenu1' ), 'Value', 1 );
+        set( findobj( 'tag', 'intMenu2' ), 'Value', 1 );
+        % Disable the interaction menu and the corresponding buttons
+        set( findobj( 'tag', 'intMenu1' ), 'Enable', 'off' );
+        set( findobj( 'tag', 'intMenu2' ), 'Enable', 'off' );
+        set( findobj( 'tag', 'interactionButton' ), 'Enable', 'off' );
+        set( findobj( 'tag', 'removeInteractionButton' ), 'Enable', 'off' );
+    end
+
+    % Press the invisible update button
+    guidata(hObject, handles);
+    updateDisplayButtonInvisible_Callback(handles.updateDisplayButtonInvisible, 1, handles);
+end
+
+
+% --- Executes on button press in stContButton.
+function stContButton_Callback(hObject, eventdata, handles)
+% hObject    handle to stContButton (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Make sure the listbox is not already empty
+if ~isempty(handles.catListbox.Value)
+
+    % Numbering of the selected value
+    selectedCovariate = handles.catListbox.Value;
+    handles.catListbox.Value = 1; % reset value to avoid invalid integer range
+
+    % Match it to a value in the ORIGINAL covTypes
+    % 1 - covTypes gives indicator of continuous covariate
+    sumVar = cumsum(handles.covTypes);
+    selIndex = find(sumVar == selectedCovariate);
+    selIndex = selIndex(1);
+
+    % Make sure that it is reasonable to change this to continuous
+    % - check to make sure the variable is not a string
+    columnTypes = varfun(@class,handles.covariates,'OutputFormat','cell');
+    if strcmp(columnTypes{selIndex}, 'cell')
+        warndlg('Error: This factor is a string, cannot convert to numeric.')
+    else
+        % Change the covTypes coding
+        handles.covTypes(selIndex) = 0;
+
+        % Update the categorical and continuous listboxes
+        handles.catListbox.String = handles.rawCovariateList(handles.covTypes == 1);
+        handles.contListbox.String = handles.rawCovariateList(handles.covTypes == 0);
+
+        % Press the invisible update button
+        guidata(hObject, handles);
+        updateDisplayButtonInvisible_Callback(handles.updateDisplayButtonInvisible, 1, handles);  
+    end
+
+end
+
+
+% --- Executes on button press in stCategorical.
+function stCategorical_Callback(hObject, eventdata, handles)
+% hObject    handle to stCategorical (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Make sure the listbox is not already empty
+if ~isempty(handles.contListbox.Value)
+
+    % Numbering of the selected value
+    selectedCovariate = handles.contListbox.Value;
+    handles.contListbox.Value = 1; % reset value to avoid invalid integer range
+
+    % Match it to a value in the ORIGINAL covTypes
+    % 1 - covTypes gives indicator of continuous covariate
+    sumVar = cumsum(1 - handles.covTypes);
+    selIndex = find(sumVar == selectedCovariate);
+
+    % Make sure that it is reasonable to change this to categorical
+    % - check that the number of unique values is not equal to the
+    % number of subjects
+    if height(unique(handles.covariates(:, selIndex))) == handles.N
+        warndlg('Error: The number of unique levels of this factor is equal to the number of subjects, not creating categorical coding.')
+    else
+        % Change the covTypes coding
+        handles.covTypes(selIndex) = 1;
+
+        % Update the categorical and continuous listboxes
+        handles.catListbox.String = handles.rawCovariateList(handles.covTypes == 1);
+        handles.contListbox.String = handles.rawCovariateList(handles.covTypes == 0);
+
+        % Press the invisible update button
+        guidata(hObject, handles);
+        updateDisplayButtonInvisible_Callback(handles.updateDisplayButtonInvisible, 1, handles);
+
+    end
+
 end
