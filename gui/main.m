@@ -769,8 +769,7 @@ function varargout = main(varargin)
             global keeplist;
             keeplist = ones(data.q,1);
             displayResults(data.q, data.outpath, data.prefix,...
-                data.N, 'icsel', data.covariates, data.X, data.covTypes, 999,...
-                999, data.interactions);
+                data.N, 'icsel', data.covariates, data.X, data.covTypes, data.interactions);
             uiwait()
             % qStar <= q contains the number of selected ICs.
             data.qstar = sum(keeplist);
@@ -808,8 +807,7 @@ function varargout = main(varargin)
 
     function test_Callback2(~,~)
         displayResults(data.q, data.outpath, data.prefix,...
-            data.N, 'reEst', data.covariates, data.X, data.covTypes, 'NA',...
-            'NA', data.interactions);
+            data.N, 'reEst', data.covariates, data.X, data.covTypes, data.interactions);
     end
 
     function test_Callback(~,~)
@@ -1000,14 +998,13 @@ function varargout = main(varargin)
             
         end
         
-        waitbar((data.qstar+1) / (2+data.qstar), waitSave, ['Estimating variance of covariate effects. This may take a minute.'])
+        waitbar((data.qstar+1) / (2+data.qstar), waitSave, 'Estimating variance of covariate effects. This may take a minute.')
         
         % Calculate the standard error estimates for the beta maps
-        [theory_var, beta_se_est] = VarEst_hcica(data.theta_est, data.beta_est, data.X,...
-            data.z_mode, data.YtildeStar, data.G_z_dict);
+        theory_var = VarEst_hcica(data.theta_est, data.beta_est, data.X,...
+            data.z_mode, data.YtildeStar, data.G_z_dict, data.voxSize,...
+            data.validVoxels, data.prefix, data.outpath);
         data.theoretical_beta_se_est = theory_var;
-        data.beta_se_est = beta_se_est;
-        save( [path prefix '_beta_se_est.mat' ], 'beta_se_est', 'theory_var' );
         
         waitbar(1)
         close(waitSave)
@@ -1113,8 +1110,6 @@ function varargout = main(varargin)
             data.niifiles = runInfo.niifiles;
             [data.N, ~] = size(runInfo.X);
             data.qstar = runInfo.q;
-            tempSeEst = load( [folderName '/' data.prefix '_beta_se_est.mat'] );
-            data.beta_se_est = tempSeEst.beta_se_est;
             waitbar(1)
             close(waitLoad);
             
@@ -1135,19 +1130,19 @@ function varargout = main(varargin)
         if strcmp(disp_map, 'dt1')
             displayResults(data.qstar, data.outpath, ...
    data.prefix, data.N, 'grp', data.varNamesX, data.X, data.covTypes,...
-   data.beta_se_est,  data.theoretical_beta_se_est, data.interactions)
+   data.interactions)
         elseif strcmp(disp_map, 'dt2')
             displayResults(data.qstar, data.outpath, ...
    data.prefix, data.N, 'subpop', data.varNamesX, data.X, data.covTypes,...
-   data.beta_se_est,  data.theoretical_beta_se_est, data.interactions)
+   data.interactions)
         elseif strcmp(disp_map, 'dt3')
             displayResults(data.qstar, data.outpath, ...
    data.prefix, data.N, 'subj', data.varNamesX, data.X, data.covTypes,...
-   data.beta_se_est, data.theoretical_beta_se_est, data.interactions)
+   data.interactions)
         elseif strcmp(disp_map, 'dt4')
             displayResults(data.qstar, data.outpath, ...
    data.prefix, data.N, 'beta', data.varNamesX, data.X, data.covTypes,...
-   data.beta_se_est,  data.theoretical_beta_se_est, data.interactions)
+   data.interactions)
         end
     end
     
@@ -1273,10 +1268,7 @@ function varargout = main(varargin)
         data.interactions = tempData.interactions;
         data.varInModel = tempData.varInModel;
         data.varInCovFile = tempData.varInCovFile;
-        
-        tempSeEst = load( [filepath '/' data.prefix '_beta_se_est.mat'] );
-        data.beta_se_est = tempSeEst.beta_se_est;
-        data.theoretical_beta_se_est = tempSeEst.theory_var;
+       
         waitbar(10/10)
         
         % Close the waitbar

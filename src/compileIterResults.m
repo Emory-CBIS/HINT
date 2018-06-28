@@ -34,7 +34,7 @@ voxSize = size(mask.img);
 vxl = voxSize;
 locs = validVoxels;
 
-waitSave = waitbar(0, 'Compiling Results - Subject Level IC Estimates')
+waitSave = waitbar(0, 'Compiling Results - Subject Level IC Estimates');
 
 % Save a file with the subject level IC map information
 subjFilename = [outdir '/' prefix '_subject_IC_estimates.mat'];
@@ -76,17 +76,19 @@ end
 
 waitbar(1, waitSave, 'Estimating variance of covariate effects. This may take a minute.')
 
-% Calculate the standard error estimates for the beta maps
-[theory_var, beta_se_est] = VarEst_hcica(iterResults.theta, iterResults.beta,...
+% Calculate the variance estimates for the beta maps
+theory_var = VarEst_hcica(iterResults.theta, iterResults.beta,...
     runinfo.X, iterResults.z_mode, runinfo.YtildeStar,...
-    iterResults.G_z_dict); 
-save( [outdir '/' prefix '_beta_se_est.mat'], 'beta_se_est', 'theory_var' );
+    iterResults.G_z_dict, voxSize,...
+    validVoxels, prefix, outdir);
 
 % Last, make a copy of the runinfo file in the output directory if the file
 % is not already there
 if exist([outdir '/' prefix '_runinfo.mat']) == 0
     copyfile(runinfopath, [outdir '/' prefix '_runinfo.mat']);
 end
+
+close(waitSave);
 
 % Move the user to the view results tab
 set(findobj('Tag','tabGroup'),'SelectedTab',findobj('Tag','tab3'));

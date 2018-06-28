@@ -35,10 +35,8 @@ ddat.type = varargin{5};
 ddat.varNamesX = varargin{6};
 ddat.X = varargin{7};
 ddat.covTypes = varargin{8};
-ddat.seEst = varargin{9};
-ddat.seEst_theo = varargin{10};
 ddat.betaVarEst = 0;
-ddat.interactions = varargin{11};
+ddat.interactions = varargin{9};
 [~, ddat.p] = size(ddat.X);
 global keeplist;
 ddat.qstar = sum(keeplist);
@@ -742,15 +740,9 @@ end
         ddat.betaVarEst = zeros(ddat.p, ddat.p, ddat.xdim, ddat.ydim, ddat.zdim);
         % Fill out the beta map for the current IC
         currentIC = get(findobj('Tag', 'ICselect'), 'val');
-        % Create an indexing array to grab the right elements of the
-        % estimates
-        indArrStart = (currentIC+ddat.q);
-        indArr = indArrStart:ddat.q:size(ddat.seEst_theo, 1);
-        % Fill out the variance estimate
-        newMap = zeros( [ddat.p, ddat.p, size(ddat.img{1})] ); % empty for intermediate var map
-        tempData = squeeze(ddat.seEst_theo(indArr, indArr, :));
-        newMap( :,:,abs(ddat.img{1})>0 ) = tempData;
-        ddat.betaVarEst = newMap;
+        newMap = load(fullfile(ddat.outdir,...
+            [ddat.outpre '_BetaVarEst_IC_' num2str(currentIC) '.mat']));
+        ddat.betaVarEst = newMap.betaVarEst;
         end
         
         % Load the brain region information
@@ -1077,15 +1069,9 @@ end
                 ddat.img{1} = ndata.img; ddat.oimg{1} = ndata.img;
                         % Fill out the beta map for the current IC
                 newIC = get(findobj('Tag', 'ICselect'), 'val');
-                % Create an indexing array to grab the right elements of the
-                % estimates
-                indArrStart = (newIC+ddat.q);
-                indArr = indArrStart:ddat.q:size(ddat.seEst_theo, 1);
-                % Fill out the variance estimate
-                newMap = zeros( [ddat.p, ddat.p, size(ddat.img{1})] ); % empty for intermediate var map
-                tempData = squeeze(ddat.seEst_theo(indArr, indArr, :));
-                newMap( :,:,abs(ddat.img{1})>0 ) = tempData;
-                ddat.betaVarEst = newMap;
+                newMap = load(fullfile(ddat.outdir,...
+                    [ddat.outpre '_BetaVarEst_IC_' num2str(newIC) '.mat']));
+                ddat.betaVarEst = newMap.betaVarEst;
         elseif strcmp(ddat.type, 'subj')
             generateSingleSubjMap;
         elseif strcmp(ddat.type, 'icsel')
