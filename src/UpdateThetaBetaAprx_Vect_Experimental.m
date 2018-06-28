@@ -243,10 +243,13 @@ function [theta_new, beta_new, z_mode, subICmean, subICvar,...
         
     end
     [a, ~] = size(X_mtx);
-    diff = bsxfun( @minus, subICmean, reshape(grpICmean, [q, 1, V]));
     
     % Update beta coefficients
-    beta_new = mtimesx(reshape(X_mtx, [a,N] ), permute(diff(:,:,:), [2,1,3]) );   
+    diff = bsxfun( @minus, subICmean, reshape(grpICmean, [q, 1, V]));
+    % Loop over ICs to avoid memory issues of permuting diff
+    for iIC = 1:q
+        beta_new(:, iIC, :) = reshape(X_mtx, [a,N] ) * squeeze(diff(iIC, :, :));
+    end
     beta_new = mtimesx(sumXiXiT_inv, beta_new);
     
     % Xbeta squared for the second level variance calculation
@@ -275,6 +278,8 @@ function [theta_new, beta_new, z_mode, subICmean, subICvar,...
         theta_new.sigma3_sq(2 + (l-1) * m) = mean( grpICvar(l, l, nois));
     end
     theta_new.sigma3_sq = theta_new.sigma3_sq - theta_new.miu3 .^ 2;
+    
+    % Update that uses the probabilities
  
     % handle NaN in previous iteration
     nanid = find( isnan( theta_new.miu3));
