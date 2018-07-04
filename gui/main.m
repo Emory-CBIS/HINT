@@ -192,6 +192,11 @@ function varargout = main(varargin)
             'FontSize',myfont, 'units', 'character',...
             'units', 'normalized',...
             'Position',[0.25 0.45 0.5 0.15]); %#ok<NASGU>
+        viewScreePlotButton = uicontrol('Parent',t1p3,'Style','pushbutton',...
+            'String','View Scree Plot','Callback', @openScreePlot,...
+            'FontSize', myfont, 'units', 'character',...
+            'units', 'normalized',...
+            'Position',[0.01 0.45 0.25 0.15]); %#ok<NASGU>
         
         t1button5 = uicontrol('Parent',t1p3,'Style','pushbutton',...
             'units', 'normalized',...
@@ -651,6 +656,10 @@ function varargout = main(varargin)
         end
     end
 
+    function openScreePlot(~,~)
+        screePlot(data.niifiles, data.validVoxels)
+    end
+
     % Perform the PCA data reduction. Output is Ytilde, C_matrix_diag,
     %    H_matrix_inv, H_matrix, and deWhite.
     function calculatePCA(~,~)
@@ -703,61 +712,82 @@ function varargout = main(varargin)
     function calculateInitialParams(~,~)
         
         if data.preprocessingComplete == 1
-            data.iniGuessComplete = 0;
-            data.tempiniGuessObtained = 0;
-            set(findobj('tag', 'saveContinueButton'), 'enable', 'off');
-            data.q = str2double(get(findobj('Tag', 'numICA'), 'String'));
-            global keeplist;
-            keeplist = ones(data.q,1);
-            addpath('FastICA_25');
-            numberOfPCs = findobj('Tag', 'numPCA');
-            data.prefix = get(findobj('Tag', 'prefix'), 'String');
-            data.outpath = get(findobj('Tag', 'analysisFolder'), 'String');
-
-            % Perform GIFT
-            % Generate the text parameter file used by GIFT
-            hcicadir = pwd;
-            % run GIFT to get the initial guess. This function also outputs nifti files
-            % with initial values.
-            [ data.theta0, data.beta0, data.s0, s0_agg ] = runGIFT(data.niifiles, data.maskf, ...
-                get(findobj('Tag', 'prefix'), 'String'),...
-                get(findobj('Tag', 'analysisFolder'), 'String'),...
-                str2double(numberOfPCs.String),...
-                data.N, data.q, data.X, data.Ytilde, hcicadir);
-
-            % Write to log file that initial guess stage is complete.
-            if (writelog == 1)
-                outfile = fopen(outfilename, 'a' );
-                fprintf(outfile, strcat('\nCalculated initial guess values '));
+            
+            % Check if a runinfo file has been loaded
+            % if so, preprocessing will need to be re-run
+            proceed = 0;
+            if ~isfield(data, 'ytilde')
+                redoPreproc = questdlg(['HINT is detecting that a runinfo'...
+                    'file has been loaded instead of the raw data.'...
+                    'Re-estimating the intitial guess will require'...
+                    'performing preprocessing again. Would you like to continue?']);
+                if redoPreproc
+                    calculatePCA;
+                    proceed = 1;
+                else
+                    proceed = 0;
+                end
+            else
+                proceed = 1;
             end
+            
+            if proceed == 1
+                data.iniGuessComplete = 0;
+                data.tempiniGuessObtained = 0;
+                set(findobj('tag', 'saveContinueButton'), 'enable', 'off');
+                data.q = str2double(get(findobj('Tag', 'numICA'), 'String'));
+                global keeplist;
+                keeplist = ones(data.q,1);
+                addpath('FastICA_25');
+                numberOfPCs = findobj('Tag', 'numPCA');
+                data.prefix = get(findobj('Tag', 'prefix'), 'String');
+                data.outpath = get(findobj('Tag', 'analysisFolder'), 'String');
 
-            % Turn all the initial group ICs into nifti files to allow user to
-            % view and select the ICs for hc-ICA.
-            template = zeros(data.voxSize);
-            template = reshape(template, [prod(data.voxSize), 1]);
+                % Perform GIFT
+                % Generate the text parameter file used by GIFT
+                hcicadir = pwd;
+                % run GIFT to get the initial guess. This function also outputs nifti files
+                % with initial values.
+                [ data.theta0, data.beta0, data.s0, s0_agg ] = runGIFT(data.niifiles, data.maskf, ...
+                    get(findobj('Tag', 'prefix'), 'String'),...
+                    get(findobj('Tag', 'analysisFolder'), 'String'),...
+                    str2double(numberOfPCs.String),...
+                    data.N, data.q, data.X, data.Ytilde, hcicadir);
 
-            anat = load_nii(data.maskf);
-            for ic=1:data.q
-                newIC = template;
-                newIC(data.validVoxels) = s0_agg(ic, :)';
-                IC = reshape(newIC, data.voxSize);
-                newIC = make_nii(IC)
-                newIC.hdr.hist.originator = anat.hdr.hist.originator
-                save_nii(newIC, [get(findobj('Tag', 'analysisFolder'), 'String') '/' get(findobj('Tag', 'prefix'), 'String') '_iniIC_' num2str(ic) '.nii' ], 'IC');
-            end
+                % Write to log file that initial guess stage is complete.
+                if (writelog == 1)
+                    outfile = fopen(outfilename, 'a' );
+                    fprintf(outfile, strcat('\nCalculated initial guess values '));
+                end
 
-            % Update the gui main window to show that initial values
-            % calculation is completed.
-            set(findobj('Tag','iniProgress'),'BackgroundColor',[51/256,153/256,0/256],...
-                'ForegroundColor',[0.9255,0.9255,0.9255],...
-                'enable','on');
-            data.tempiniGuessObtained = 1;
-            data.iniGuessComplete = 0;
-            set(findobj('Tag','icProgress'),'BackgroundColor',[0.94,0.94,0.94],...
-                'ForegroundColor',[0.9255,0.9255,0.9255],...
-                'enable','on');
+                % Turn all the initial group ICs into nifti files to allow user to
+                % view and select the ICs for hc-ICA.
+                template = zeros(data.voxSize);
+                template = reshape(template, [prod(data.voxSize), 1]);
 
-            chooseIC;
+                anat = load_nii(data.maskf);
+                for ic=1:data.q
+                    newIC = template;
+                    newIC(data.validVoxels) = s0_agg(ic, :)';
+                    IC = reshape(newIC, data.voxSize);
+                    newIC = make_nii(IC)
+                    newIC.hdr.hist.originator = anat.hdr.hist.originator
+                    save_nii(newIC, [get(findobj('Tag', 'analysisFolder'), 'String') '/' get(findobj('Tag', 'prefix'), 'String') '_iniIC_' num2str(ic) '.nii' ], 'IC');
+                end
+
+                % Update the gui main window to show that initial values
+                % calculation is completed.
+                set(findobj('Tag','iniProgress'),'BackgroundColor',[51/256,153/256,0/256],...
+                    'ForegroundColor',[0.9255,0.9255,0.9255],...
+                    'enable','on');
+                data.tempiniGuessObtained = 1;
+                data.iniGuessComplete = 0;
+                set(findobj('Tag','icProgress'),'BackgroundColor',[0.94,0.94,0.94],...
+                    'ForegroundColor',[0.9255,0.9255,0.9255],...
+                    'enable','on');
+
+                chooseIC;
+            end % end of check that proceed == 1
         else
             warndlg('Please complete preprocessing before obtaining an initial guess.');
         end
