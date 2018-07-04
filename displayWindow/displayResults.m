@@ -343,6 +343,8 @@ end
             'visible', 'off', ...
             'Callback', @closeICSelect);
         
+        movegui(hs.fig, 'center')
+        
     end
 
     % This function is called when the user decides to compare two
@@ -1610,6 +1612,7 @@ end
             'String', 'Compare Selected Sub-Populations', ...
             'Position', [0.3, 0.01, 0.4, 0.13], ...
             'Tag', 'newSubPop', 'Callback', @launchCompareWindow); %#ok<NASGU>
+        movegui(newfig, 'center')
     end
 
     % Function to launch a comparison window

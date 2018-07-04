@@ -310,6 +310,10 @@ else
 		'Visible','off');
 end
 
+% Set the figure to open in the middle of the screen
+movegui(fig, 'center')
+
+
 % Set system-dependent items.
 if ismac
 	set(fig,'DefaultUIControlFontName','Helvetica')

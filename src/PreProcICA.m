@@ -72,7 +72,8 @@ for i=1:N
         H_matrix_inv = my_dewhiteningMatrix;
         Y_tilde_all = my_whitesig;
     else
-        H_matrix = blkdiag(H_matrix, my_whiteningMatrix);
+        newHmat = my_whiteningMatrix * (eye(T)-1/T * ones(T));
+        H_matrix = blkdiag(H_matrix, newHmat);
         H_matrix_inv = blkdiag(H_matrix_inv, my_dewhiteningMatrix);
         Y_tilde_all = [Y_tilde_all; my_whitesig];
     end
