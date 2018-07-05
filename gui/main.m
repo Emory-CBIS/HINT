@@ -194,9 +194,9 @@ function varargout = main(varargin)
             'Position',[0.25 0.45 0.5 0.15]); %#ok<NASGU>
         viewScreePlotButton = uicontrol('Parent',t1p3,'Style','pushbutton',...
             'String','View Scree Plot','Callback', @openScreePlot,...
-            'FontSize', myfont, 'units', 'character',...
+            'FontSize', myfont/1.2, 'units', 'character',...
             'units', 'normalized',...
-            'Position',[0.01 0.45 0.25 0.15]); %#ok<NASGU>
+            'Position',[0.75 0.638 0.25 0.15]); %#ok<NASGU>
         
         t1button5 = uicontrol('Parent',t1p3,'Style','pushbutton',...
             'units', 'normalized',...
@@ -657,7 +657,11 @@ function varargout = main(varargin)
     end
 
     function openScreePlot(~,~)
-        screePlot(data.niifiles, data.validVoxels)
+        if isfield(data, 'niifiles')
+            screePlot(data.niifiles, data.validVoxels)
+        else
+            warndlg('Please input data before viewing scree plot.')
+        end
     end
 
     % Perform the PCA data reduction. Output is Ytilde, C_matrix_diag,
