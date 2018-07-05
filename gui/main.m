@@ -660,7 +660,7 @@ function varargout = main(varargin)
         if isfield(data, 'niifiles')
             screePlot(data.niifiles, data.validVoxels)
         else
-            warndlg('Please input data before viewing scree plot.')
+            warndlg('Please input fMRI data before viewing scree plot.')
         end
     end
 
