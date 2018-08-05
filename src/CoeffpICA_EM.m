@@ -73,6 +73,18 @@ function [theta, beta, z_mode, subICmean, subICvar, grpICmean, grpICvar,...
     err1vec = [];
     err2vec = [];
     
+    % Start the plot axes
+    if isScriptVersion == 0
+        axes(findobj('tag','iterChangeAxis1'));
+        set(gca,'NextPlot','add');
+        plot1 = plot(1:maxiter, 0);
+        title('Global Parameter'); xlabel('Iteration');
+        axes(findobj('tag','iterChangeAxis2'));
+        set(gca,'NextPlot','add');
+        plot2 = plot(1:maxiter, 0);
+        title('Local Parameter'); xlabel('Iteration');
+    end
+    
     % Measure the time taken between plot updates
     plotIncr = 1;
     tic()
@@ -85,7 +97,8 @@ function [theta, beta, z_mode, subICmean, subICvar, grpICmean, grpICvar,...
         iterationTime = toc();    
         
         % Want to update plot every iteration or every 30 seconds
-        updatePlot = 0;
+        updatePlot = 1;
+        disp('change back to 0')
         if (iterationTime / 10 > plotIncr)
             updatePlot = 1;
             plotIncr = plotIncr + 1;
@@ -142,25 +155,26 @@ function [theta, beta, z_mode, subICmean, subICvar, grpICmean, grpICvar,...
             % Theta change plot
             axes(findobj('tag','iterChangeAxis1'));
             set(gca,'NextPlot','add');
-            plot(err1vec);
-            xticks(1:5:itr);
-            title('Global Parameter'); xlabel('Iteration');
-            print(gcf, [outpath '/' prefix '_theta_progress_plot'],'-dpng')
+            h = findobj('tag','iterChangeAxis1');
+            h = get(h,'Children');
+            set(h,'xdata',(1:itr),'ydata',err1vec(1:itr)); drawnow;
+            %print(gca, [outpath '/' prefix '_theta_progress_plot'],'-dpng')
             
             % Beta change plot
+            disp('need to get back to saving plot!')
             axes(findobj('tag','iterChangeAxis2'));
             set(gca, 'NextPlot', 'add');
-            plot(err2vec);
-            xticks( [1:5:itr] );
-            title('Local Parameter'); xlabel('Iteration');
-            print(gcf, [outpath '/' prefix '_beta_progress_plot'],'-dpng')
+            h = findobj('tag','iterChangeAxis2');
+            h = get(h,'Children');
+            set(h,'xdata',(1:itr),'ydata',err2vec(1:itr)); drawnow;
+            %print(plot2, [outpath '/' prefix '_beta_progress_plot'],'-dpng')
             
             % Update the embedded waitbar
             axes(findobj('tag','analysisWaitbar'));
             cla;
             rectangle('Position',[0,0,0+(round(1000*itr/maxiter)),20],'FaceColor','g');
             text(482,10,[num2str(0+round(100*itr/maxiter)),'%']);
-            pause(1)
+            drawnow;
         end
         
         % Update the saved progress plot if only script version running
