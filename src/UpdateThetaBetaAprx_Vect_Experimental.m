@@ -57,12 +57,10 @@ function [theta_new, beta_new, z_mode, subICmean, subICvar,...
     grpICmean = zeros(q, V);
     grpICvar = zeros(q, q, V);
     A = zeros( (N * T), (N * q) ) ;
-    C_inv = zeros(T, N);
     
     % Store the mixing matrix (A) in proper format
     for i = 1:N
         A((i-1)*T+1 : (i-1)*T+T, (i-1)*q+1 : (i-1)*q+q) = theta.A(:,:,i);
-        C_inv(:,i) = 1 ./ C_matrix_diag((T*(i-1)+1) : (T*i));
     end
 
     B = kron( ones(N, 1), eye(q));
@@ -70,7 +68,7 @@ function [theta_new, beta_new, z_mode, subICmean, subICvar,...
     P = [ eye(N * q), B; zeros(q, N * q), eye(q) ];
     
     % First level variance
-    Sigma1 = diag( C_matrix_diag .* theta.sigma1_sq);
+    Sigma1 = diag( theta.sigma1_sq);
     Sigma1_inv = diag(1 ./ diag(Sigma1));
     
     % Second level variance
@@ -295,20 +293,15 @@ function [theta_new, beta_new, z_mode, subICmean, subICvar,...
             * real( inv(theta_new.A(:,:,i)' * theta_new.A(:,:,i)) ^ (1/2));
     end
 
-    Cinv_3d = reshape(C_inv, [q, 1, N]);
-    diagCallSubj = bsxfun(@times, Cinv_3d, eye(q));
-    C_inv_vect = C_inv(:);
-
     % Calculations for sigma 1 squared
-    firstRow = sum( (Y .^ 2)' * C_inv_vect);
+    firstRow = sum( sum(Y .^ 2));
     theta_new_A_cell = num2cell( theta_new.A, [1, 2]);
     theta_term = blkdiag( theta_new_A_cell{:}); 
     subICmean_term = reshape( subICmean, [q * N, V]);
-    second_term = sum( sum(2 * Y' * diag(C_inv_vect) * theta_term .* subICmean_term'));
+    second_term = sum( sum(2 * Y' * theta_term .* subICmean_term'));
 
     % get the trace term;
-    AtimesC = mtimesx( theta_new.A, 'T', diagCallSubj);
-    ACA = mtimesx( AtimesC, theta_new.A);
+    ACA = mtimesx( theta_new.A, 'T', theta_new.A);
 
     theta_new_sigma1_sq_alt = 0.0;
     
@@ -320,8 +313,7 @@ function [theta_new, beta_new, z_mode, subICmean, subICvar,...
     % Loop through subjects for subject level variance update
     trace_term = zeros(1, 1, V);
     for iSubj = 1:N
-        C_i = diag(C_inv(:,iSubj));
-        CA_i = C_i * theta_new.A(:,:,iSubj);
+        CA_i = theta_new.A(:,:,iSubj);
         ACA_i = ACA(:,:,iSubj);
         startv = ((iSubj-1)*q)+1;
         endv = iSubj*q;

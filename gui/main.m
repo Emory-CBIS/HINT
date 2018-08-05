@@ -720,12 +720,12 @@ function varargout = main(varargin)
             % Check if a runinfo file has been loaded
             % if so, preprocessing will need to be re-run
             proceed = 0;
-            if ~isfield(data, 'ytilde')
+            if ~isfield(data, 'Ytilde')
                 redoPreproc = questdlg(['HINT is detecting that a runinfo'...
                     'file has been loaded instead of the raw data.'...
                     'Re-estimating the intitial guess will require'...
                     'performing preprocessing again. Would you like to continue?']);
-                if redoPreproc
+                if strcmp(redoPreproc, 'Yes')
                     calculatePCA;
                     proceed = 1;
                 else
@@ -742,7 +742,7 @@ function varargout = main(varargin)
                 data.q = str2double(get(findobj('Tag', 'numICA'), 'String'));
                 global keeplist;
                 keeplist = ones(data.q,1);
-                addpath('FastICA_25');
+                %addpath('FastICA_25');
                 numberOfPCs = findobj('Tag', 'numPCA');
                 data.prefix = get(findobj('Tag', 'prefix'), 'String');
                 data.outpath = get(findobj('Tag', 'analysisFolder'), 'String');
