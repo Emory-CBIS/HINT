@@ -581,6 +581,23 @@ function varargout = main(varargin)
             
         % Handle data in nifti form.
         elseif (strcmp(dataType, 'niftiData') == 1)
+            
+            % Check if data is already loaded, if so, warn the user that
+            % continuing will wipe out their current analysis settings
+            proceedWithLoad = 1;
+            if data.dataLoaded == 1
+                proceedWithLoad = 0; % default to 0 just to be safe
+                opts.Interpreter = 'tex';
+                opts.Default = 'No';
+                userAnswer = questdlg('Continuing will reset the current analysis, are you sure you want to continue?',...
+                    'Continue?',...
+                    'Yes', 'No', opts);
+                if strcmp(userAnswer, 'Yes')
+                    proceedWithLoad = 1;
+                end
+            end
+            
+            if proceedWithLoad
             fls = loadNii;
             % outer check makes sure anything was input
             if (~isempty(fls))
@@ -653,6 +670,7 @@ function varargout = main(varargin)
                     'enable','on');
             end
             end
+            end % end of proceedWithLoad check
         end
     end
 
