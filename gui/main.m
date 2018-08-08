@@ -514,67 +514,71 @@ function varargout = main(varargin)
             % Direct the user to load a runinfo file
             [fname pathname] = uigetfile('.mat');
             
-            % Waitbar while the data loads
-            waitLoad = waitbar(0,'Please wait while the data load');
-            
-            runinfo = load([pathname fname]);
-            
-            % Update the appropriate data structures
-            waitbar(1/10)
-            data.qstar = runinfo.q;
-            data.q = runinfo.qold;
-            data.CmatStar = runinfo.CmatStar;
-            data.X = runinfo.X;
-            data.YtildeStar = runinfo.YtildeStar;
-            data.beta0Star = runinfo.beta0Star;
-            data.covariates = runinfo.covariates;
-            data.covf = runinfo.covfile;
-            data.covTypes = runinfo.covTypes;
-            data.maskf = runinfo.maskf;
-            data.niifiles = runinfo.niifiles;
-            data.numPCA = runinfo.numPCA;
-            data.thetaStar = runinfo.thetaStar;
-            data.time_num = runinfo.time_num;
-            data.validVoxels = runinfo.validVoxels;
-            data.outpath = runinfo.outfolder;
-            data.prefix = runinfo.prefix;
-            data.voxSize = runinfo.voxSize;
-            data.N = runinfo.N;
-            data.varNamesX = runinfo.varNamesX;
-            data.interactions = runinfo.interactions;
-            data.varInCovFile = runinfo.varInCovFile;
-            data.varInModel = runinfo.varInModel;
-            data.interactionsBase = runinfo.interactionsBase;
-            waitbar(1)
-            close(waitLoad);
-                        
-            % Populate the display fields
-            %set(findobj('tag', ''), 'string', num2str());
-            set(findobj('tag', 'numICA'), 'string', num2str(runinfo.qold));
-            set(findobj('tag', 'numPCA'), 'string', num2str(runinfo.numPCA));
-            set(findobj('tag', 'prefix'), 'string', num2str(runinfo.prefix));
-            set(findobj('tag', 'analysisFolder'), 'string', num2str(runinfo.outfolder));
-            data.preprocessingComplete = 1;
-            data.iniGuessComplete = 1;
-            data.tempiniGuessObtained = 1;
-            set(findobj('tag', 'runButton'), 'enable', 'on');
-            
-            % Fill in the blanks to reflect what was loaded
+            % Make sure user did not close out window
+            if fname ~= 0
 
-            % Update the GUI to reflect the loaded information
-            set(findobj('Tag','dataProgress'),'BackgroundColor',[51/256,153/256,0/256],...
-                'ForegroundColor',[0.9255,0.9255,0.9255],...
-                'enable','on');
-            set(findobj('Tag','pcaProgress'),'BackgroundColor',[51/256,153/256,0/256],...
-                'ForegroundColor',[0.9255,0.9255,0.9255],...
-                'enable','on'); 
-            set(findobj('Tag','iniProgress'),'BackgroundColor',[51/256,153/256,0/256],...
-                'ForegroundColor',[0.9255,0.9255,0.9255],...
-                'enable','on'); 
-            set(findobj('Tag','icProgress'),'BackgroundColor',[51/256,153/256,0/256],...
-                'ForegroundColor',[0.9255,0.9255,0.9255],...
-                'enable','on');
-            data.dataLoaded = 1;
+                % Waitbar while the data loads
+                waitLoad = waitbar(0,'Please wait while the data load');
+
+                runinfo = load([pathname fname]);
+
+                % Update the appropriate data structures
+                waitbar(1/10)
+                data.qstar = runinfo.q;
+                data.q = runinfo.qold;
+                data.CmatStar = runinfo.CmatStar;
+                data.X = runinfo.X;
+                data.YtildeStar = runinfo.YtildeStar;
+                data.beta0Star = runinfo.beta0Star;
+                data.covariates = runinfo.covariates;
+                data.covf = runinfo.covfile;
+                data.covTypes = runinfo.covTypes;
+                data.maskf = runinfo.maskf;
+                data.niifiles = runinfo.niifiles;
+                data.numPCA = runinfo.numPCA;
+                data.thetaStar = runinfo.thetaStar;
+                data.time_num = runinfo.time_num;
+                data.validVoxels = runinfo.validVoxels;
+                data.outpath = runinfo.outfolder;
+                data.prefix = runinfo.prefix;
+                data.voxSize = runinfo.voxSize;
+                data.N = runinfo.N;
+                data.varNamesX = runinfo.varNamesX;
+                data.interactions = runinfo.interactions;
+                data.varInCovFile = runinfo.varInCovFile;
+                data.varInModel = runinfo.varInModel;
+                data.interactionsBase = runinfo.interactionsBase;
+                waitbar(1)
+                close(waitLoad);
+
+                % Populate the display fields
+                %set(findobj('tag', ''), 'string', num2str());
+                set(findobj('tag', 'numICA'), 'string', num2str(runinfo.qold));
+                set(findobj('tag', 'numPCA'), 'string', num2str(runinfo.numPCA));
+                set(findobj('tag', 'prefix'), 'string', num2str(runinfo.prefix));
+                set(findobj('tag', 'analysisFolder'), 'string', num2str(runinfo.outfolder));
+                data.preprocessingComplete = 1;
+                data.iniGuessComplete = 1;
+                data.tempiniGuessObtained = 1;
+                set(findobj('tag', 'runButton'), 'enable', 'on');
+
+                % Fill in the blanks to reflect what was loaded
+
+                % Update the GUI to reflect the loaded information
+                set(findobj('Tag','dataProgress'),'BackgroundColor',[51/256,153/256,0/256],...
+                    'ForegroundColor',[0.9255,0.9255,0.9255],...
+                    'enable','on');
+                set(findobj('Tag','pcaProgress'),'BackgroundColor',[51/256,153/256,0/256],...
+                    'ForegroundColor',[0.9255,0.9255,0.9255],...
+                    'enable','on'); 
+                set(findobj('Tag','iniProgress'),'BackgroundColor',[51/256,153/256,0/256],...
+                    'ForegroundColor',[0.9255,0.9255,0.9255],...
+                    'enable','on'); 
+                set(findobj('Tag','icProgress'),'BackgroundColor',[51/256,153/256,0/256],...
+                    'ForegroundColor',[0.9255,0.9255,0.9255],...
+                    'enable','on');
+                data.dataLoaded = 1;
+            end
             
         % Handle data in nifti form.
         elseif (strcmp(dataType, 'niftiData') == 1)
@@ -629,7 +633,7 @@ function varargout = main(varargin)
                     
                     % Reference cell code based on covTypes, user can
                     % change these types in model specification later
-                    [ data.X, data.varNamesX ] = ref_cell_code( data.covariates,...
+                    [ data.X, data.varNamesX, data.interactions ] = ref_cell_code( data.covariates,...
                         data.covTypes, data.varInModel,...
                         0, zeros(0, length(data.covTypes)), 0  );
                     

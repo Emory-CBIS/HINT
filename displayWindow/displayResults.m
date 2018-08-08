@@ -1435,7 +1435,7 @@ end
         % Make sure input value is a number and not a string
         if all(ismember(callbackdata.NewData, '0123456789+-.eEdD')) & ~isempty(callbackdata.NewData)
         % check if the edited cell is categorical, should be binary
-        if ddat.covTypes(coledit) == 1
+        if length(unique(ddat.X(:, coledit))) == 2
             if ~(str2num(callbackdata.NewData) == 1 || str2num(callbackdata.NewData) == 0)
                 warndlg('Categorical covariates should be set to either 0 or 1', 'Data input error');
                 newTable = get(findobj('Tag', 'subPopDisplay'), 'Data');
@@ -1790,7 +1790,7 @@ end
         set(findobj('Tag', 'contrastDisplay'), 'RowName', newRowNames);
         % Make it so that only the main effects can be edited
         ceditable = false(1, ddat.p);
-        ceditable(1:length(ddat.covTypes)) = 1;
+        ceditable(1:size(ddat.interactions,2)) = 1;
         set(findobj('Tag', 'contrastDisplay'), 'ColumnEditable', ceditable);
 
         % change the drop down menu
