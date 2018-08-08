@@ -151,7 +151,7 @@ function varargout = main(varargin)
             'FontSize',myfont,'units', 'character',...
             'Position',[4 0.8 17 1.5]); %#ok<NASGU>
         
-        t1button3 = uicontrol('Parent',t1p2,'Style','pushbutton','String','Model Specification',...
+        t1button3 = uicontrol('Parent',t1p2,'Style','pushbutton','String','Select Covariates',...
             'Callback',@openCovWindow_Callback,...
             'FontSize',myfont, 'units', 'character',...
             'Position', [25 0.8 20 1.5]); %#ok<NASGU>
@@ -192,11 +192,7 @@ function varargout = main(varargin)
             'FontSize',myfont, 'units', 'character',...
             'units', 'normalized',...
             'Position',[0.25 0.45 0.5 0.15]); %#ok<NASGU>
-        viewScreePlotButton = uicontrol('Parent',t1p3,'Style','pushbutton',...
-            'String','View Scree Plot','Callback', @openScreePlot,...
-            'FontSize', myfont/1.2, 'units', 'character',...
-            'units', 'normalized',...
-            'Position',[0.75 0.638 0.25 0.15]); %#ok<NASGU>
+        
         
         t1button5 = uicontrol('Parent',t1p3,'Style','pushbutton',...
             'units', 'normalized',...
@@ -676,13 +672,7 @@ function varargout = main(varargin)
         end
     end
 
-    function openScreePlot(~,~)
-        if isfield(data, 'niifiles')
-            screePlot(data.niifiles, data.validVoxels)
-        else
-            warndlg('Please input fMRI data before viewing scree plot.')
-        end
-    end
+    
 
     % Perform the PCA data reduction. Output is Ytilde, C_matrix_diag,
     %    H_matrix_inv, H_matrix, and deWhite.
@@ -794,8 +784,8 @@ function varargout = main(varargin)
                     newIC = template;
                     newIC(data.validVoxels) = s0_agg(ic, :)';
                     IC = reshape(newIC, data.voxSize);
-                    newIC = make_nii(IC)
-                    newIC.hdr.hist.originator = anat.hdr.hist.originator
+                    newIC = make_nii(IC);
+                    newIC.hdr.hist.originator = anat.hdr.hist.originator;
                     save_nii(newIC, [get(findobj('Tag', 'analysisFolder'), 'String') '/' get(findobj('Tag', 'prefix'), 'String') '_iniIC_' num2str(ic) '.nii' ], 'IC');
                 end
 
