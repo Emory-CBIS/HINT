@@ -670,6 +670,19 @@ function varargout = main(varargin)
                 set(findobj('Tag','dataProgress'),'BackgroundColor',[51/256,153/256,0/256],...
                     'ForegroundColor',[0.9255,0.9255,0.9255],...
                     'enable','on');
+                
+                % Update process trackers
+                data.preprocessingComplete = 0;
+                data.iniGuessComplete = 0;
+                data.tempiniGuessObtained = 0;
+                
+                % Reset the run window
+                axes(findobj('tag','analysisWaitbar'));
+                cla;
+                rectangle('Position',[0,0,0+(round(1000*0)),20],'FaceColor','g');
+                text(482,10,[num2str(0+round(100*0)),'%']);
+                drawnow;
+                                
             end
             end
             end % end of proceedWithLoad check
@@ -690,6 +703,13 @@ function varargout = main(varargin)
             data.tempiniGuessObtained = 0;
             data.iniGuessComplete = 0;
             set(findobj('tag', 'saveContinueButton'), 'enable', 'off');
+            
+            % Reset the run window
+            axes(findobj('tag','analysisWaitbar'));
+            cla;
+            rectangle('Position',[0,0,0+(round(1000*0)),20],'FaceColor','g');
+            text(482,10,[num2str(0+round(100*0)),'%']);
+            drawnow;
 
             data.q = str2double(get(findobj('Tag', 'numICA'), 'String'));
             [data.Ytilde, data.C_matrix_diag, data.H_matrix_inv,  data.H_matrix, data.deWhite]...
@@ -753,6 +773,12 @@ function varargout = main(varargin)
                 data.iniGuessComplete = 0;
                 data.tempiniGuessObtained = 0;
                 set(findobj('tag', 'saveContinueButton'), 'enable', 'off');
+                % Reset the run window
+                axes(findobj('tag','analysisWaitbar'));
+                cla;
+                rectangle('Position',[0,0,0+(round(1000*0)),20],'FaceColor','g');
+                text(482,10,[num2str(0+round(100*0)),'%']);
+                drawnow;
                 data.q = str2double(get(findobj('Tag', 'numICA'), 'String'));
                 global keeplist;
                 keeplist = ones(data.q,1);
@@ -880,6 +906,13 @@ function varargout = main(varargin)
         % Redeclare the list of ICs to be used and calculate the new q
         global keeplist;
         data.qstar = sum(keeplist);
+        
+        % Reset the run window
+        axes(findobj('tag','analysisWaitbar'));
+        cla;
+        rectangle('Position',[0,0,0+(round(1000*0)),20],'FaceColor','g');
+        text(482,10,[num2str(0+round(100*0)),'%']);
+        drawnow;
         
         % Call function to re-estimate the initial values for the hc-ica
         % algorithm based on the selected ICs
