@@ -951,169 +951,176 @@ function varargout = main(varargin)
     % Run the selected algorithm.
     function runButton_Callback(~, ~)
         
-        % Enable the stop button and disable the run button
-        set(findobj('tag','stopButton'),'enable','on');   
-        set(findall(findobj('tag', 'analysisSetup'),...
-            '-property', 'enable'), 'enable', 'off')
+        % Make sure preprocessing complete
+        if data.iniGuessComplete == 1 
         
-        % Clear the progress bar
-        axes(findobj('tag','analysisWaitbar'));
-        cla
-        rectangle('Position',[0,0,0,0],'FaceColor','g');
-        text(482,10,[num2str(0),'%']);
-        
-        % Clear both of the progress plots
-        axes(findobj('tag','iterChangeAxis1'));
-        cla
-        axes(findobj('tag','iterChangeAxis2'));
-        cla
-        pause(1)
-        
-        % Get all the settings.
-        global prefix;
-        global keeplist;
-        %selectAlg = findobj('Tag', 'algoSelection');
-        %selected_algo=get(selectAlg,'Value');
-        selected_algo = 1;
-        data.maxiter = str2double(get(findobj('Tag','maxIter'),'String'));
-        data.epsilon1 = str2double(get(findobj('Tag','epsilon1'),'String'));
-        data.epsilon2 = str2double(get(findobj('Tag','epsilon2'),'String'));
-        
-        % Write out algorithm information to log file.
-        if (writelog == 1)
-            outfile = fopen(outfilename, 'a' );
-            fprintf(outfile, '\n\n----------------- EM Algorithm Running -----------------');
-        end
-           
-        % User selected approximate EM algorithm.
-        if(selected_algo == 1)
-            
-            % Write the analysis information to the log file.
+            % Enable the stop button and disable the run button
+            set(findobj('tag','stopButton'),'enable','on');   
+            set(findall(findobj('tag', 'analysisSetup'),...
+                '-property', 'enable'), 'enable', 'off')
+
+            % Clear the progress bar
+            axes(findobj('tag','analysisWaitbar'));
+            cla
+            rectangle('Position',[0,0,0,0],'FaceColor','g');
+            text(482,10,[num2str(0),'%']);
+
+            % Clear both of the progress plots
+            axes(findobj('tag','iterChangeAxis1'));
+            cla
+            axes(findobj('tag','iterChangeAxis2'));
+            cla
+            pause(1)
+
+            % Get all the settings.
+            global prefix;
+            global keeplist;
+            %selectAlg = findobj('Tag', 'algoSelection');
+            %selected_algo=get(selectAlg,'Value');
+            selected_algo = 1;
+            data.maxiter = str2double(get(findobj('Tag','maxIter'),'String'));
+            data.epsilon1 = str2double(get(findobj('Tag','epsilon1'),'String'));
+            data.epsilon2 = str2double(get(findobj('Tag','epsilon2'),'String'));
+
+            % Write out algorithm information to log file.
             if (writelog == 1)
-                fprintf(outfile, '\nStarted approximate EM algorithm with the following settings:');
-                fprintf(outfile, strcat('\nMaximum Iterations: ',num2str(data.maxiter)));
-                fprintf(outfile, strcat('\nEpsilon 1: ',num2str(data.epsilon1)));
-                fprintf(outfile, strcat('\nEpsilon 2: ',num2str(data.epsilon2)));
+                outfile = fopen(outfilename, 'a' );
+                fprintf(outfile, '\n\n----------------- EM Algorithm Running -----------------');
             end
-            
-            % Run the approximate EM algorithm.
-            [data.theta_est, data.beta_est, data.z_mode, ...
-                data.subICmean, data.subICvar, data.grpICmean, ...
-                data.grpICvar, data.success, data.G_z_dict, data.finalIter] = ...
-                CoeffpICA_EM (data.YtildeStar, data.X, data.thetaStar, ...
-                data.CmatStar, data.beta0Star, data.maxiter, ...
-                data.epsilon1, data.epsilon2, 'approxVec_Experimental', data.outpath, data.prefix,0);
-            
-        % User selected exact EM algorithm, not currently included in
-        % package
-        else
-            
-            % Write analysis information to log file.
+
+            % User selected approximate EM algorithm.
+            if(selected_algo == 1)
+
+                % Write the analysis information to the log file.
+                if (writelog == 1)
+                    fprintf(outfile, '\nStarted approximate EM algorithm with the following settings:');
+                    fprintf(outfile, strcat('\nMaximum Iterations: ',num2str(data.maxiter)));
+                    fprintf(outfile, strcat('\nEpsilon 1: ',num2str(data.epsilon1)));
+                    fprintf(outfile, strcat('\nEpsilon 2: ',num2str(data.epsilon2)));
+                end
+
+                % Run the approximate EM algorithm.
+                [data.theta_est, data.beta_est, data.z_mode, ...
+                    data.subICmean, data.subICvar, data.grpICmean, ...
+                    data.grpICvar, data.success, data.G_z_dict, data.finalIter] = ...
+                    CoeffpICA_EM (data.YtildeStar, data.X, data.thetaStar, ...
+                    data.CmatStar, data.beta0Star, data.maxiter, ...
+                    data.epsilon1, data.epsilon2, 'approxVec_Experimental', data.outpath, data.prefix,0);
+
+            % User selected exact EM algorithm, not currently included in
+            % package
+            else
+
+                % Write analysis information to log file.
+                if (writelog == 1)
+                    fprintf(outfile, '\nStarted exact EM algorithm');
+                end
+
+                % Run the exact EM algorithm.
+                [data.theta_est, data.beta_est, data.z_mode, ...
+                    data.subICmean, data.subICvar, data.grpICmean, ...
+                    data.grpICvar, data.success, data.gz_dict] = ...
+                    CoeffpICA_EM (data.Ytilde, data.X, data.theta0, ...
+                    data.C_matrix_diag, data.beta0, data.maxiter, ...
+                    data.epsilon1, data.epsilon2, 'exact', data.outpath, data.prefix, 0);
+            end
+
+            % Analysis finished, write to log file.
             if (writelog == 1)
-                fprintf(outfile, '\nStarted exact EM algorithm');
+            fprintf(outfile, strcat('\nOutput is in',...
+                [' ',get(findobj('Tag','analysisFolder'),'String')] )  );
             end
-            
-            % Run the exact EM algorithm.
-            [data.theta_est, data.beta_est, data.z_mode, ...
-                data.subICmean, data.subICvar, data.grpICmean, ...
-                data.grpICvar, data.success, data.gz_dict] = ...
-                CoeffpICA_EM (data.Ytilde, data.X, data.theta0, ...
-                data.C_matrix_diag, data.beta0, data.maxiter, ...
-                data.epsilon1, data.epsilon2, 'exact', data.outpath, data.prefix, 0);
-        end
-        
-        % Analysis finished, write to log file.
-        if (writelog == 1)
-        fprintf(outfile, strcat('\nOutput is in',...
-            [' ',get(findobj('Tag','analysisFolder'),'String')] )  );
-        end
-        path = get(findobj('Tag','analysisFolder'),'String');
-        
-        % Create nifti files for the group ICs, the subject specific ICs,
-        % and the beta effects.
-        prefix = get(findobj('Tag','prefix'),'String');
-        vxl = data.voxSize;
-        locs = data.validVoxels;
-        path = [data.outpath '/'];
-        
-        % Open a waitbar showing the user that the results are being saved
-        waitSave = waitbar(0,'Please wait while the results are saved');
-        
-        % Save a file with the subject level IC map information
-        subjFilename = [path prefix '_subject_IC_estimates.mat'];
-        subICmean = data.subICmean;
-        save(subjFilename, 'subICmean');
-        
-        waitbar(1 / (2+data.qstar))
-        
-        for i=1:data.qstar
-            
-            waitbar((1+i) / (2+data.qstar), waitSave, ['Saving results for IC ', num2str(i)])
-            
-            % Save the S0 map
-            gfilename = [prefix '_S0_IC_' num2str(i) '.nii'];
-            nmat = nan(vxl);
-            nmat(locs) = data.grpICmean(i,:);
-            nii = make_nii(nmat);
-            save_nii(nii,strcat(path,gfilename));
-            
-            % Create IC maps for the betas.
-            for k=1:size(data.beta_est,1)
-                bfilename = [prefix '_beta_cov' num2str(k) '_IC' num2str(i) '.nii'];
+            path = get(findobj('Tag','analysisFolder'),'String');
+
+            % Create nifti files for the group ICs, the subject specific ICs,
+            % and the beta effects.
+            prefix = get(findobj('Tag','prefix'),'String');
+            vxl = data.voxSize;
+            locs = data.validVoxels;
+            path = [data.outpath '/'];
+
+            % Open a waitbar showing the user that the results are being saved
+            waitSave = waitbar(0,'Please wait while the results are saved');
+
+            % Save a file with the subject level IC map information
+            subjFilename = [path prefix '_subject_IC_estimates.mat'];
+            subICmean = data.subICmean;
+            save(subjFilename, 'subICmean');
+
+            waitbar(1 / (2+data.qstar))
+
+            for i=1:data.qstar
+
+                waitbar((1+i) / (2+data.qstar), waitSave, ['Saving results for IC ', num2str(i)])
+
+                % Save the S0 map
+                gfilename = [prefix '_S0_IC_' num2str(i) '.nii'];
                 nmat = nan(vxl);
-                nmat(locs) = data.beta_est(k,i,:);
+                nmat(locs) = data.grpICmean(i,:);
                 nii = make_nii(nmat);
-                save_nii(nii,strcat(path,bfilename));
+                save_nii(nii,strcat(path,gfilename));
+
+                % Create IC maps for the betas.
+                for k=1:size(data.beta_est,1)
+                    bfilename = [prefix '_beta_cov' num2str(k) '_IC' num2str(i) '.nii'];
+                    nmat = nan(vxl);
+                    nmat(locs) = data.beta_est(k,i,:);
+                    nii = make_nii(nmat);
+                    save_nii(nii,strcat(path,bfilename));
+                end
+
+                % Create aggregate IC maps
+                nullAggregateMatrix = nan(vxl);
+                nullAggregateMatrix(locs) = 0.0;
+                for j=1:data.N
+                    nullAggregateMatrix(locs) = nullAggregateMatrix(locs) +...
+                        1/data.N * squeeze(subICmean(i,j,:));
+                end
+                gfilename = [prefix '_aggregateIC_' num2str(i) '.nii'];
+                nii = make_nii(nullAggregateMatrix);
+                save_nii(nii,strcat(data.outpath,'/',gfilename));
+
             end
-            
-            % Create aggregate IC maps
-            nullAggregateMatrix = nan(vxl);
-            nullAggregateMatrix(locs) = 0.0;
-            for j=1:data.N
-                nullAggregateMatrix(locs) = nullAggregateMatrix(locs) +...
-                    1/data.N * squeeze(subICmean(i,j,:));
+
+            waitbar((data.qstar+1) / (2+data.qstar), waitSave, 'Estimating variance of covariate effects. This may take a minute.')
+
+            % Calculate the standard error estimates for the beta maps
+            theory_var = VarEst_hcica(data.theta_est, data.beta_est, data.X,...
+                data.z_mode, data.YtildeStar, data.G_z_dict, data.voxSize,...
+                data.validVoxels, data.prefix, data.outpath);
+            data.theoretical_beta_se_est = theory_var;
+
+            waitbar(1)
+            close(waitSave)
+
+            data.outpath = path;
+            data.prefix = prefix;
+
+            % Write out a text file to the output directory with what covariate
+            % each beta map corresponds to
+            nBeta = size(data.X, 2);
+            fname = [data.outpath, data.prefix, '_Beta_File_List'];
+            fileID = fopen(fname,'w');
+            formatSpec = 'Beta %4.2i is %s \r\n';
+            for i = 1:nBeta
+                fprintf(fileID,formatSpec,i,data.varNamesX{i});
             end
-            gfilename = [prefix '_aggregateIC_' num2str(i) '.nii'];
-            nii = make_nii(nullAggregateMatrix);
-            save_nii(nii,strcat(data.outpath,'/',gfilename));
-            
+            fclose(fileID);
+
+            % Disable the stop button
+            set(findobj('Tag','stopButton'),'enable','off'); 
+            % Enable the "Display Results" button
+            set(findobj('Tag','displayResultsButton'),'enable','on'); 
+            % Re-enable the analysis buttons
+            set(findall(findobj('tag', 'analysisSetup'),...
+                '-property', 'enable'), 'enable', 'on');
+            set(findobj('tag','runButton'),'enable','on');   
+            % Enable the display results button
+            %set(findobj('Tag','displayResultsButton'),'enable','off'); 
+
+        else
+            warndlg('Please complete all preprocessing and obtain initial guess before running EM algorithm.')
         end
-        
-        waitbar((data.qstar+1) / (2+data.qstar), waitSave, 'Estimating variance of covariate effects. This may take a minute.')
-        
-        % Calculate the standard error estimates for the beta maps
-        theory_var = VarEst_hcica(data.theta_est, data.beta_est, data.X,...
-            data.z_mode, data.YtildeStar, data.G_z_dict, data.voxSize,...
-            data.validVoxels, data.prefix, data.outpath);
-        data.theoretical_beta_se_est = theory_var;
-        
-        waitbar(1)
-        close(waitSave)
-        
-        data.outpath = path;
-        data.prefix = prefix;
-        
-        % Write out a text file to the output directory with what covariate
-        % each beta map corresponds to
-        nBeta = size(data.X, 2);
-        fname = [data.outpath, data.prefix, '_Beta_File_List'];
-        fileID = fopen(fname,'w');
-        formatSpec = 'Beta %4.2i is %s \r\n';
-        for i = 1:nBeta
-            fprintf(fileID,formatSpec,i,data.varNamesX{i});
-        end
-        fclose(fileID);
-        
-        % Disable the stop button
-        set(findobj('Tag','stopButton'),'enable','off'); 
-        % Enable the "Display Results" button
-        set(findobj('Tag','displayResultsButton'),'enable','on'); 
-        % Re-enable the analysis buttons
-        set(findall(findobj('tag', 'analysisSetup'),...
-            '-property', 'enable'), 'enable', 'on');
-        set(findobj('tag','runButton'),'enable','on');   
-        % Enable the display results button
-        %set(findobj('Tag','displayResultsButton'),'enable','off'); 
         
     end
     
