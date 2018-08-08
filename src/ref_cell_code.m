@@ -1,5 +1,5 @@
 function [ X, varNamesX ] = ref_cell_code( covariates, covTypes, varInModel,...
-    interactions, includeInteractions  )
+    interactions, interactionsBase, includeInteractions  )
 % ref_cell_code - Function to perform reference cell coding of the
 % covariates
 %
@@ -13,6 +13,7 @@ function [ X, varNamesX ] = ref_cell_code( covariates, covTypes, varInModel,...
 %   varInModel   - vector that is 1 if a covariate should be included in
 %                   the model
 %   interactions - matrix of user-specified interactions
+%   interactionsBase - interactions in terms of the un-ref-celled covs
 %   includeInteractions - 1 if interactions are to be calculated
 %
 % Outputs:
@@ -61,7 +62,32 @@ for iCov = 1:numel(covTypes)
             X = [X, table2array(covariates(:, iCov) )];
             varNamesX = [varNamesX, covariates.Properties.VariableNames(iCov)];
         end
+        
+        % Create the intermediate interactions info
+        
     end % end of check that covariate is to be included in the model
+end
+
+interactions = zeros(0, sum(varLevels));
+[nInt, ~] = size(interactionsBase);
+for iInt = 1:nInt
+    % Find the relevant variables
+    intTerms = find(interactionsBase(iInt,:));
+    intTerm1 = intTerms(1);
+    intTerm2 = intTerms(2);
+    % Now, use the number of var levels to figure out how many rows
+    % need to be added to interactions matrix
+    nRowAdd = varLevels(intTerm1) * varLevels(intTerm2);
+    [lp1, lp2] = meshgrid(1:varLevels(intTerm1), 1:varLevels(intTerm2));
+    % Now get 'actual' columns by adding up previous factor levels
+    start1 = sum(varLevels(1:(intTerm1-1)));
+    start2 = sum(varLevels(1:(intTerm2-1)));
+    newInt = zeros(nRowAdd, sum(varLevels));
+    for iSubInt = 1:nRowAdd
+        newInt(iSubInt, start1+lp1(iSubInt)) = 1;
+        newInt(iSubInt, start2+lp2(iSubInt)) = 1;
+    end
+    interactions = [interactions; newInt];
 end
 
 % Now handle interactions
@@ -73,24 +99,31 @@ if includeInteractions
         intTerm1 = intTerms(1);
         intTerm2 = intTerms(2);
         % Starting column index of X for each factor
-        intTerm1Start = sum( varLevels(1:(intTerm1-1)) );
-        intTerm2Start = sum( varLevels(1:(intTerm2-1)) );
+        %intTerm1Start = sum( varLevels(1:(intTerm1-1)) );
+        %intTerm2Start = sum( varLevels(1:(intTerm2-1)) );
         % Find out how many columns this interaction adds to the design matrix
-        nColAdd = varLevels(intTerm1) * varLevels(intTerm2);
+        %nColAdd = varLevels(intTerm1) * varLevels(intTerm2);
+        nColAdd=1;
         newColumns = zeros(N, nColAdd);
         % Loop over the first variable
-        colIndex = 0;
-        for i1 = 1:varLevels(intTerm1)
-            % Loop over the second variable
-            for i2 = 1:varLevels(intTerm2)
-                colIndex = colIndex + 1;
-                newColumns(:,colIndex) = X(:,intTerm1Start+i1) .*...
-                    X(:, intTerm2Start+i2);
-                factorName = strcat( '(', varNamesX(intTerm1Start+i1), ')_x_(',...
-                    varNamesX(intTerm2Start+i2), ')' );
-                varNamesX = [varNamesX, factorName];
-            end
-        end
+        colIndex = 1;
+        
+        newColumns(:, :) = X(:, intTerm1) .* X(:, intTerm2);
+        factorName = strcat( '(', varNamesX(intTerm1), ')_x_(',...
+                    varNamesX(intTerm2), ')' );
+        varNamesX = [varNamesX, factorName];
+        
+%         for i1 = 1:varLevels(intTerm1)
+%             % Loop over the second variable
+%             for i2 = 1:varLevels(intTerm2)
+%                 colIndex = colIndex + 1;
+%                 newColumns(:,colIndex) = X(:,intTerm1Start+i1) .*...
+%                     X(:, intTerm2Start+i2);
+%                 factorName = strcat( '(', varNamesX(intTerm1Start+i1), ')_x_(',...
+%                     varNamesX(intTerm2Start+i2), ')' );
+%                 varNamesX = [varNamesX, factorName];
+%             end
+%         end
         X = [X, newColumns];
     end
 end

@@ -73,6 +73,7 @@ handles.covariates = varargin{5};
 handles.interactions = varargin{6};
 handles.varInModel = varargin{7};
 handles.varInCovFile = varargin{8};
+handles.interactionsBase = varargin{9};
 
 % List of all covariates included in the design matrix, the covariates for
 % the hcica model are selected from this list
@@ -117,10 +118,10 @@ set( findobj( 'tag', 'intMenu1' ), 'String', handles.covariates.Properties.Varia
 set( findobj( 'tag', 'intMenu2' ), 'String', handles.covariates.Properties.VariableNames(handles.varInModel==1) );
 
 % Update the interactions listbox
-nInt = size(handles.interactions, 1);
+nInt = size(handles.interactionsBase, 1);
 interactionList = {};
 for i = 1:nInt
-    currentInt = squeeze(handles.interactions(i, :));
+    currentInt = squeeze(handles.interactionsBase(i, :));
     activeInds = find(currentInt);
     factorName = strcat( '(', handles.rawCovariateList{activeInds(1)}, ')_x_(',...
                     handles.rawCovariateList{activeInds(2)}, ')' );
@@ -171,10 +172,10 @@ else
     newIntRow(val1) = 1;
     newIntRow(val2) = 1;
     % setup handles.interactions
-    if sum(sum(newIntRow == handles.interactions, 2) == width(handles.covariates) ) > 0
+    if sum(sum(newIntRow == handles.interactionsBase, 2) == width(handles.covariates) ) > 0
         warndlg('Interaction term already exists.')
     else
-        handles.interactions = [handles.interactions; newIntRow];
+        handles.interactionsBase = [handles.interactionsBase; newIntRow];
 
         % Press the invisible update button
         guidata(hObject, handles);
@@ -218,6 +219,7 @@ if sum(handles.varInModel) > 0
     
     data.X = handles.X;
     data.interactions = handles.interactions;
+    data.interactionsBase = handles.interactionsBase;
     data.varNamesX = handles.varNamesX;
     data.covTypes = handles.covTypes;
     data.varInModel = handles.varInModel;
@@ -295,7 +297,7 @@ val1 = ind1Val(1);
 val2 = ind2Val(1);
 
 
-[nInt, nCol] = size(handles.interactions);
+[nInt, nCol] = size(handles.interactionsBase);
 
 % Check for same covariate issue
 if val1 == val2
@@ -305,19 +307,21 @@ else
     newIntRow(val1) = 1;
     newIntRow(val2) = 1;
     % setup handles.interactions
-    if sum(sum(newIntRow == handles.interactions, 2) == width(handles.covariates) ) > 0
+    if sum(sum(newIntRow == handles.interactionsBase, 2) == width(handles.covariates) ) > 0
         % Recreate the coding scheme excluding the user-specified
         % interaction
         if nInt == 1
-            handles.interactions = zeros(0, nCol);
+            handles.interactionsBase = zeros(0, nCol);
             [ handles.X, handles.varNamesX ] = ref_cell_code( handles.covariates,...
-                handles.covTypes, handles.varInModel, handles.interactions, 1  );
+                handles.covTypes, handles.varInModel, handles.interactions,...
+                handles.interactionsBase, 1  );
         else
             intToBeRemoved = find(sum(sum(newIntRow ==...
-                handles.interactions, 2) == width(handles.covariates) ));
-            handles.interactions(intToBeRemoved,:) = [];
+                handles.interactionsBase, 2) == width(handles.covariates) ));
+            handles.interactionsBase(intToBeRemoved,:) = [];
             [ handles.X, handles.varNamesX ] = ref_cell_code( handles.covariates,...
-                handles.covTypes, handles.varInModel, handles.interactions, 1  );
+                handles.covTypes, handles.varInModel, handles.interactions,...
+                handles.interactionsBase, 1  );
         end
         
         newTable = cell(handles.N, size(handles.X, 2)+1);
@@ -341,10 +345,10 @@ else
     end
     
     % Update the interactions listbox
-    nInt = size(handles.interactions, 1);
+    nInt = size(handles.interactionsBase, 1);
     interactionList = {};
     for i = 1:nInt
-        currentInt = squeeze(handles.interactions(i, :));
+        currentInt = squeeze(handles.interactionsBase(i, :));
         activeInds = find(currentInt);
         factorName = strcat( '(', handles.rawCovariateList{activeInds(1)}, ')_x_(',...
                         handles.rawCovariateList{activeInds(2)}, ')' );
@@ -660,6 +664,7 @@ if checkAns
     handles.varsInModel.String = handles.includedCovariateList;
     
     handles.interactions = zeros(0, handles.ncov);
+    handles.interactionsBase = zeros(0, handles.ncov);
     
     % disable the list of variables for interactions
     set( findobj( 'tag', 'intMenu1' ), 'String', 'N/A' );
@@ -688,7 +693,8 @@ function updateDisplayButtonInvisible_Callback(hObject, eventdata, handles)
 
 % Update the reference cell coding
 [ handles.X, handles.varNamesX ] = ref_cell_code( handles.covariates,...
-        handles.covTypes, handles.varInModel, handles.interactions, 1  );
+        handles.covTypes, handles.varInModel, handles.interactions,...
+        handles.interactionsBase, 1  );
 
 % Update the table
 newTable = cell(handles.N, size(handles.X, 2)+1);
@@ -707,10 +713,10 @@ handles.covFileDisplay.Data = newTable;
 handles.covFileDisplay.ColumnName = ['Subject', handles.varNamesX];
 
 % Update the interactions listbox
-nInt = size(handles.interactions, 1);
+nInt = size(handles.interactionsBase, 1);
 interactionList = {};
 for i = 1:nInt
-    currentInt = squeeze(handles.interactions(i, :));
+    currentInt = squeeze(handles.interactionsBase(i, :));
     activeInds = find(currentInt);
     factorName = strcat( '(', handles.rawCovariateList{activeInds(1)}, ')_x_(',...
                     handles.rawCovariateList{activeInds(2)}, ')' );
@@ -753,6 +759,7 @@ if sum(handles.varInModel) > 0
     
     data.X = handles.X;
     data.interactions = handles.interactions;
+    data.interactionsBase = handles.interactionsBase;
     data.varNamesX = handles.varNamesX;
     data.covTypes = handles.covTypes;
     data.varInModel = handles.varInModel;
@@ -851,8 +858,8 @@ if ~isempty(hObject.Value)
     handles.varsInModel.String = handles.includedCovariateList;
 
     % Remove any interactions with this variable
-    removeList = (handles.interactions * (handles.varInModel==0)) > 0;
-    handles.interactions = handles.interactions( (1-removeList) == 1, :);
+    removeList = (handles.interactionsBase * (handles.varInModel==0)) > 0;
+    handles.interactionsBase = handles.interactionsBase( (1-removeList) == 1, :);
 
     % Update the list of variables for interactions, have to consider
     % special case where no variables included.

@@ -548,6 +548,7 @@ function varargout = main(varargin)
             data.interactions = runinfo.interactions;
             data.varInCovFile = runinfo.varInCovFile;
             data.varInModel = runinfo.varInModel;
+            data.interactionsBase = runinfo.interactionsBase;
             waitbar(1)
             close(waitLoad);
                         
@@ -634,11 +635,12 @@ function varargout = main(varargin)
                     % change these types in model specification later
                     [ data.X, data.varNamesX ] = ref_cell_code( data.covariates,...
                         data.covTypes, data.varInModel,...
-                        0, 0  );
+                        0, zeros(0, length(data.covTypes)), 0  );
                     
                     % Create the (empty) interactions matrix
                     [~, nCol] = size(data.X);
                     data.interactions = zeros(0, nCol);
+                    data.interactionsBase = zeros(0, length(data.covTypes));
                     
                     % Load the first data file and get its size.
                     waitbar(5/10, waitLoad, 'Loading the mask')
@@ -1159,6 +1161,7 @@ function varargout = main(varargin)
             data.X = runInfo.X;
             data.varNamesX = runInfo.varNamesX;
             data.interactions = runInfo.interactions;
+            data.interactionsBase = runInfo.interactionsBase;
             data.niifiles = runInfo.niifiles;
             [data.N, ~] = size(runInfo.X);
             data.qstar = runInfo.q;
@@ -1229,6 +1232,7 @@ function varargout = main(varargin)
         varNamesX = data.varNamesX;                                 %#ok<NASGU>
         waitbar(8/20)
         interactions = data.interactions  ;                         %#ok<NASGU>
+        interactionsBase = data.interactionsBase;
         waitbar(9/20)
         thetaStar = data.thetaStar;                                 %#ok<NASGU>
         waitbar(10/20)
@@ -1253,7 +1257,7 @@ function varargout = main(varargin)
             'time_num', 'X', 'validVoxels', 'niifiles', 'maskf', 'covfile', 'numPCA', ...
             'outfolder', 'prefix', 'covariates', 'covTypes', 'beta0Star', 'CmatStar',...
             'YtildeStar', 'thetaStar', 'voxSize', 'N', 'qold', 'varNamesX',...
-            'interactions', 'varInModel', 'varInCovFile');
+            'interactions', 'varInModel', 'varInCovFile', 'interactionsBase');
         waitbar(20/20)
         close(waitSave)
         
@@ -1264,7 +1268,7 @@ function varargout = main(varargin)
         if (data.dataLoaded == 1)
             waitfor(viewCovariateDisplay(data.X, data.varNamesX, data.niifiles,...
                 data.covTypes, data.covariates, data.interactions,...
-                data.varInModel, data.varInCovFile))
+                data.varInModel, data.varInCovFile, data.interactionsBase))
             % Check if, as a result, further stages have been invalidated
             if data.preprocessingComplete == 0
                 % Remove the progressbar
