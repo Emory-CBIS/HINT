@@ -52,8 +52,6 @@ function [varBeta1] = VarEst_hcica(theta_est, beta_est, X,...
 	Index(:,1) = repmat( (1:q)',[p 1]); % IC 
 	Index(:,2) = reshape( repmat(1:p, [q 1]), [q*p 1]); % Covariates
 		
-    %W_var2 = zeros(q,q,V);
-
 	for v=1:V
 	
 		%%% Estimating the W(v) for the residual of the stacked model: Ai'Yi(v) = Xi b(v) + N(0, W(v)) %%%
@@ -64,37 +62,20 @@ function [varBeta1] = VarEst_hcica(theta_est, beta_est, X,...
 		% Theoretical one:
 		W_var1(:,:,v)  = diag(Sigma3z + theta_est.sigma2_sq) + theta_est.sigma1_sq*eye(q); 
 		
-		% Empirical one: 
-% 		for i = 1:N
-% 			Y_i = Y_tilde_all((1+q*(i-1)):(q*i),v); 
-% 			A_i = theta_est.A(:,:,i);
-% 			Yistar = A_i'*Y_i-( G_z_dict(:,:,z_mode(v))*theta_est.miu3 +...
-%                 squeeze(beta_est(:,:,v))'*X(i,:)');
-% 			W_var2(:,:,v) = W_var2(:,:,v) + Yistar*Yistar';
-% 		end
-		%W_var2(:,:,v) = W_var2(:,:,v)/N;
-		
 		%%% Estimating the variance-covariance of vec(beta(v)'): %%%
-		
 		W_varinv1 = inv(W_var1(:,:,v));
-		%W_varinv2 = inv(W_var2(:,:,v));
 		
 		for i =1:N
 			Xistar = [eye(q) kron(reshape(X(i,:),[1 p]),eye(q))];
 			varBetaall1 = varBetaall1 + Xistar'*W_varinv1*Xistar;
-			%varBetaall2 = varBetaall2 + Xistar'*W_varinv2*Xistar;
 		end
 		varBetaall1 = inv(varBetaall1);
-		%varBetaall2 = inv(varBetaall2);
 		
-		varBeta1(:,:,v) = varBetaall1;%( (q+1):(q*(p+1)) , (q+1):(q*(p+1)) );
-		%varBeta2(:,:,v) = varBetaall2;%( (q+1):(q*(p+1)) , (q+1):(q*(p+1)) );
-		
+		varBeta1(:,:,v) = varBetaall1;%( (q+1):(q*(p+1)) , (q+1):(q*(p+1)) );		
     end
     
     % Create the maps for each IC based on the theoretical variance
     % estimator
-    
     for iIC = 1:q
         % Create an indexing array to grab the right elements of the
         % estimates

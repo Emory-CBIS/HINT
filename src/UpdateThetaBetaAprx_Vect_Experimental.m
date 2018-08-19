@@ -95,10 +95,6 @@ function [theta_new, beta_new, z_mode, subICmean, subICvar,...
     % Obtain the corresponding IC means
     BX = mtimesx(B, miu3z);
     
-    % Add together the grpICmean and the covariate effects for each subejct
-    %miu_temp_ALT = bsxfun(@plus, BX, betaTimesX);
-    %clear('betaTimesX');
-    
     % Observed data with mean subtracted off
     Y_star_uncent = mtimesx(A', Y);
 
@@ -118,34 +114,6 @@ function [theta_new, beta_new, z_mode, subICmean, subICvar,...
                repmat( eye(N), [1, (q + 1)]), ones(q)))), q, [], N * (q + 1));
            
            
-           
-           
-%     tic()
-%     % Calculate the probability of belonging to ICs over subjects
-%     probBelong = bsxfun( @plus ,zeros(1, q+1, V), log(pi_z_prod) );
-%     probBelong = permute(probBelong, [1,3,2]);
-%     subj_sd = zeros(q, 1, q+1);
-%     for iSubj = 1:N
-%         % Grab this subjects processed data
-%         % REMOVE THIS ALLOCATION
-%         %Y_star_subj = Y_star_alt( q*(iSubj-1)+1:q*iSubj ,:,:);
-%         cov_index = iSubj:N:(N*(q+1));
-%         subj_sd_temp = (mvn_cov_tran_wide(:,:, cov_index ));
-%         for ii=1:(q+1)
-%             subj_sd(:,:,ii) = diag(subj_sd_temp(:,:,ii));
-%         end
-%         % Calculate the probabilities
-%         prob = normpdf(Y_star_uncent( q*(iSubj-1)+1:q*iSubj ,:),...
-%             miu_temp_ALT( q*(iSubj-1)+1:q*iSubj ,:,:), subj_sd) + 0.00000000000000000001;
-%         probBelong = probBelong + sum( log(prob), 1 );
-%     end
-%     oldtime = toc()
-%     probBelong1 = probBelong;
-    
-    % betaTimesXtemp = mtimesx( X_mtx, 't', beta);
-    % betaTimesX = reshape(permute(betaTimesXtemp, [2 1 3]), [N * q, V]);
-    % miu_temp_ALT = bsxfun(@plus, BX, betaTimesX);
-    % THIS IS THE NEW VERSION CALCULATING MEAN ON THE FLY
     % Calculate the probability of belonging to ICs over subjects
     probBelong = bsxfun( @plus ,zeros(1, q+1, V), log(pi_z_prod) );
     probBelong = permute(probBelong, [1,3,2]);

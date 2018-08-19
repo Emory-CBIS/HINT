@@ -38,9 +38,7 @@ fprintf(fileID, 'numOfSess = 1;   \n');
 
 % this one is going to take some work
 for i = 1:nsub
-    %for c = 1:nsub
     [pathstr,name,ext] = fileparts(niipaths{i});
-    %end
     path = pathstr;
     fprintf(fileID, strcat('s', num2str(i), '_s1 = {', char(39), path, char(39), ',', char(39), [name ext], char(39),  '};\n'));
 end

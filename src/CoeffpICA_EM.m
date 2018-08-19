@@ -98,7 +98,6 @@ function [theta, beta, z_mode, subICmean, subICvar, grpICmean, grpICvar,...
         
         % Want to update plot every iteration or every 30 seconds
         updatePlot = 1;
-        disp('change back to 0')
         if (iterationTime / 10 > plotIncr)
             updatePlot = 1;
             plotIncr = plotIncr + 1;
@@ -161,7 +160,6 @@ function [theta, beta, z_mode, subICmean, subICvar, grpICmean, grpICvar,...
             %print(gca, [outpath '/' prefix '_theta_progress_plot'],'-dpng')
             
             % Beta change plot
-            disp('need to get back to saving plot!')
             axes(findobj('tag','iterChangeAxis2'));
             set(gca, 'NextPlot', 'add');
             h = findobj('tag','iterChangeAxis2');
