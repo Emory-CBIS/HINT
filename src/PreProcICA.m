@@ -47,7 +47,7 @@ for i=1:N
     % Center the data
     [X_tilde_all, ] = remmean(X_tilde_all);
     
-    % run pca on X_tilde_all
+    % run pca on X_tilde_all`
     [U_incr, D_incr] = pcamat(X_tilde_all);
     
     % sort the eig values, IX:index

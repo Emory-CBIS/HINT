@@ -17,11 +17,9 @@ function [ varargout ] = estimateFromSavedData( datLocation, algSelection, maxit
 
 load(datLocation);
 
-if strcmp(algSelection, 'approxVec_Experimental')
-    [theta_est, beta_est, z_mode, subICmean, subICvar, grpICmean, ...
+[theta_est, beta_est, z_mode, subICmean, subICvar, grpICmean, ...
     grpICvar, success, G_z_dict, finalIter] = CoeffpICA_EM (YtildeStar, X, thetaStar, ...
     CmatStar, beta0Star, maxiter, epsilon1, epsilon2, 'approxVec_Experimental', outfolder, prefix,1);
-end
 
 iterpath = [outfolder '/' prefix '_iter' num2str(finalIter) '_parameter_estimates'];
 compileIterResults( outfolder, datLocation, iterpath, maskf );

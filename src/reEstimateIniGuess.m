@@ -27,6 +27,7 @@ function [ theta, beta, Ytilde, CmatStar ] = reEstimateIniGuess( N, p, outpath, 
 
     % Redeclare the list of ICs to be used and calculate the new q
     global keeplist;
+    %keeplist = ones(14, 1);
     qstar = sum(keeplist);
     
     % Setup the waitbar
@@ -39,17 +40,19 @@ function [ theta, beta, Ytilde, CmatStar ] = reEstimateIniGuess( N, p, outpath, 
     grplevel = load([filepath '_ica.mat']);
     pca2 = load([filepath '_pca_r2-1.mat']);
     
-    % This block of code is Josh's new way. Idea is to rebuild Zbar from
+    % Idea is to rebuild Zbar from
     % the individual subject data to avoid losing the beta effects. To do
     % this, we have to re-create each subjects p x V data set.
     Zbar = zeros( p*N, size(grplevel.icasig, 2) );
     % Get the W matrix, remove the unwanted ic, and find its inverse
-    W = grplevel.W;
-    %W(:,keeplist == 0) = 0;
-    A = pinv(W);
+    %W = grplevel.W;
+    %A = pinv(W);
+    A = grplevel.A;
     A(:,keeplist == 0) = 0;
+    
     % For each subject, create the p * V data set
-    whiteMatrix = pca2.whiteM;
+    %whiteMatrix = pca2.whiteM;
+    dewhiteM = pca2.dewhiteM;
     %q = size(whiteMatrix,1);
     for iSubj = 1:N
         % get the index from 1 to Np for the whitening Matrix
@@ -57,15 +60,36 @@ function [ theta, beta, Ytilde, CmatStar ] = reEstimateIniGuess( N, p, outpath, 
         % Load the subject level weight matrix q x p
         subjDat = load([filepath '_ica_br' num2str(iSubj) '.mat']);
         % Get the corresponding columns of the whitening matrix
-        Mi = whiteMatrix(:, ind1:ind2);
-        Mi(keeplist == 0,:) = 0;
-        Zbar(ind1:ind2, :) = pinv(Mi) * A * subjDat.compSet.ic;
+        %Mi = whiteMatrix(:, ind1:ind2);
+        %Zbar(ind1:ind2, :) = pinv(Mi) * A * subjDat.compSet.ic;
+        Zbar(ind1:ind2, :) = dewhiteM(ind1:ind2,:) * A * subjDat.compSet.ic;
     end    
+    
+    
+    
+    %% Alternate approach to getting Zbar
+    dewhiteM = pca2.dewhiteM;
+    A = grplevel.A;
+    Arem = grplevel.A;
+    Arem(:, keeplist==1) = 0;
+    %q = size(whiteMatrix,1);
+    for iSubj = 1:N
+        % get the index from 1 to Np for the whitening Matrix
+        ind1 = (iSubj-1)*p+1; ind2 = iSubj*p;
+        % Load the subject level weight matrix q x p
+        subjDat = load([filepath '_ica_br' num2str(iSubj) '.mat']);
+        % Get the corresponding columns of the whitening matrix
+        one = dewhiteM(ind1:ind2,:) * A * subjDat.compSet.ic;
+        rem = dewhiteM(ind1:ind2,:) * Arem * subjDat.compSet.ic;
+        Zbar(ind1:ind2, :) = one - rem;
+    end   
+    
+    
     
     waitbar(1/steps);
 
     % Calculate V, lambda, the whitening and dewhitening matrices
-    cov_m = icatb_cov(Zbar', 0);
+    cov_m = icatb_cov(Zbar', 1);
     [V, Lambda] = icatb_eig_symm(cov_m, N*p, 'num_eigs', qstar, ...
         'eig_solver', 'selective', 'create_copy', 0);
     whiteM = sqrtm(Lambda) \ V';
@@ -83,12 +107,32 @@ function [ theta, beta, Ytilde, CmatStar ] = reEstimateIniGuess( N, p, outpath, 
     
     waitbar(2/steps);
 
-    Ytilde = zeros( size(whiteM * Zbar) );
+    Ytilde = zeros(N*qstar ,size(Zbar, 2) );
     
+%     for iSubj = 1:N
+%         ind1 = (iSubj-1)*p+1; ind2 = iSubj*p;
+%         % Load the back reconstruction pca data
+%         dat = load([filepath '_pca_r', num2str(1), '-', num2str(iSubj), '.mat']);
+%         br_data = dat.dewhiteM * Zbar(ind1:ind2,:);
+%         [X_tilde_all, ] = remmean(br_data);
+%         [U_incr, D_incr] = pcamat(X_tilde_all);
+%         lambda = sort(diag(D_incr),'descend');
+%         U_q = U_incr(:,(size(U_incr,2)-qstar+1):size(U_incr,2));
+%         D_q = diag(D_incr((size(U_incr,2)-qstar+1):size(U_incr,2),...
+%             (size(U_incr,2)-qstar+1):size(U_incr,2)));
+% 
+%         % sum across all the remaining eigenvalues
+%         sigma2_ML = sum(lambda(qstar+1:length(lambda))) / (length(lambda)-qstar);
+% 
+%         % whitening, dewhitening matrix and whitened data;
+%         my_whiteningMatrix = diag((D_q-sigma2_ML).^(-1/2)) * U_q';
+%         Ytilde( ((iSubj-1)*qstar)+1:(iSubj*qstar),:) = my_whiteningMatrix * X_tilde_all;
+%     end    
+
     for iSubj = 1:N
-        ind1 = (iSubj-1)*p+1; ind2 = iSubj*p;
-        Ytilde( ((iSubj-1)*qstar)+1:(iSubj*qstar),:) = whiteM(:,ind1:ind2) * Zbar(ind1:ind2,:);
-    end    
+        ind1 = (iSubj - 1)*p+1; ind2 = iSubj*p;
+        Ytilde( ((iSubj-1)*qstar)+1:(iSubj*qstar),:) = whiteM(:,ind1:ind2)*Zbar(ind1:ind2,:); 
+    end
 
     % Back Reconstruction
 
@@ -108,7 +152,7 @@ function [ theta, beta, Ytilde, CmatStar ] = reEstimateIniGuess( N, p, outpath, 
         endT = endT + numOfPCBeforeCAT;
         tmpICInfo{countN} = icInfo{groupIndex}*whiteM(:, startT:endT);
         tmpTCInfo{countN} = dewhiteM(startT:endT, :)*tcInfo{groupIndex};
-        tmpICInfo{countN} = icInfo{groupIndex}*whiteM(:, startT:endT);
+        %tmpICInfo{countN} = icInfo{groupIndex}*whiteM(:, startT:endT);
     end
     icInfo = tmpICInfo;
     tcInfo = tmpTCInfo;
@@ -122,6 +166,7 @@ function [ theta, beta, Ytilde, CmatStar ] = reEstimateIniGuess( N, p, outpath, 
         dat = load([filepath '_pca_r', num2str(1), '-', num2str(iSubj), '.mat']);
         % Supressing warning, variables are created to be saved
         ic = W*icInfo{iSubj}*Zbar( (p*(iSubj-1)+1):p*(iSubj)  ,: ) ; %#ok<NASGU>
+        %ic = pinv(pinv(icInfo{iSubj})*W)*Zbar( (p*(iSubj-1)+1):p*(iSubj)  ,: ) ; %#ok<NASGU>
         tc = dat.dewhiteM*tcInfo{iSubj}*pinv(W); %#ok<NASGU>
         save([filepath '_reduced_br_subj_' num2str(iSubj)], 'ic', 'tc');
     end        
@@ -200,7 +245,8 @@ function [ theta, beta, Ytilde, CmatStar ] = reEstimateIniGuess( N, p, outpath, 
 
     % Save the aggregate map for IC selection; these are only used for IC
     % selection
-    s0_agg = S0;
+    %s0_agg = S0;
+    s0_agg = mean(S_i, 3);
 
     emptyImage = zeros(size(mask.img));
     for i=1:qstar
