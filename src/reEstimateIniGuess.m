@@ -211,18 +211,40 @@ function [ theta, beta, Ytilde, CmatStar ] = reEstimateIniGuess( N, p, outpath, 
         A(:,:,i) = Asym*real(inv(Asym'*Asym)^(1/2));
     end
     
-    waitbar(7/steps);
-
-    % Finally calculate sigma1_squared
+    % Moving in the reverse direction, this allows everything to be on the
+    % scale of Ytilde
+    si2 = zeros(q, V, N);
+    for i = 1:N
+        sInd = q*(i-1)+1; eInd = i*q;
+        si2(:, :, i) = inv(A(:,:,i)) * Ytilde(sInd:eInd,:);   
+    end 
+   
+    waitbar(9/10)
+    
+    % Calculate sigma1_squared (subject level error)
     qstar = sum(keeplist);
     errors = zeros(qstar, V, N);
     for i=1:N
-        sInd = qstar*(i-1)+1; eInd = i*qstar;
-        errors(:,:,i) = Ytilde(sInd:eInd,:) - A(:,:,i)*S_i(:,:,i);
+        sInd = q*(i-1)+1; eInd = i*q;
+        errors(:,:,i) = Ytilde(sInd:eInd,:) - A(:,:,i)*si2(:,:,i);
     end
-    sigma1_sq = var(reshape(errors, [1, qstar*V*N]));
+    sigma1_sq = var(reshape(errors, [1, q*V*N]));
     
-    waitbar(8/steps);
+    % Beta and s0 estimate based on backwards moving ini guess
+    p = size(X,2);
+    beta = zeros(p,q,V);
+    Xint = [ ones(N,1) X ];
+    S0 = zeros(q, V);
+    epsilon2temp = zeros(q, V, N);
+    for v = 1:V
+        estimate = (Xint'*Xint)^(-1) * Xint' *squeeze(si2(:,v,:))';
+        beta(:,:,v) = estimate(2:(p+1), :);
+        S0(:,v) = estimate(1,:)';
+        epsilon2temp(:,v,:) = squeeze(si2(:,v,:)) - (Xint * estimate)';
+    end
+    sigma2_sq = var(reshape(epsilon2temp, [q,V*N]), 0, 2);
+    
+    waitbar(7/steps);
 
     % Initial Guess: fit a Gaussian mixture
     m=2;
@@ -246,7 +268,7 @@ function [ theta, beta, Ytilde, CmatStar ] = reEstimateIniGuess( N, p, outpath, 
     % Save the aggregate map for IC selection; these are only used for IC
     % selection
     %s0_agg = S0;
-    s0_agg = mean(S_i, 3);
+    s0_agg = sum(S_i, 3);
 
     emptyImage = zeros(size(mask.img));
     for i=1:qstar

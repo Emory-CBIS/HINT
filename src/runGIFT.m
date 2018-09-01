@@ -121,7 +121,6 @@ function [ theta, beta, grpSig, s0_agg ] = runGIFT( subjfl, maskfl, prefix, outd
         epsilon2temp(:,v,:) = squeeze(S_i(:,v,:)) - (Xint * estimate)';
     end
     sigma2_sq = var(reshape(epsilon2temp, [q,V*N]), 0, 2);
-    
 
     % Get the subject level mixing matrices
     A = zeros(q,q,N);
@@ -132,23 +131,16 @@ function [ theta, beta, grpSig, s0_agg ] = runGIFT( subjfl, maskfl, prefix, outd
         A(:,:,i) = Asym*real(inv(Asym'*Asym)^(1/2));
     end
     
+    % Moving in the reverse direction, this allows everything to be on the
+    % scale of Ytilde
     si2 = zeros(q, V, N);
     for i = 1:N
-        cS_i = S_i(:,:,i); sInd = q*(i-1)+1; eInd = i*q;
+        sInd = q*(i-1)+1; eInd = i*q;
         si2(:, :, i) = inv(A(:,:,i)) * Ytilde(sInd:eInd,:);   
-    end
-    
+    end 
    
     waitbar(9/10)
     
-%     % Calculate sigma1_squared (subject level error)
-%     errors = zeros(q, V, N);
-%     for i=1:N
-%         sInd = q*(i-1)+1; eInd = i*q;
-%         errors(:,:,i) = Ytilde(sInd:eInd,:) - A(:,:,i)*S_i(:,:,i);
-%     end
-%     sigma1_sq = var(reshape(errors, [1, q*V*N]));
-
     % Calculate sigma1_squared (subject level error)
     errors = zeros(q, V, N);
     for i=1:N
@@ -157,7 +149,7 @@ function [ theta, beta, grpSig, s0_agg ] = runGIFT( subjfl, maskfl, prefix, outd
     end
     sigma1_sq = var(reshape(errors, [1, q*V*N]));
     
-    % New beta and s0 estimate based on backwards moving ini guess
+    % Beta and s0 estimate based on backwards moving ini guess
     p = size(X,2);
     beta = zeros(p,q,V);
     Xint = [ ones(N,1) X ];
