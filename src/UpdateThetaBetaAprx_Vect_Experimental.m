@@ -4,7 +4,7 @@ function [theta_new, beta_new, z_mode, subICmean, subICvar,...
 % UpdateThetaBetaAprx_Vect - Function to run hc-ICA approximate EM algorithm
 % Each run of this function performs one iteration of EM approximate
 % algorithm
-%
+%`
 % Syntax: 
 % [theta_new, beta_new, z_mode, subICmean, subICvar, grpICmean, grpICvar, err]
 %       = UpdateThetaBetaAprx_Vect (Y, X_mtx, theta, C_matrix_diag, beta,...
@@ -169,7 +169,7 @@ function [theta_new, beta_new, z_mode, subICmean, subICvar,...
         miu_temp_add((q * N)+1 : (N+1) * q, yind) = ...
                             repmat( miu3z(:,:,ic), [1, length(yind)]); 
     end 
-
+    
     clear('betaTimesX')
     %clear('miu_temp_ALT')
     pMiuGamma = P * miu_gamma_all;
@@ -178,7 +178,7 @@ function [theta_new, beta_new, z_mode, subICmean, subICvar,...
     % overall mean
     miu_star_all = pMiuGamma + miu_temp_add;
 
-    % Update the group IC information
+    % Update the group IC information JOSH MADE THIS CHANGE
     grpICmean = miu_star_all( (q*N+1):(q*(N+1)), :);
     grpICvar = mtimesx(reshape(grpICmean, [q, 1, V]), reshape(grpICmean, [1, q, V])) + Sigma_star_all((q*N+1):(q*(N+1)), (q*N+1):(q*(N+1)),VoxelIC);
     

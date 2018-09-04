@@ -213,9 +213,9 @@ function [ theta, beta, Ytilde, CmatStar ] = reEstimateIniGuess( N, p, outpath, 
     
     % Moving in the reverse direction, this allows everything to be on the
     % scale of Ytilde
-    si2 = zeros(q, V, N);
+    si2 = zeros(qstar, V, N);
     for i = 1:N
-        sInd = q*(i-1)+1; eInd = i*q;
+        sInd = qstar*(i-1)+1; eInd = i*qstar;
         si2(:, :, i) = inv(A(:,:,i)) * Ytilde(sInd:eInd,:);   
     end 
    
@@ -225,24 +225,24 @@ function [ theta, beta, Ytilde, CmatStar ] = reEstimateIniGuess( N, p, outpath, 
     qstar = sum(keeplist);
     errors = zeros(qstar, V, N);
     for i=1:N
-        sInd = q*(i-1)+1; eInd = i*q;
+        sInd = qstar*(i-1)+1; eInd = i*qstar;
         errors(:,:,i) = Ytilde(sInd:eInd,:) - A(:,:,i)*si2(:,:,i);
     end
-    sigma1_sq = var(reshape(errors, [1, q*V*N]));
+    sigma1_sq = var(reshape(errors, [1, qstar*V*N]));
     
     % Beta and s0 estimate based on backwards moving ini guess
     p = size(X,2);
-    beta = zeros(p,q,V);
+    beta = zeros(p,qstar,V);
     Xint = [ ones(N,1) X ];
-    S0 = zeros(q, V);
-    epsilon2temp = zeros(q, V, N);
+    S0 = zeros(qstar, V);
+    epsilon2temp = zeros(qstar, V, N);
     for v = 1:V
         estimate = (Xint'*Xint)^(-1) * Xint' *squeeze(si2(:,v,:))';
         beta(:,:,v) = estimate(2:(p+1), :);
         S0(:,v) = estimate(1,:)';
         epsilon2temp(:,v,:) = squeeze(si2(:,v,:)) - (Xint * estimate)';
     end
-    sigma2_sq = var(reshape(epsilon2temp, [q,V*N]), 0, 2);
+    sigma2_sq = var(reshape(epsilon2temp, [qstar,V*N]), 0, 2);
     
     waitbar(7/steps);
 
@@ -285,8 +285,6 @@ function [ theta, beta, Ytilde, CmatStar ] = reEstimateIniGuess( N, p, outpath, 
     disp('------------------------------------')
     disp('Initial Guess Re-Estimation Complete')
     disp('------------------------------------')
-    
-    move_iniguess_to_folder(outpath, prefix)
 
     close(h)
     

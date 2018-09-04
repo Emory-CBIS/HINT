@@ -39,7 +39,11 @@ ddat.betaVarEst = 0;
 ddat.interactions = varargin{9};
 [~, ddat.p] = size(ddat.X);
 global keeplist;
-ddat.qstar = sum(keeplist);
+if ~isempty(keeplist)
+    ddat.qstar = sum(keeplist);
+else
+    ddat.qstar = ddat.q;
+end
 varargout = cell(1);
 
 % Bool to keep track of whether a sub-population has been created by the
@@ -674,7 +678,7 @@ end
             set(findobj('Tag', 'selectSubject'), 'Visible', 'On');
             setupSubMenu;
         elseif strcmp(ddat.type, 'icsel')
-            ndata = load_nii([ddat.outdir '/' ddat.outpre '_iniIC_1.nii']); 
+            ndata = load_nii([ddat.outdir '/_iniIC_1.nii']); 
             % need to turn the 0's into NaN values
             zeroImg = ndata.img; zeroImg(find(ndata.img == 0)) = nan;
             ddat.img{1} = zeroImg; ddat.oimg{1} = zeroImg;

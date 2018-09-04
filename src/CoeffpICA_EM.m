@@ -47,7 +47,15 @@ function [theta, beta, z_mode, subICmean, subICvar, grpICmean, grpICvar,...
 % estimateFromSavedData.m
 
     global keepRunning
+    global writelog
     keepRunning = 1;
+    
+    global outfilename_full;
+    if isScriptVersion == 0 && writelog == 1
+        outfile = fopen(outfilename_full, 'a' );
+        fprintf(outfile, '\n');
+        fprintf(outfile, strcat('Starting the estimation using approximate EM algorithm ...'));
+    end
 
     algofunc = @UpdateThetaBetaAprx_Vect_Experimental;
     isApprox = true;
@@ -118,7 +126,14 @@ function [theta, beta, z_mode, subICmean, subICvar, grpICmean, grpICvar,...
         err2 = norm (vec_beta_new  - vec_beta) / norm (vec_beta);  
 
         fprintf('iteration %6.0f: the difference is %6.6f for theta and %6.6f for beta \n',...
-                itr, err1, err2);  
+                itr, err1, err2);
+        
+        % Write to the log file
+        if isScriptVersion == 0 && writelog == 1
+            outfile = fopen(outfilename_full, 'a' );
+            fprintf(outfile, 'iteration %6.0f: the difference is %6.6f for theta and %6.6f for beta \n',...
+                itr, err1, err2);
+        end
 
         theta = theta_new;
         beta  = beta_new;
