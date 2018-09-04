@@ -462,11 +462,11 @@ function varargout = main(varargin)
             prefix = get(findobj('tag', 'prefix'), 'string');
             outdir = get(findobj('tag', 'analysisFolder'), 'string');
             outfilename = strcat(outdir, '/', prefix, '_textlog_', date(),...
-                '_', datestr(now, 'HH:MM:SS') );
+                '_', datestr(now, 'HH_MM_SS') );
             outfile = fopen(outfilename, 'wt' );
             fprintf(outfile, strcat('Log for hcica session on',...
                 [' ', date()], ' started at: ',...
-                [' ', datestr(now, 'HH:MM:SS')] ) );
+                [' ', datestr(now, 'HH_MM_SS')] ) );
         end
         end
     end
