@@ -85,17 +85,19 @@ function [theta, beta, z_mode, subICmean, subICvar, grpICmean, grpICvar,...
     if isScriptVersion == 0
         axes(findobj('tag','iterChangeAxis1'));
         set(gca,'NextPlot','add');
-        plot1 = plot(1:maxiter, 0);
+        plot1 = plot(1:10, 0);
         title('Global Parameter'); xlabel('Iteration');
         axes(findobj('tag','iterChangeAxis2'));
         set(gca,'NextPlot','add');
-        plot2 = plot(1:maxiter, 0);
+        plot2 = plot(1:10, 0);
         title('Local Parameter'); xlabel('Iteration');
     end
     
     % Measure the time taken between plot updates
     plotIncr = 1;
     tic()
+    
+    currentPlotRange = 10;
     
     while (err1 > epsilon1 || err2 > epsilon2)
 
@@ -105,11 +107,13 @@ function [theta, beta, z_mode, subICmean, subICvar, grpICmean, grpICvar,...
         iterationTime = toc();    
         
         % Want to update plot every iteration or every 30 seconds
+        % this is no longer in use.
         updatePlot = 1;
         if (iterationTime / 10 > plotIncr)
             updatePlot = 1;
             plotIncr = plotIncr + 1;
         end
+     
                                     
         if(err == 1)
             success = 0;
@@ -133,6 +137,11 @@ function [theta, beta, z_mode, subICmean, subICvar, grpICmean, grpICvar,...
             outfile = fopen(outfilename_full, 'a' );
             fprintf(outfile, 'iteration %6.0f: the difference is %6.6f for theta and %6.6f for beta \n',...
                 itr, err1, err2);
+        end
+        
+        % count up by 10 for the plot axes
+        if itr > currentPlotRange
+            currentPlotRange = currentPlotRange + 10;
         end
 
         theta = theta_new;
@@ -171,7 +180,7 @@ function [theta, beta, z_mode, subICmean, subICvar, grpICmean, grpICvar,...
             set(gca,'NextPlot','add');
             h = findobj('tag','iterChangeAxis1');
             h = get(h,'Children');
-            set(h,'xdata',(1:itr),'ydata',err1vec(1:itr)); drawnow;
+            set(h,'xdata',(1:currentPlotRange),'ydata',[err1vec(1:itr), zeros(1, currentPlotRange-itr) ]); drawnow;
             %print(gca, [outpath '/' prefix '_theta_progress_plot'],'-dpng')
             
             % Beta change plot
@@ -179,7 +188,7 @@ function [theta, beta, z_mode, subICmean, subICvar, grpICmean, grpICvar,...
             set(gca, 'NextPlot', 'add');
             h = findobj('tag','iterChangeAxis2');
             h = get(h,'Children');
-            set(h,'xdata',(1:itr),'ydata',err2vec(1:itr)); drawnow;
+            set(h,'xdata',(1:currentPlotRange),'ydata',[err2vec(1:itr), zeros(1, currentPlotRange-itr) ]); drawnow;
             %print(plot2, [outpath '/' prefix '_beta_progress_plot'],'-dpng')
             
             % Update the embedded waitbar
