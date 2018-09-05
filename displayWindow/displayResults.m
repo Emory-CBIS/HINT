@@ -49,7 +49,7 @@ varargout = cell(1);
 % Bool to keep track of whether a sub-population has been created by the
 % user
 ddat.subPopExists = 0;
-% Keep trast of whether or not a contrast has been created by the user
+% Keep track of whether or not a contrast has been created by the user
 ddat.contrastExists = 0;
 ddat.viewingContrast = 0;
 
@@ -325,6 +325,11 @@ end
             'String', 'Add New Contrast', ...
             'Position', [0.15, 0.15, 0.7, 0.15], ...
             'Tag', 'newContrast', 'Callback', @addNewContrast);
+        removeContrastButton = uicontrol('Parent', betaContrastPanel, ...
+            'Units', 'Normalized', ...
+            'String', 'Remove A Contrast', ...
+            'Position', [0.15, 0.01, 0.7, 0.15], ...
+            'Tag', 'newContrast', 'Callback', @removeContrast);
         
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %% IC Selection
@@ -651,7 +656,7 @@ end
                 set(findobj('Tag', 'contrastDisplay'), 'Data', cell(0, ddat.p));
                 set(findobj('Tag', 'contrastDisplay'), 'ColumnName', newColnames);
                 set(findobj('Tag', 'contrastDisplay'), 'ColumnEditable', true);
-                ddat.contrastExists = 1;
+                ddat.contrastExists = 0;
             end
             % load the data
             ndata = load_nii([ddat.outdir '/' ddat.outpre '_beta_cov1_IC1.nii']);
@@ -1536,7 +1541,35 @@ end
         newIC = get( findobj('Tag', 'ICselect'), 'value');
         
         contrastSettings = get(findobj('Tag', 'contrastDisplay'), 'Data');
-        if ~isempty(contrastSettings)
+        
+        % Verify that the selected contrast is filled out and not all zero
+        performContrastUpdate = 1;
+        % check that something is filled out
+        if isempty(contrastSettings)
+            performContrastUpdate = 0;
+            f = warndlg('Please specify a contrast before viewing.')
+        % check nothing empty
+        else
+            tempsettings = contrastSettings( get(findobj('Tag',['contrastSelect' num2str(viewer)]), 'Value') , :);
+            all0 = 0;
+            if length(tempsettings) == 1
+                all0 = strcmp(tempsettings, '0');
+            else
+                all0 = sum(strcmp(tempsettings, '0')) == length(tempsettings);
+            end
+            if any( cellfun(@isempty, tempsettings) )
+                performContrastUpdate = 0;
+                f = warndlg('Please fill out all covariate values before viewing.')
+            % check that not all zero
+            elseif all0 == 1
+                performContrastUpdate = 0;
+                f = warndlg('Contrast must have at least one non-zero value.')
+            end
+        end
+        
+        
+        
+        if performContrastUpdate
             % Update the status, we are now viewing a contrast
             ddat.viewingContrast = 1;
             % Load the first piece
@@ -1811,6 +1844,133 @@ end
         % Update all sub population selection viewers
         for iPop = 1:ddat.nCompare
             set(findobj('Tag', ['contrastSelect' num2str(iPop)]),'String', newString);  
+        end
+        ddat.contrastExists = 1;
+    end
+
+    function removeContrast(hObject, callbackdata)
+        % Check that a contrast exists
+        if ddat.contrastExists == 1
+            % Keep track of if a contrast should be removed (vs user enter
+            % cancel)
+            removeContrast = 0;
+            % open a window asking which contrast to remove
+            waitingForResponse = 1;
+            while waitingForResponse
+                answer = inputdlg('Please enter contrast name to remove (C1, C2,...)')
+                if isempty(answer)
+                    waitingForResponse = 0;
+                % if user input something, check that it is valid
+                else
+                    validContrasts = get(findobj('Tag', 'contrastDisplay'), 'RowName');
+                    matchedIndex = strfind(validContrasts, answer);
+                    % Reduce to just first match to guard against C1 and
+                    % C11 
+                    removeIndex = 0;
+                    for iContrast = 1:length(validContrasts)
+                        % handle more than one contrast
+                        if iscell(validContrasts)
+                            if matchedIndex{iContrast} == 1
+                                removeIndex = iContrast;
+                                break; % break out of the loop
+                            end
+                        % handle only one contrast
+                        else
+                            if matchedIndex == 1
+                                removeIndex = iContrast;
+                                break; % break out of the loop
+                            end 
+                        end
+                    end
+                    % If a valid contrast was entered, then proceed
+                    if removeIndex > 0 
+                        waitingForResponse = 0;
+                        
+                        olddata = findobj('Tag', 'contrastDisplay'); olddim = size(olddata.Data);
+                        oldrownames = olddata.RowName;
+                        newTable = cell(olddim(1) - 1, ddat.p);
+                        % Fill in all the old information
+                        for column=1:olddim(2)
+                            incRow = 0;
+                            for row=1:olddim(1)
+                                if row ~= removeIndex
+                                    incRow = incRow + 1;
+                                    newTable(incRow, column) = olddata.Data(row,column);
+                                end
+                            end
+                        end
+                        
+                        % reassign the row names for the table
+                        if olddim(1) == 2
+                            newRowNames = ['C' num2str(1)];
+                        else
+                            newRowNames = oldrownames(1:olddim(1) - 1);
+                            newRowNames = cellstr(newRowNames);
+                        end
+
+                        set(findobj('Tag', 'contrastDisplay'), 'Data', newTable);
+                        set(findobj('Tag', 'contrastDisplay'), 'RowName', newRowNames);
+                        % Make it so that only the main effects can be edited
+                        ceditable = false(1, ddat.p);
+                        ceditable(1:size(ddat.interactions,2)) = 1;
+                        set(findobj('Tag', 'contrastDisplay'), 'ColumnEditable', ceditable);
+
+                        % change the drop down menu
+                        newString = cell(olddim(1)-1, 1);
+                        oldstring = get(findobj('Tag', 'contrastSelect1'), 'String');
+                        for i=1:olddim(1)-1
+                            if (olddim(1) > 1)
+                                newString(i) = {oldstring{i}};
+                            else
+                                newString(i) = {oldstring(:)'};
+                            end
+                        end
+                        %newString(olddim(1) + 1) = {['C' num2str(olddim(1)+1)]};
+                        
+                        % Finally, update what is being viewed.
+                        % Only have to do this if currently viewing a
+                        % contrast
+                        if ddat.viewingContrast
+                            currentSelection = get(findobj('Tag', ['contrastSelect' num2str(1)]),'Value');
+                            % If removed something above the current
+                            % selection, do nothing.
+                            % If removed current selection, switch to
+                            % regular cov viewer and tell user
+                            if currentSelection == removeIndex
+                                % turn off viewing contrast
+                                ddat.viewingContrast = 0;
+                                % switch the the selected covariate instead
+                                updateIC;
+                                set(findobj('Tag', ['contrastSelect' num2str(1)]),'Value', 1);
+                            end
+                            % If removed above current selection, just
+                            % switch the dropdown menu to reflect this
+                            if currentSelection > removeIndex
+                                set(findobj('Tag', ['contrastSelect' num2str(1)]),'Value', currentSelection - 1);
+                                updateContrastDisp;
+                            end
+                        end
+                        
+                        if olddim(1) - 1 == 0
+                            newString = 'No Contrast Created';
+                            ddat.contrastExists = 0;
+                            ddat.viewingContrast = 0;
+                            set(findobj('Tag', 'contrastDisplay'), 'RowName', {});
+                        end
+                        
+                        % Update all sub population selection viewers
+                        for iPop = 1:ddat.nCompare
+                            set(findobj('Tag', ['contrastSelect' num2str(iPop)]),'String', newString);  
+                        end
+                        
+                        
+                    end
+                end 
+            end
+        % update "viewing contrast" as well
+        % check that whatever is on screen is valid BE CAREFUL HERE!!
+        else
+            warnbox = warndlg('No contrasts have been specified')
         end
     end
 
