@@ -634,7 +634,7 @@ end
                 set(findobj('Tag', 'subPopDisplay'), 'Data', cell(0, ddat.p));
                 set(findobj('Tag', 'subPopDisplay'), 'ColumnName', newColnames);
                 set(findobj('Tag', 'subPopDisplay'), 'ColumnEditable', true);
-                ddat.subPopExists = 1;
+                %ddat.subPopExists = 1;
             end
             % No data to display at first
             tempImg = load_nii([ddat.outdir '/' ddat.outpre '_S0_' 'IC_1.nii']);
@@ -1252,7 +1252,12 @@ end
         if strcmp(ddat.type, 'grp')
             endText = 'Group Level ';
         elseif strcmp(ddat.type, 'subpop')
-            endText = ['Sub-Population ' get(findobj('Tag', 'subPopSelect'), 'Value')];
+            if ddat.subPopExists
+                endText = ['Sub-Population ' num2str(get(findobj('Tag',...
+                    ['subPopSelect' num2str(1)]), 'Value')) ', '];
+            else
+                endText = 'Nothing ';
+            end
         elseif strcmp(ddat.type, 'beta')
             betaInd = get(findobj('Tag', 'selectCovariate'), 'Value');
             covView = get(findobj('Tag', 'selectCovariate'), 'String');
@@ -1498,6 +1503,7 @@ end
                 updateSubPopulation(findobj('Tag', ['subPopSelect' num2str(iPop)]));
             end
         end
+        ddat.subPopExists = 1;
     end
 
     % Function to allow a user to select what sub-population is being
