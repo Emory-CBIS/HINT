@@ -1447,7 +1447,8 @@ end
         % When the user edits a cell, need to make sure that it is a valid level
         coledit = callbackdata.Indices(2);
         % Make sure input value is a number and not a string
-        if all(ismember(callbackdata.NewData, '0123456789+-.eEdD')) & ~isempty(callbackdata.NewData)
+        %if all(ismember(callbackdata.NewData, '0123456789+-.eEdD')) & ~isempty(callbackdata.NewData)
+        if all(ismember(callbackdata.NewData, '0123456789.')) & ~isempty(callbackdata.NewData)
         % check if the edited cell is categorical, should be binary
         if length(unique(ddat.X(:, coledit))) == 2
             if ~(str2num(callbackdata.NewData) == 1 || str2num(callbackdata.NewData) == 0)
@@ -1467,7 +1468,7 @@ end
         else
         	warndlg('Please input a number, see covariate table for examples', 'Warning');
             newTable = get(findobj('Tag', 'subPopDisplay'), 'Data');
-            newTable(callbackdata.Indices(1), coledit) = {''};
+            newTable(callbackdata.Indices(1), coledit) = {[]};
             set(findobj('Tag', 'subPopDisplay'), 'Data', newTable);
         end
         [nsubpop ign] = size( get(findobj('Tag', 'subPopSelect'),'String'));
@@ -1504,6 +1505,24 @@ end
             end
         end
         ddat.subPopExists = 1;
+        
+        % If the data are all filled out AND the current selection is the
+        % one that was edited, update the display image
+        updatedViewing = 0;
+        updatedRow = callbackdata.Indices(1);
+        if updatedRow == get(findobj('tag',  ['subPopSelect' num2str(1)]), 'value')
+            updatedViewing = 1;
+        end
+        if updatedViewing && allFilledOut
+            if strcmp(ddat.type, 'beta')
+                if ddat.viewingContrast == 1
+                    updateContrastDisp;
+                end
+            else
+                updateSubPopulation;
+            end
+        end
+        
     end
 
     % Function to allow a user to select what sub-population is being
