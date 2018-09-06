@@ -1,5 +1,5 @@
 function [ X, varNamesX, interactions ] = ref_cell_code( covariates, covTypes, varInModel,...
-    interactions, interactionsBase, includeInteractions  )
+    interactions, interactionsBase, includeInteractions, referenceGroupNumber  )
 % ref_cell_code - Function to perform reference cell coding of the
 % covariates
 %
@@ -15,6 +15,7 @@ function [ X, varNamesX, interactions ] = ref_cell_code( covariates, covTypes, v
 %   interactions - matrix of user-specified interactions
 %   interactionsBase - interactions in terms of the un-ref-celled covs
 %   includeInteractions - 1 if interactions are to be calculated
+%   referenceGroupNumber - level to use as reference level
 %
 % Outputs:
 %   X            - reference cell coded design matrix
@@ -43,6 +44,7 @@ for iCov = 1:numel(covTypes)
                 covLevels = cellstr(num2str(covLevels));
             end
             varLevels(iCov) = nLevel - 1;
+            covLevels(referenceGroupNumber(iCov)) = [];
             rcCovariate = zeros(N, nLevel-1);
             for iLevel = 1:(nLevel-1)
                 % Perform string conversion if originally numeric

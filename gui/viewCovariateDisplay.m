@@ -28,7 +28,7 @@ function varargout = viewCovariateDisplay(varargin)
 
 % Edit the above text to modify the response to help viewCovariateDisplay
 
-% Last Modified by GUIDE v2.5 14-Jun-2018 17:57:42
+% Last Modified by GUIDE v2.5 06-Sep-2018 12:42:57
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -74,6 +74,7 @@ handles.interactions = varargin{6};
 handles.varInModel = varargin{7};
 handles.varInCovFile = varargin{8};
 handles.interactionsBase = varargin{9};
+handles.referenceGroupNumber = varargin{10};
 
 % List of all covariates included in the design matrix, the covariates for
 % the hcica model are selected from this list
@@ -92,6 +93,7 @@ handles.varsInModel.String = handles.includedCovariateList;
 % Fill out the continuous and categorical covariate listboxes
 handles.catListbox.String = handles.rawCovariateList(handles.covTypes == 1);
 handles.contListbox.String = handles.rawCovariateList(handles.covTypes == 0);
+handles.catBoxReference.String = handles.rawCovariateList(handles.covTypes == 1);
 
 
 % Make the table the correct dimension
@@ -223,6 +225,7 @@ if sum(handles.varInModel) > 0
     data.varNamesX = handles.varNamesX;
     data.covTypes = handles.covTypes;
     data.varInModel = handles.varInModel;
+    data.referenceGroupNumber = handles.referenceGroupNumber;
     delete(handles.figure1);
 else
     warndlg('Warning: At least one covariate must be included in the model.')
@@ -314,14 +317,14 @@ else
             handles.interactionsBase = zeros(0, nCol);
             [ handles.X, handles.varNamesX, handles.interactions ] = ref_cell_code( handles.covariates,...
                 handles.covTypes, handles.varInModel, handles.interactions,...
-                handles.interactionsBase, 1  );
+                handles.interactionsBase, 1, handles.referenceGroupNumber  );
         else
             intToBeRemoved = find(sum(sum(newIntRow ==...
                 handles.interactionsBase, 2) == width(handles.covariates) ));
             handles.interactionsBase(intToBeRemoved,:) = [];
             [ handles.X, handles.varNamesX, handles.interactions ] = ref_cell_code( handles.covariates,...
                 handles.covTypes, handles.varInModel, handles.interactions,...
-                handles.interactionsBase, 1  );
+                handles.interactionsBase, 1, handles.referenceGroupNumber  );
         end
         
         newTable = cell(handles.N, size(handles.X, 2)+1);
@@ -528,9 +531,20 @@ if strcmp(get(gcf,'selectiontype'),'open')
             % Change the covTypes coding
             handles.covTypes(selIndex) = 0;
             
+            % Check if the moved covariate is currently selected by the
+            % reference boxes. If so, empty the reference box
+            selected = handles.catBoxReference.Value;
+            % Find the categorical covariate that is currently selected
+            selectedCovariate = handles.catBoxReference.String{selected};
+            % if its a match, empty the reference list box
+            if strcmp(selectedCovariate, handles.rawCovariateList{selIndex})
+                handles.referenceGroupListbox.String = [];
+            end
+            
             % Update the categorical and continuous listboxes
             handles.catListbox.String = handles.rawCovariateList(handles.covTypes == 1);
-            handles.contListbox.String = handles.rawCovariateList(handles.covTypes == 0);
+            handles.catBoxReference.String = handles.rawCovariateList(handles.covTypes == 1);
+            handles.contListbox.String = handles.rawCovariateList(handles.covTypes == 0);       
             
             % Press the invisible update button
             guidata(hObject, handles);
@@ -591,6 +605,7 @@ if strcmp(get(gcf,'selectiontype'),'open')
             
             % Update the categorical and continuous listboxes
             handles.catListbox.String = handles.rawCovariateList(handles.covTypes == 1);
+            handles.catBoxReference.String = handles.rawCovariateList(handles.covTypes == 1);
             handles.contListbox.String = handles.rawCovariateList(handles.covTypes == 0);
             
             % Press the invisible update button
@@ -694,7 +709,7 @@ function updateDisplayButtonInvisible_Callback(hObject, eventdata, handles)
 % Update the reference cell coding
 [ handles.X, handles.varNamesX, handles.interactions ] = ref_cell_code( handles.covariates,...
         handles.covTypes, handles.varInModel, handles.interactions,...
-        handles.interactionsBase, 1  );
+        handles.interactionsBase, 1, handles.referenceGroupNumber  );
 
 % Update the table
 newTable = cell(handles.N, size(handles.X, 2)+1);
@@ -893,7 +908,7 @@ function stContButton_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 
 % Make sure the listbox is not already empty
-if ~isempty(handles.catListbox.Value)
+if ~isempty(handles.catListbox.String)
 
     % Numbering of the selected value
     selectedCovariate = handles.catListbox.Value;
@@ -913,9 +928,20 @@ if ~isempty(handles.catListbox.Value)
     else
         % Change the covTypes coding
         handles.covTypes(selIndex) = 0;
+        
+        % Check if the moved covariate is currently selected by the
+        % reference boxes. If so, empty the reference box
+        selected = handles.catBoxReference.Value;
+        % Find the categorical covariate that is currently selected
+        selectedCovariate = handles.catBoxReference.String{selected};
+        % if its a match, empty the reference list box
+        if strcmp(selectedCovariate, handles.rawCovariateList{selIndex})
+            handles.referenceGroupListbox.String = [];
+        end
 
         % Update the categorical and continuous listboxes
         handles.catListbox.String = handles.rawCovariateList(handles.covTypes == 1);
+        handles.catBoxReference.String = handles.rawCovariateList(handles.covTypes == 1);
         handles.contListbox.String = handles.rawCovariateList(handles.covTypes == 0);
 
         % Press the invisible update button
@@ -933,7 +959,7 @@ function stCategorical_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 
 % Make sure the listbox is not already empty
-if ~isempty(handles.contListbox.Value)
+if ~isempty(handles.contListbox.String)
 
     % Numbering of the selected value
     selectedCovariate = handles.contListbox.Value;
@@ -955,6 +981,7 @@ if ~isempty(handles.contListbox.Value)
 
         % Update the categorical and continuous listboxes
         handles.catListbox.String = handles.rawCovariateList(handles.covTypes == 1);
+        handles.catBoxReference.String = handles.rawCovariateList(handles.covTypes == 1);
         handles.contListbox.String = handles.rawCovariateList(handles.covTypes == 0);
 
         % Press the invisible update button
@@ -963,4 +990,78 @@ if ~isempty(handles.contListbox.Value)
 
     end
 
+end
+
+
+% --- Executes on selection change in catBoxReference.
+function catBoxReference_Callback(hObject, eventdata, handles)
+% hObject    handle to catBoxReference (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: contents = cellstr(get(hObject,'String')) returns catBoxReference contents as cell array
+%        contents{get(hObject,'Value')} returns selected item from catBoxReference
+
+selected = eventdata.Source.Value;
+% Find the corresponding string
+selectedCovariate = hObject.String{selected};
+% Find the column of the original covariate matrix
+colIndex = find(strcmp(selectedCovariate, handles.rawCovariateList), 1);
+% Get the corresponding levels of the covariate
+factorLevels = unique(handles.covariates(:, colIndex));
+% Create a new cell to store the possible levels
+newString = cell(1, height(factorLevels));
+for i = 1:height(factorLevels)
+    newString{1, i} = num2str(factorLevels{i, 1});
+end
+handles.referenceGroupListbox.String = newString;
+% Set the current selection to be the current reference group
+handles.referenceGroupListbox.Value = handles.referenceGroupNumber(colIndex);
+
+% --- Executes during object creation, after setting all properties.
+function catBoxReference_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to catBoxReference (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: listbox controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+% --- Executes on selection change in referenceGroupListbox.
+function referenceGroupListbox_Callback(hObject, eventdata, handles)
+% hObject    handle to referenceGroupListbox (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: contents = cellstr(get(hObject,'String')) returns referenceGroupListbox contents as cell array
+%        contents{get(hObject,'Value')} returns selected item from referenceGroupListbox
+
+selected = handles.catBoxReference.Value;
+% Find the categorical covariate that is currently selected
+selectedCovariate = handles.catBoxReference.String{selected};
+% Find the column of the original covariate matrix
+colIndex = find(strcmp(selectedCovariate, handles.rawCovariateList), 1);
+
+% change the reference category to whatever is selected
+handles.referenceGroupNumber(colIndex) = handles.referenceGroupListbox.Value;
+
+% Update everything based on this
+guidata(hObject, handles);
+updateDisplayButtonInvisible_Callback(handles.updateDisplayButtonInvisible, 1, handles);
+
+
+% --- Executes during object creation, after setting all properties.
+function referenceGroupListbox_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to referenceGroupListbox (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: listbox controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
 end

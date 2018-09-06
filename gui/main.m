@@ -562,6 +562,7 @@ function varargout = main(varargin)
                 data.varInCovFile = runinfo.varInCovFile;
                 data.varInModel = runinfo.varInModel;
                 data.interactionsBase = runinfo.interactionsBase;
+                data.referenceGroupNumber = runinfo.referenceGroupNumber;
                 waitbar(1)
                 close(waitLoad);
 
@@ -628,6 +629,7 @@ function varargout = main(varargin)
                     % file
                     data.covariateTable = readtable(covf);
                     data.covariates = data.covariateTable.Properties.VariableNames;
+                    data.referenceGroupNumber = ones(1, length(data.covariates));
                     
                     [data.niifiles, tempcov] = matchCovariatesToNiifiles(data.niifiles_raw,...
                         data.covariateTable, strMatch);
@@ -649,7 +651,7 @@ function varargout = main(varargin)
                     % change these types in model specification later
                     [ data.X, data.varNamesX, data.interactions ] = ref_cell_code( data.covariates,...
                         data.covTypes, data.varInModel,...
-                        0, zeros(0, length(data.covTypes)), 0  );
+                        0, zeros(0, length(data.covTypes)), 0, data.referenceGroupNumber  );
                     
                     % Create the (empty) interactions matrix
                     [~, nCol] = size(data.X);
@@ -1321,13 +1323,15 @@ function varargout = main(varargin)
         varInModel = data.varInModel;%#ok<NASGU> 
         waitbar(17/20)
         varInCovFile = data.varInCovFile;%#ok<NASGU> 
+        referenceGroupNumber = data.referenceGroupNumber
         waitbar(18/20)
         
         save([data.outpath '/' prefix '_runinfo.mat'], 'q', ...
             'time_num', 'X', 'validVoxels', 'niifiles', 'maskf', 'covfile', 'numPCA', ...
             'outfolder', 'prefix', 'covariates', 'covTypes', 'beta0Star', 'CmatStar',...
             'YtildeStar', 'thetaStar', 'voxSize', 'N', 'qold', 'varNamesX',...
-            'interactions', 'varInModel', 'varInCovFile', 'interactionsBase');
+            'interactions', 'varInModel', 'varInCovFile', 'interactionsBase',...
+            'referenceGroupNumber');
         waitbar(20/20)
         close(waitSave)
         
@@ -1352,7 +1356,8 @@ function varargout = main(varargin)
         if (data.dataLoaded == 1)
             waitfor(viewCovariateDisplay(data.X, data.varNamesX, data.niifiles,...
                 data.covTypes, data.covariates, data.interactions,...
-                data.varInModel, data.varInCovFile, data.interactionsBase))
+                data.varInModel, data.varInCovFile, data.interactionsBase,...
+                data.referenceGroupNumber))
             % Check if, as a result, further stages have been invalidated
             if data.preprocessingComplete == 0
                 % Remove the progressbar
@@ -1408,6 +1413,7 @@ function varargout = main(varargin)
         data.vis_interactions = tempData.interactions;
         data.vis_varInModel = tempData.varInModel;
         data.vis_varInCovFile = tempData.varInCovFile;
+        data.vis_referenceGroupNumber = tempData.referenceGroupNumber;
         analysisPrefix = tempData.prefix;
         
         waitbar(10/10)

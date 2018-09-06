@@ -295,6 +295,9 @@ function pushbutton9_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
+f = msgbox('Select the .csv file containing the subject names and covariates.')
+
+
 
 % --- Executes on button press in pushbutton8.
 function pushbutton8_Callback(hObject, eventdata, handles)
@@ -302,12 +305,17 @@ function pushbutton8_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
+f = msgbox('Select the grey matter mask to be used in the analysis.')
+
+
 
 % --- Executes on button press in pushbutton7.
 function pushbutton7_Callback(hObject, eventdata, handles)
 % hObject    handle to pushbutton7 (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+
+f = msgbox('Select the Nifti files to include in the analysis. Files can be selected one-at-a-time or by pattern matching.')
 
 
 % --- Executes when user attempts to close figure1.
