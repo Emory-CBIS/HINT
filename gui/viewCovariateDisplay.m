@@ -1012,7 +1012,12 @@ factorLevels = unique(handles.covariates(:, colIndex));
 % Create a new cell to store the possible levels
 newString = cell(1, height(factorLevels));
 for i = 1:height(factorLevels)
-    newString{1, i} = num2str(factorLevels{i, 1});
+    if iscell(factorLevels{i, 1})
+        temp = table2array(factorLevels(i, 1));
+        newString{1, i} = temp{1};
+    else
+        newString{1, i} = num2str(factorLevels{i, 1});
+    end
 end
 handles.referenceGroupListbox.String = newString;
 % Set the current selection to be the current reference group
