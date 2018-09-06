@@ -2008,32 +2008,20 @@ end
 
     function save_jpg(hObject, callbackdata)
         
-        %saveas()
-        picfig = figure;
-        copyobj(findobj('tag', 'viewingPanelNormal'), picfig)
-        
+        %saveas() 
         startString = fullfile(ddat.outdir, [ddat.outpre, '_myfigure.jpg']);
         definput = {startString};
         answer = inputdlg('Please enter the filename for the image.',...
             'Input filename',...
             [1, 70], definput);
                 
-        picfig = figure;
-        p1 = subplot(2, 2, 1);
-        copyobj(ddat.axial_image{1}, p1)
-        p1.YLim = [0, size(ddat.axial_image{1}.CData, 1)];
-        p1.XLim = [0, size(ddat.axial_image{1}.CData, 2)];
-        p1.XTick = []; p1.YTick = [];
-
-        p2 = subplot(2, 2, 2);
-        copyobj(ddat.sagittal_image{1}, p2)
-        p2.XLim = [0, size(ddat.sagittal_image{1}.CData, 2)];
-        p2.XTick = []; p2.YTick = [];
-
-        p3 = subplot(2, 2, 3);
-        copyobj(ddat.coronal_image{1}, p3)
-        p3.XLim = [0, size(ddat.coronal_image{1}.CData, 2)];
-        p3.XTick = []; p3.YTick = [];
+        %picfig = figure('pos',[10 10 900 300]);
+        picfig = figure('units', 'normalized', 'pos', [0.2, 0.2, 0.6, 0.3]);
+        copyobj(findobj('tag', 'viewingPanelNormal'), picfig)
+        picfig.Children(1).Position = [0 0 1 1];
+        picfig.Children(1).Children(1).Visible = 'off';
+        picfig.Children(1).Children(2).Visible = 'off';
+        picfig.Children(1).Children(3).Visible = 'off';
         
         saveas(picfig, answer{1})
         delete(picfig)
