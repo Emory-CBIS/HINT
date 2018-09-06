@@ -1422,7 +1422,7 @@ end
         set(findobj('Tag', 'subPopDisplay'), 'RowName', newRowNames);
         % Make it so that only the main effects can be edited
         ceditable = false(1, ddat.p);
-        ceditable(1:length(ddat.covTypes)) = 1;
+        ceditable(1:length(ddat.varNamesX)) = 1;
         set(findobj('Tag', 'subPopDisplay'), 'ColumnEditable', ceditable);
 
         % change the drop down menu
@@ -1479,7 +1479,7 @@ end
         factorValues = callbackdata.Source.Data{1:length(ddat.covTypes)};
         allFilledOut = 1;
         rowIndex = callbackdata.Indices(1);
-        for iCov=1:length(ddat.covTypes)
+        for iCov=1:length(ddat.varNamesX)
             if isempty(callbackdata.Source.Data{rowIndex, iCov})
                 allFilledOut = 0;
             end
