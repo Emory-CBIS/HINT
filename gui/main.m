@@ -1225,17 +1225,17 @@ function varargout = main(varargin)
             %Force the keeplist variable to reflect the number of ICs
             global keeplist
             keeplist = ones(data.vis_qstar, 1);
-                    disp('this is going to mess up keeplist!!! XXX')
-        disp('this is going to mess up keeplist!!! XXX')
-        disp('this is going to mess up keeplist!!! XXX')
-        disp('this is going to mess up keeplist!!! XXX')
-        disp('this is going to mess up keeplist!!! XXX')
-        disp('this is going to mess up keeplist!!! XXX')
-        disp('this is going to mess up keeplist!!! XXX')
-        disp('this is going to mess up keeplist!!! XXX')
-        disp('this is going to mess up keeplist!!! XXX')
-        disp('this is going to mess up keeplist!!! XXX')
-        disp('this is going to mess up keeplist!!! XXX')
+%                     disp('this is going to mess up keeplist!!! XXX')
+%         disp('this is going to mess up keeplist!!! XXX')
+%         disp('this is going to mess up keeplist!!! XXX')
+%         disp('this is going to mess up keeplist!!! XXX')
+%         disp('this is going to mess up keeplist!!! XXX')
+%         disp('this is going to mess up keeplist!!! XXX')
+%         disp('this is going to mess up keeplist!!! XXX')
+%         disp('this is going to mess up keeplist!!! XXX')
+%         disp('this is going to mess up keeplist!!! XXX')
+%         disp('this is going to mess up keeplist!!! XXX')
+%         disp('this is going to mess up keeplist!!! XXX')
                         
         else
             errordlg('No runinfo file found for the analysis!')
