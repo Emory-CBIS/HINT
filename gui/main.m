@@ -120,13 +120,13 @@ function varargout = main(varargin)
             'FontSize',myfont,'HorizontalAlignment',textalign,...
             'Tag','prefix', 'visible', 'off',...
             'BackgroundColor','white'); %#ok<NASGU>
-        text3 = uicontrol('Parent',t1p1,'Style','text', 'units', 'character',...
-            'Position',[1.5 0.6 18 2],...
+        text3 = uicontrol('Parent',t1p1,'Style','text', 'units', 'normalized',...
+            'Position',[0.025 0.3 0.4 0.2],...
             'String','Create session log','FontSize',myfont,...
             'HorizontalAlignment',textalign); %#ok<NASGU>
-        cb1 = uicontrol('Parent',t1p1,'Style','checkbox', 'units', 'character',...
+        cb1 = uicontrol('Parent',t1p1,'Style','checkbox', 'units', 'normalized',...
             'Tag','logCheckBox','Callback',@logCheckBox_Callback,...
-            'Position',[19.5 1.2 3 1.5]); %#ok<NASGU>
+            'Position',[0.4 0.32 0.1 0.2]); %#ok<NASGU>
         
         %2. Input data panel
         t1p2 = uipanel('Parent',tab1, 'units', 'character',...
@@ -1274,9 +1274,34 @@ function varargout = main(varargin)
     % Save the run infoformation into a file called runinfo.mat.
     function saveContinueButton_Callback(~,~)
         
-        % Ask the user for a prefix for the analysis
-        prefix = inputdlg('Please input a prefix for the analysis', 'Prefix Selection');
-        prefix = prefix{1};
+        
+        userNeedsToInputPrefix = 1;
+        prefix = '';
+        while userNeedsToInputPrefix
+            
+            % Ask the user for a prefix for the analysis
+            prefix = inputdlg('Please input a prefix for the analysis', 'Prefix Selection');
+            
+            if ~isempty(prefix)
+                prefix = prefix{1};
+                % Check if this prefix is already in use. If it is, ask the user to
+                % verify that they want to continue + delete current contents
+                if exist([data.outpath '/' prefix '_results']) == 7
+                    qans = questdlg(['This prefix is already in use. If you continue, all previous results in the ', [data.outpath '/' prefix '_results'], ' folder will be deleted. Do you want to continue?' ] );
+                    % If yes, delete old results and proceed
+                    if strcmp(qans, 'Yes')
+                        userNeedsToInputPrefix = 0;
+                        % Delete all content from the folder
+                        rmdir(fullfile(data.outpath, [prefix '_results']), 's')
+                    end
+                % Folder not already in use
+                else
+                    userNeedsToInputPrefix = 0;
+                end
+            end
+            
+        end
+        
         % make the results directory
         mkdir([data.outpath '/' prefix '_results']);
         prefix = [prefix  '_results/' prefix];
@@ -1323,7 +1348,7 @@ function varargout = main(varargin)
         varInModel = data.varInModel;%#ok<NASGU> 
         waitbar(17/20)
         varInCovFile = data.varInCovFile;%#ok<NASGU> 
-        referenceGroupNumber = data.referenceGroupNumber
+        referenceGroupNumber = data.referenceGroupNumber;
         waitbar(18/20)
         
         save([data.outpath '/' prefix '_runinfo.mat'], 'q', ...
