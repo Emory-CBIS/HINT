@@ -1171,7 +1171,7 @@ end
         % Find what mask has been selected
         maskOptions = findobj('Tag', 'maskSelect');
         if maskOptions.Value > 1
-            mask = load_nii([ddat.outdir '/' maskOptions.String{maskOptions.Value}]);
+            mask = load_nii( fullfile( ddat.outdir, fileparts(ddat.outpre), maskOptions.String{maskOptions.Value}) );
             for iPop = 1:ddat.nCompare
                 maskedFunc = ddat.scaledFunc{iPop} .* mask.img;
                 maskedFunc(maskedFunc == 0) = 1;
@@ -1454,7 +1454,7 @@ end
         coledit = callbackdata.Indices(2);
         % Make sure input value is a number and not a string
         %if all(ismember(callbackdata.NewData, '0123456789+-.eEdD')) & ~isempty(callbackdata.NewData)
-        if all(ismember(callbackdata.NewData, '0123456789.')) & ~isempty(callbackdata.NewData)
+        if all(ismember(callbackdata.NewData, '0123456789.-')) & ~isempty(callbackdata.NewData)
         % check if the edited cell is categorical, should be binary
         if length(unique(ddat.X(:, coledit))) == 2
             if ~(str2num(callbackdata.NewData) == 1 || str2num(callbackdata.NewData) == 0)
