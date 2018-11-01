@@ -1310,6 +1310,41 @@ end
             set(ddat.coronal_yline{iPop},'Xdata',[ddat.sag ddat.sag]);
             set(findobj('Tag','crosshairPos'),'String',...
                 sprintf('%7.0d %7.0d %7.0d',ddat.sag,ddat.cor, ddat.axi));
+            updateInfoText;
+                        if ddat.nCompare == 1
+                if get(findobj('Tag', 'viewZScores'), 'Value') == 0
+                set(findobj('Tag', 'crosshairVal1'),'String',...
+                    sprintf('Value at Voxel: %4.2f', ddat.img{1}(ddat.sag, ddat.cor, ddat.axi)));
+                elseif get(findobj('Tag', 'viewZScores'), 'Value') == 1
+                    set(findobj('Tag', 'crosshairVal1'),'String',...
+                    sprintf('Z = %4.2f', ddat.img{1}(ddat.sag, ddat.cor, ddat.axi)));
+                end
+            else
+                if get(findobj('Tag', 'viewZScores'), 'Value') == 0
+                    for iPop = 1:ddat.nCompare
+                        set(findobj('Tag', ['crosshairVal' num2str(iPop)]),'String',...
+                            sprintf('Value at Voxel: %4.2f',...
+                            ddat.img{iPop}(ddat.sag, ddat.cor, ddat.axi)));
+                    end
+                else
+                    for iPop = 1:ddat.nCompare
+                        set(findobj('Tag', ['crosshairVal' num2str(iPop)]),'String',...
+                            sprintf('Z = %4.2f',...
+                            ddat.img{iPop}(ddat.sag, ddat.cor, ddat.axi)));
+                    end
+                end
+            end
+            valId = cell2mat(ddat.total_region_name(:, 1));
+            curIdVal = ddat.region_struct.img(ddat.sag, ddat.cor, ddat.axi);
+            curIdPos = find(ismember(valId, curIdVal)); 
+            if curIdPos
+                set(findobj('Tag', 'curInfo'), 'ForegroundColor','g',...
+                    'FontSize', 10, 'HorizontalAlignment', 'left', 'String', ...
+                     sprintf('Current crosshair is located in the region: %s', ...
+                              ddat.total_region_name{curIdPos, 2}));
+            else
+                set(findobj('Tag', 'curInfo'), 'String', '');
+            end
         end
     end
 
@@ -1326,6 +1361,41 @@ end
             set(ddat.sagittal_yline{iPop},'Xdata',[ddat.cor ddat.cor]);
             set(findobj('Tag','crosshairPos'),'String',...
                 sprintf('%7.0d %7.0d %7.0d',ddat.sag,ddat.cor, ddat.axi));
+            updateInfoText;
+            if ddat.nCompare == 1
+                if get(findobj('Tag', 'viewZScores'), 'Value') == 0
+                set(findobj('Tag', 'crosshairVal1'),'String',...
+                    sprintf('Value at Voxel: %4.2f', ddat.img{1}(ddat.sag, ddat.cor, ddat.axi)));
+                elseif get(findobj('Tag', 'viewZScores'), 'Value') == 1
+                    set(findobj('Tag', 'crosshairVal1'),'String',...
+                    sprintf('Z = %4.2f', ddat.img{1}(ddat.sag, ddat.cor, ddat.axi)));
+                end
+            else
+                if get(findobj('Tag', 'viewZScores'), 'Value') == 0
+                    for iPop = 1:ddat.nCompare
+                        set(findobj('Tag', ['crosshairVal' num2str(iPop)]),'String',...
+                            sprintf('Value at Voxel: %4.2f',...
+                            ddat.img{iPop}(ddat.sag, ddat.cor, ddat.axi)));
+                    end
+                else
+                    for iPop = 1:ddat.nCompare
+                        set(findobj('Tag', ['crosshairVal' num2str(iPop)]),'String',...
+                            sprintf('Z = %4.2f',...
+                            ddat.img{iPop}(ddat.sag, ddat.cor, ddat.axi)));
+                    end
+                end
+            end
+            valId = cell2mat(ddat.total_region_name(:, 1));
+            curIdVal = ddat.region_struct.img(ddat.sag, ddat.cor, ddat.axi);
+            curIdPos = find(ismember(valId, curIdVal)); 
+            if curIdPos
+                set(findobj('Tag', 'curInfo'), 'ForegroundColor','g',...
+                    'FontSize', 10, 'HorizontalAlignment', 'left', 'String', ...
+                     sprintf('Current crosshair is located in the region: %s', ...
+                              ddat.total_region_name{curIdPos, 2}));
+            else
+                set(findobj('Tag', 'curInfo'), 'String', '');
+            end
         end
     end
 
@@ -1341,7 +1411,42 @@ end
             set(ddat.coronal_xline{iPop},'Ydata',[ddat.axi ddat.axi]);
             set(ddat.sagittal_xline{iPop},'Ydata',[ddat.axi ddat.axi]);
             set(findobj('Tag','crosshairPos'),'String',...
-                sprintf('%7.0d %7.0d %7.0d',ddat.sag,ddat.cor, ddat.axi));    
+                sprintf('%7.0d %7.0d %7.0d',ddat.sag,ddat.cor, ddat.axi));   
+            updateInfoText;
+                        if ddat.nCompare == 1
+                if get(findobj('Tag', 'viewZScores'), 'Value') == 0
+                set(findobj('Tag', 'crosshairVal1'),'String',...
+                    sprintf('Value at Voxel: %4.2f', ddat.img{1}(ddat.sag, ddat.cor, ddat.axi)));
+                elseif get(findobj('Tag', 'viewZScores'), 'Value') == 1
+                    set(findobj('Tag', 'crosshairVal1'),'String',...
+                    sprintf('Z = %4.2f', ddat.img{1}(ddat.sag, ddat.cor, ddat.axi)));
+                end
+            else
+                if get(findobj('Tag', 'viewZScores'), 'Value') == 0
+                    for iPop = 1:ddat.nCompare
+                        set(findobj('Tag', ['crosshairVal' num2str(iPop)]),'String',...
+                            sprintf('Value at Voxel: %4.2f',...
+                            ddat.img{iPop}(ddat.sag, ddat.cor, ddat.axi)));
+                    end
+                else
+                    for iPop = 1:ddat.nCompare
+                        set(findobj('Tag', ['crosshairVal' num2str(iPop)]),'String',...
+                            sprintf('Z = %4.2f',...
+                            ddat.img{iPop}(ddat.sag, ddat.cor, ddat.axi)));
+                    end
+                end
+            end
+            valId = cell2mat(ddat.total_region_name(:, 1));
+            curIdVal = ddat.region_struct.img(ddat.sag, ddat.cor, ddat.axi);
+            curIdPos = find(ismember(valId, curIdVal)); 
+            if curIdPos
+                set(findobj('Tag', 'curInfo'), 'ForegroundColor','g',...
+                    'FontSize', 10, 'HorizontalAlignment', 'left', 'String', ...
+                     sprintf('Current crosshair is located in the region: %s', ...
+                              ddat.total_region_name{curIdPos, 2}));
+            else
+                set(findobj('Tag', 'curInfo'), 'String', '');
+            end
         end
     end
    
