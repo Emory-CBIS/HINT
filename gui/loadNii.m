@@ -22,7 +22,7 @@ function varargout = loadNii(varargin)
 
 % Edit the above text to modify the response to help loadNii
 
-% Last Modified by GUIDE v2.5 13-Jun-2018 15:46:21
+% Last Modified by GUIDE v2.5 06-Feb-2019 09:43:48
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -211,9 +211,14 @@ function pushbutton4_Callback(hObject, eventdata, handles)
 % hObject    handle to pushbutton4 (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-handles.output={getappdata(handles.figure1,'niifiles'),...
+%handles.output={getappdata(handles.figure1,'niifiles'),...
+%    getappdata(handles.figure1,'maskf'),...
+%    getappdata(handles.figure1,'covf')};
+
+handles.output={handles.niifiles,...
     getappdata(handles.figure1,'maskf'),...
-    getappdata(handles.figure1,'covf')};
+    getappdata(handles.figure1,'covf'),...
+    handles.nVisit};
 
 % write chosen files to output text
 %handles = guidata(hObject);
@@ -262,8 +267,25 @@ function pushbutton6_Callback(hObject, eventdata, handles)
  end
  %%%%% check hdr valid img
  covf = strcat(pathname, filename);
- set(handles.edit6,'String',covf);
+ 
+ % Open the file and verify that the number of columns
+ % with niifiles is correct and that the files exist
+ handles.nVisit = str2double(handles.numVisitBox.String);
+ [niifiles, missingFiles, duplicateFiles] = verify_niifiles_valid(covf, handles.nVisit, 1);
+ 
+ % Create a summary of the loaded, missing, and duplicated files and
+ % present it to the user and wait for response
+ 
+ restart = view_input_summary(niifiles, missingFiles, duplicateFiles);
+ 
+ % Update the handles structure
+ if ~restart
+    handles.niifiles = niifiles;
+    set(handles.edit6,'String',covf);
+ end
+  
  setappdata(handles.figure1, 'covf', covf);
+guidata(handles.figure1, handles);
 
 
 
@@ -328,3 +350,60 @@ function figure1_CloseRequestFcn(hObject, eventdata, handles)
 handles.output={};
 guidata(handles.figure1, handles);
 uiresume(handles.figure1);
+
+
+% --- Executes on selection change in analysisTypePopup.
+function analysisTypePopup_Callback(hObject, eventdata, handles)
+% hObject    handle to analysisTypePopup (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: contents = cellstr(get(hObject,'String')) returns analysisTypePopup contents as cell array
+%        contents{get(hObject,'Value')} returns selected item from analysisTypePopup
+
+if hObject.Value == 1
+    handles.numVisitBox.String = '1';
+    handles.numVisitBox.Enable = 'off';
+    handles.text7.Enable = 'off';
+else
+    handles.numVisitBox.Enable = 'on';
+    handles.text7.Enable = 'on';
+end
+guidata(handles.figure1, handles);
+
+
+
+% --- Executes during object creation, after setting all properties.
+function analysisTypePopup_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to analysisTypePopup (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: popupmenu controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+
+function numVisitBox_Callback(hObject, eventdata, handles)
+% hObject    handle to numVisitBox (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of numVisitBox as text
+%        str2double(get(hObject,'String')) returns contents of numVisitBox as a double
+
+
+% --- Executes during object creation, after setting all properties.
+function numVisitBox_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to numVisitBox (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end

@@ -11,7 +11,7 @@ function varargout = hint(varargin)
     addpath(genpath('toolboxes'))
     addpath(genpath('displayWindow'))
     addpath('src')
-    addpath('gui')
+    addpath(genpath('gui'))
     addpath(genpath('toolboxes/GroupICATv4.0b'))
 
     % Run the main GUI script

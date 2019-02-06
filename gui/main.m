@@ -41,6 +41,7 @@ function varargout = main(varargin)
     data.tempiniGuessObtained = 0;
     data.iniGuessComplete = 0;
     data.dataLoaded = 0;
+    data.analysisType = 'unselected';
 
     function hs = addcomponents
         % Add components, save handles in a struct
@@ -499,6 +500,24 @@ function varargout = main(varargin)
     % user.
     function loadDataButton_Callback(~,~)
         
+        % Open a box asking the user if the analysis is a regular hc-ICA
+        % analysis or a longitudinal analysis
+%         answer = questdlg('What type of hc-ICA analysis would you like to perform?', ...
+%         'Analysis Type', ...
+%         'Cross-Sectional', 'Longitudinal', 'Cancel', 'Cancel');
+%         % Handle response
+%         switch answer
+%             case 'Cross-Sectional'
+%                 data.analysisType = 'hcica';
+%             case 'Longitudinal'
+%                 data.analysisType = 'lica';
+%             case 'Cancel'
+%                 data.analysisType = 'unselected';
+%         end
+%         
+%         % check to make sure anything else should be done
+%         if ~strcmp(data.analysisType, 'unselected')
+        
         data.preprocessingComplete = 0;
         data.iniGuessComplete = 0;
         set(findobj('tag', 'saveContinueButton'), 'enable', 'off');
@@ -523,6 +542,7 @@ function varargout = main(varargin)
         
         bGroup = findobj('Tag','loadDataRadioButtonPanel');
         dataType = get(get(bGroup,'SelectedObject'),'Tag');
+        
         % Handle input data in .mat form. This will load runinfo file
         if (strcmp(dataType, 'matData') == 1)
             % Direct the user to load a runinfo file
@@ -552,6 +572,7 @@ function varargout = main(varargin)
                 data.numPCA = runinfo.numPCA;
                 data.thetaStar = runinfo.thetaStar;
                 data.time_num = runinfo.time_num;
+                data.nVisit = runinfo.nVisit;
                 data.validVoxels = runinfo.validVoxels;
                 data.outpath = runinfo.outfolder;
                 data.prefix = '';
@@ -612,28 +633,75 @@ function varargout = main(varargin)
                     proceedWithLoad = 1;
                 end
             end
+           
             
             if proceedWithLoad
-            fls = loadNii;
+              
+                fls = loadNii;
+%                 if strcmp(data.analysisType, 'hcica')
+%                     fls = loadNii;
+%                 elseif strcmp(data.analysisType, 'lica')
+%                     cov_and_mask_fls = input_load_cov_and_mask;
+%                     varargoutttt = input_determine_visits_and_subject_names( cov_and_mask_fls{2} );
+%                     fls = select_folder_structure_lica;
+%                 else
+%                     disp('ERROR - no valid analysis selected. This is a toolbox error, not user error.')
+%                 end
+                
             % outer check makes sure anything was input
             if (~isempty(fls))
             if (~isempty(fls{1}) && ~isempty(fls{2}) && ~isempty(fls{3}))
+                
                 waitLoad = waitbar(0,'Please wait while the data load');
                 niifiles = fls{1}; data.niifiles_raw = niifiles;
                 maskf = fls{2}; data.maskf = maskf;
                 covf = fls{3}; data.covf = covf;
                 N = length(niifiles);
+                data.nVisit = fls{4};
+                
+                % Make sure there is something to load
                 if (N > 0)
+                    
                     waitbar(1/10, waitLoad, 'Loading and sorting covariates')
                     % Match up each covariate with its row in the covariate
                     % file
-                    data.covariateTable = readtable(covf);
+                    data.covariateTable = readtable(covf, 'Delimiter', ',');
                     data.covariates = data.covariateTable.Properties.VariableNames;
-                    data.referenceGroupNumber = ones(1, length(data.covariates));
+                    data.referenceGroupNumber = ones(1, length(data.covariates) - data.nVisit + 1);
                     
-                    [data.niifiles, tempcov] = matchCovariatesToNiifiles(data.niifiles_raw,...
-                        data.covariateTable, strMatch);
+                    %% Extend the covariate table by repeating the
+                    % covariates for each subject nVisit times, then only
+                    ncov = length(data.covariates) - data.nVisit;
+                    cellCov = {N, ncov + 1};
+                    subjindex = 0;
+                    for iSubj = 1:(N/data.nVisit)
+                        for iVisit = 1:data.nVisit
+                            subjindex = subjindex + 1;
+                            cellCov(subjindex, 1) = niifiles(subjindex);
+                            for icov = 1:ncov
+                                cellCov{subjindex, icov+1} = data.covariateTable{iSubj, data.nVisit+icov};
+                            end
+                        end
+                           
+                    end
+                    % Finalize into a new table
+                    newTable = cell2table(cellCov);
+                    % Update the structures in data
+                    % renaming covariates
+                    data.covariates = data.covariates(data.nVisit:length(data.covariates));
+                    data.covariates{1} = 'file';
+                    % update the column names of the new table and add it
+                    % to data
+                    newTable.Properties.VariableNames = data.covariates;
+                    data.covariateTable = newTable;
                     
+                    
+                    % No longer need to do string matchinghere
+                    %[data.niifiles, tempcov] = matchCovariatesToNiifiles(data.niifiles_raw,...
+                    %    data.covariateTable, strMatch);
+                    % add these becuase we removed matchCovariatesToNiifiles
+                    tempcov = data.covariateTable;
+                    data.niifiles = niifiles;
                     % Get rid of the subject part of the data frame
                     data.covariates = tempcov(:, 2:width(tempcov));
                     data.covariates.Properties.VariableNames =...
@@ -701,8 +769,10 @@ function varargout = main(varargin)
                                 
             end
             end
-            end % end of proceedWithLoad check
+            %end % end of proceedWithLoad check
         end
+        
+        end % end of check that user did not press cancel
     end
 
     
@@ -1218,6 +1288,7 @@ function varargout = main(varargin)
             data.vis_interactionsBase = runInfo.interactionsBase;
             data.vis_niifiles = runInfo.niifiles;
             [data.vis_N, ~] = size(runInfo.X);
+            data.vis_nVisit = runInfo.nVisit;
             data.vis_qstar = runInfo.q;
             waitbar(1)
             close(waitLoad);
@@ -1225,17 +1296,7 @@ function varargout = main(varargin)
             %Force the keeplist variable to reflect the number of ICs
             global keeplist
             keeplist = ones(data.vis_qstar, 1);
-%                     disp('this is going to mess up keeplist!!! XXX')
-%         disp('this is going to mess up keeplist!!! XXX')
-%         disp('this is going to mess up keeplist!!! XXX')
-%         disp('this is going to mess up keeplist!!! XXX')
-%         disp('this is going to mess up keeplist!!! XXX')
-%         disp('this is going to mess up keeplist!!! XXX')
-%         disp('this is going to mess up keeplist!!! XXX')
-%         disp('this is going to mess up keeplist!!! XXX')
-%         disp('this is going to mess up keeplist!!! XXX')
-%         disp('this is going to mess up keeplist!!! XXX')
-%         disp('this is going to mess up keeplist!!! XXX')
+
                         
         else
             errordlg('No runinfo file found for the analysis!')
@@ -1346,6 +1407,7 @@ function varargout = main(varargin)
         qold = data.q;                                              %#ok<NASGU> 
         waitbar(16/20)
         varInModel = data.varInModel;%#ok<NASGU> 
+        nVisit = data.nVisit;%#ok<NASGU> 
         waitbar(17/20)
         varInCovFile = data.varInCovFile;%#ok<NASGU> 
         referenceGroupNumber = data.referenceGroupNumber;
@@ -1356,7 +1418,7 @@ function varargout = main(varargin)
             'outfolder', 'prefix', 'covariates', 'covTypes', 'beta0Star', 'CmatStar',...
             'YtildeStar', 'thetaStar', 'voxSize', 'N', 'qold', 'varNamesX',...
             'interactions', 'varInModel', 'varInCovFile', 'interactionsBase',...
-            'referenceGroupNumber');
+            'referenceGroupNumber', 'nVisit');
         waitbar(20/20)
         close(waitSave)
         
@@ -1439,6 +1501,7 @@ function varargout = main(varargin)
         data.vis_varInModel = tempData.varInModel;
         data.vis_varInCovFile = tempData.varInCovFile;
         data.vis_referenceGroupNumber = tempData.referenceGroupNumber;
+        data.vis_nVisit = tempData.nVisit;
         analysisPrefix = tempData.prefix;
         
         waitbar(10/10)
