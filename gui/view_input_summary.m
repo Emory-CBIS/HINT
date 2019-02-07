@@ -79,7 +79,7 @@ handles.duplicatedCount.String = num2str(handles.nduplicate);
 % Update the listboxes
 handles.niifilesListbox.String = handles.niifiles;
 handles.missingListbox.String = handles.missingFiles;
-handles.duplicatesListbox = handles.duplicateFiles;
+handles.duplicatesListbox.String = handles.duplicateFiles;
 
 % Update handles structure
 guidata(hObject, handles);
