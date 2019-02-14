@@ -57,6 +57,7 @@ currentWaitStatus = 0;
 % above
 for iRow = 1:nFile
     
+    
     for iVisit = 1:nVisit
         
         
@@ -65,6 +66,17 @@ for iRow = 1:nFile
             
             currentLength = length(duplicateFiles);
             duplicateFiles{currentLength + 1} = char(covariateTable{iRow, iVisit});
+            
+            % Since a duplicate files has been detected, this subject needs
+            % to be skipped
+            if iVisit > 1
+                % remove any previous visit that was added to niifiles
+                for iPrevVisit = 1:(iVisit-1)
+                    currentLength = length(niifiles);
+                    niifiles(currentLength) = [];
+                end
+            end
+            break
                         
             
         % Case where the file is not a duplicate    
@@ -79,6 +91,18 @@ for iRow = 1:nFile
                 % file does not exist, add it to missingfiles
                 currentLength = length(missingFiles);
                 missingFiles{currentLength + 1} = char(covariateTable{iRow, iVisit});
+                
+                % Since a missing file has been detected, this subject needs
+                % to be skipped
+                if iVisit > 1
+                    % remove any previous visit that was added to niifiles
+                    for iPrevVisit = 1:(iVisit-1)
+                        currentLength = length(niifiles);
+                        niifiles(currentLength) = [];
+                    end
+                end
+                break
+                
             end
             
         end
