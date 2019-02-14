@@ -22,7 +22,7 @@ function varargout = view_input_summary(varargin)
 
 % Edit the above text to modify the response to help view_input_summary
 
-% Last Modified by GUIDE v2.5 06-Feb-2019 12:19:09
+% Last Modified by GUIDE v2.5 14-Feb-2019 09:40:14
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -200,3 +200,13 @@ function figure1_CloseRequestFcn(hObject, eventdata, handles)
 handles.output = 0; % default is to not reset
 guidata(handles.figure1, handles);
 uiresume(handles.figure1);
+
+
+% --- Executes on button press in explanationButton.
+function explanationButton_Callback(hObject, eventdata, handles)
+% hObject    handle to explanationButton (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+helpdlg('.nii files found are files provided in the csv covariates file that were able to be found. Missing files are files that were provided in the csv file but could not be found on the specified filepath. Duplicated files are files in which more than one subject/visit shared the same filepath.',...
+    'Explanation of input file summary');
