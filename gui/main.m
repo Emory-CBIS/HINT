@@ -656,11 +656,11 @@ function varargout = main(varargin)
                 niifiles = fls{1}; data.niifiles_raw = niifiles;
                 maskf = fls{2}; data.maskf = maskf;
                 covf = fls{3}; data.covf = covf;
-                N = length(niifiles);
+                nfile = length(niifiles);
                 data.nVisit = fls{4};
                 
                 % Make sure there is something to load
-                if (N > 0)
+                if (nfile > 0)
                     
                     waitbar(1/10, waitLoad, 'Loading and sorting covariates')
                     % Match up each covariate with its row in the covariate
@@ -672,9 +672,9 @@ function varargout = main(varargin)
                     %% Extend the covariate table by repeating the
                     % covariates for each subject nVisit times, then only
                     ncov = length(data.covariates) - data.nVisit;
-                    cellCov = {N, ncov + 1};
+                    cellCov = {nfile, ncov + 1};
                     subjindex = 0;
-                    for iSubj = 1:(N/data.nVisit)
+                    for iSubj = 1:(nfile/data.nVisit)
                         for iVisit = 1:data.nVisit
                             subjindex = subjindex + 1;
                             cellCov(subjindex, 1) = niifiles(subjindex);
@@ -742,7 +742,7 @@ function varargout = main(varargin)
                     
                     % Store the relevant information
                     data.time_num = k;
-                    data.N = N;
+                    data.N = nfile / data.nVisit;
                     data.validVoxels = validVoxels;
                     data.voxSize = size(mask.img);
                     data.dataLoaded = 1;
@@ -799,7 +799,7 @@ function varargout = main(varargin)
 
             data.q = str2double(get(findobj('Tag', 'numICA'), 'String'));
             [data.Ytilde, data.C_matrix_diag, data.H_matrix_inv,  data.H_matrix, data.deWhite]...
-                = PreProcICA(data.niifiles, data.validVoxels, data.q, data.time_num, data.N);
+                = PreProcICA(data.niifiles, data.validVoxels, data.q, data.time_num, data.N*data.nVisit);
 
             % Update GUI to show PCA completed
             data.dispPCA.String = 'PCA Completed';
@@ -876,13 +876,37 @@ function varargout = main(varargin)
                 % Perform GIFT
                 % Generate the text parameter file used by GIFT
                 hcicadir = pwd;
+                
+                
+                % TODO delete this, here for testing
+%                 Ytilde = data.Ytilde;
+%                 niifiles = data.niifiles;
+%                 maskf = data.maskf;
+%                 prefix = get(findobj('Tag', 'prefix'), 'String');
+%                 outdir =  get(findobj('Tag', 'analysisFolder'), 'String');
+%                 numpc = str2double(numberOfPCs.String);
+%                 N = data.N;
+%                 q = data.q;
+%                 nVisit = data.nVisit;
+%                 X = data.X;
+%                 save('/Users/joshlukemire/Desktop/lica_ini_guess_dev/licatest.mat', 'Ytilde', 'niifiles', 'maskf',...
+%                     'prefix', 'outdir', 'numpc', 'N', 'q', 'nVisit', 'X')
+                
                 % run GIFT to get the initial guess. This function also outputs nifti files
                 % with initial values.
-                [ data.theta0, data.beta0, data.s0, s0_agg ] = runGIFT(data.niifiles, data.maskf, ...
-                    get(findobj('Tag', 'prefix'), 'String'),...
-                    get(findobj('Tag', 'analysisFolder'), 'String'),...
-                    str2double(numberOfPCs.String),...
-                    data.N, data.q, data.X, data.Ytilde, hcicadir);
+                
+%                 [ data.theta0, data.beta0, data.s0, s0_agg ] = runGIFT(data.niifiles, data.maskf, ...
+%                     get(findobj('Tag', 'prefix'), 'String'),...
+%                     get(findobj('Tag', 'analysisFolder'), 'String'),...
+%                     str2double(numberOfPCs.String),...
+%                     data.N, data.q, data.X, data.Ytilde, hcicadir);
+
+                [ data.theta0, data.beta0, data.s0, s0_agg ] = ObtainInitialGuess(data.niifiles, data.maskf, ...
+                     get(findobj('Tag', 'prefix'), 'String'),...
+                     get(findobj('Tag', 'analysisFolder'), 'String'),...
+                     str2double(numberOfPCs.String),...
+                     data.N, data.q, data.X, data.Ytilde, hcicadir, data.nVisit);
+
 
                 % Write to log file that initial guess stage is complete.
                 if (writelog == 1)

@@ -395,6 +395,45 @@ function numVisitBox_Callback(hObject, eventdata, handles)
 % Hints: get(hObject,'String') returns contents of numVisitBox as text
 %        str2double(get(hObject,'String')) returns contents of numVisitBox as a double
 
+% Verify that the contents of the box are a valid number
+inputstring = get(hObject,'String');
+if isempty(str2num(inputstring))
+    set(hObject, 'string',num2str(handles.nVisit));
+    warndlg('Number of visits must be numeric');
+    
+% Otherwise, if a valid input was given make sure the number of visits has
+% not changed. If it has changed, remove the covariates, as they are no
+% longer valid
+else
+    
+    if  isfield(handles, 'nVisit') && handles.nVisit ~= str2num(inputstring)
+        
+        % if this gets flipped to 1, let the user know they need to
+        % re-input covariates
+        warnflg = 0;
+        
+        % check if a covariate file or niifiles have been provided. If so,
+        % remove them
+        if isfield(handles, 'niifiles')
+            warnflg = 1;
+            rmfield(handles, 'niifiles');
+        end
+        
+        if ~strcmp(handles.edit6.String, '')
+            warnflg = 1;
+            handles.edit6.String = '';
+        end
+        
+        if warnflg
+            warndlg('Number of visits was changed, covariate file must be re-loaded.');
+        end
+       
+    end
+    
+end
+
+guidata(handles.figure1, handles);
+
 
 % --- Executes during object creation, after setting all properties.
 function numVisitBox_CreateFcn(hObject, eventdata, handles)

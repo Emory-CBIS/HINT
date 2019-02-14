@@ -48,16 +48,24 @@ end
 
 %% Check for the existance of each file and verify that none are duplicates
 
+% Setup a waitbar while everthting loads
+wb = waitbar(0,'Please wait while the Nifti files are found...');
+incr = 1 / (nFile*nVisit);
+currentWaitStatus = 0;
+
 % Loop is in this order so that niifiles will have the structure specified
 % above
 for iRow = 1:nFile
+    
     for iVisit = 1:nVisit
+        
         
         % First check if this is a duplicate
         if any(strcmp(niifiles,char(covariateTable{iRow, iVisit})))
             
             currentLength = length(duplicateFiles);
             duplicateFiles{currentLength + 1} = char(covariateTable{iRow, iVisit});
+                        
             
         % Case where the file is not a duplicate    
         else
@@ -75,9 +83,15 @@ for iRow = 1:nFile
             
         end
         
+        % Increment the waitbar
+        currentWaitStatus = currentWaitStatus + incr;
+        waitbar(currentWaitStatus, wb, 'Please wait while the Nifti files are found...');
         
     end
 end
+
+% Close the waitbar
+close(wb)
 
 
 end
