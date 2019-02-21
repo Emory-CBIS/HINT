@@ -1141,81 +1141,9 @@ function varargout = main(varargin)
                 [' ',get(findobj('Tag','analysisFolder'),'String')] )  );
             end
             path = get(findobj('Tag','analysisFolder'),'String');
-
-            % Create nifti files for the group ICs, the subject specific ICs,
-            % and the beta effects.
-            prefix = get(findobj('Tag','prefix'),'String');
-            vxl = data.voxSize;
-            locs = data.validVoxels;
-            path = [data.outpath '/'];
-
-            % Open a waitbar showing the user that the results are being saved
-            waitSave = waitbar(0,'Please wait while the results are saved');
-
-            % Save a file with the subject level IC map information
-            subjFilename = [path analysisPrefix '_subject_IC_estimates.mat'];
-            subICmean = data.subICmean;
-            save(subjFilename, 'subICmean');
-
-            waitbar(1 / (2+data.qstar))
-
-            for i=1:data.qstar
-
-                waitbar((1+i) / (2+data.qstar), waitSave, ['Saving results for IC ', num2str(i)])
-
-                % Save the S0 map
-                gfilename = [analysisPrefix '_S0_IC_' num2str(i) '.nii'];
-                nmat = nan(vxl);
-                nmat(locs) = data.grpICmean(i,:);
-                nii = make_nii(nmat);
-                save_nii(nii,strcat(path,gfilename));
-
-                % Create IC maps for the betas.
-                for k=1:size(data.beta_est,1)
-                    bfilename = [analysisPrefix '_beta_cov' num2str(k) '_IC' num2str(i) '.nii'];
-                    nmat = nan(vxl);
-                    nmat(locs) = data.beta_est(k,i,:);
-                    nii = make_nii(nmat);
-                    save_nii(nii,strcat(path,bfilename));
-                end
-
-                % Create aggregate IC maps
-                nullAggregateMatrix = nan(vxl);
-                nullAggregateMatrix(locs) = 0.0;
-                for j=1:data.N
-                    nullAggregateMatrix(locs) = nullAggregateMatrix(locs) +...
-                        1/data.N * squeeze(subICmean(i,j,:));
-                end
-                gfilename = [analysisPrefix '_aggregateIC_' num2str(i) '.nii'];
-                nii = make_nii(nullAggregateMatrix);
-                save_nii(nii,strcat(data.outpath,'/',gfilename));
-
-            end
-
-            waitbar((data.qstar+1) / (2+data.qstar), waitSave, 'Estimating variance of covariate effects. This may take a minute.')
-
-            % Calculate the standard error estimates for the beta maps
-            theory_var = VarEst_hcica(data.theta_est, data.beta_est, data.X,...
-                data.z_mode, data.YtildeStar, data.G_z_dict, data.voxSize,...
-                data.validVoxels, analysisPrefix, data.outpath);
-            data.theoretical_beta_se_est = theory_var;
-
-            waitbar(1)
-            close(waitSave)
-
-            data.outpath = path;
-            data.prefix = prefix;
-
-            % Write out a text file to the output directory with what covariate
-            % each beta map corresponds to
-            nBeta = size(data.X, 2);
-            fname = [data.outpath, data.prefix, '_Beta_File_List'];
-            fileID = fopen(fname,'w');
-            formatSpec = 'Beta %4.2i is %s \r\n';
-            for i = 1:nBeta
-                fprintf(fileID,formatSpec,i,data.varNamesX{i});
-            end
-            fclose(fileID);
+            
+            
+            data.theoretical_beta_se_est = save_analysis_results(prefix, data);
 
             % Disable the stop button
             set(findobj('Tag','stopButton'),'enable','off'); 
@@ -1240,7 +1168,6 @@ function varargout = main(varargin)
         set( findobj('tag', 'displayButton'), 'enable', 'on' );
         set( findobj('tag', 'displayButton'), 'string', 'Display' );
         % Update the display tab with the output path
-        %set( findobj('tag', 'displayPath'), 'string', data.outpath(1:end-1));
         folderName = strsplit(analysisPrefix, '/');
         set( findobj('tag', 'displayPath'), 'string', [data.outpath folderName{1}]);
         set( findobj('tag', 'displayPrefix'), 'string', folderName{2});
@@ -1279,76 +1206,43 @@ function varargout = main(varargin)
         set(ehandle,'String',folderName);
         runinfofiles = dir( [folderName '/*_runinfo.mat'] );
         
-        if ( ~isempty(runinfofiles) )
-            
-            sel = 1;
-            for preIndex = 1:length(runinfofiles)
-                prename = runinfofiles(preIndex).name;
-                runinfofiles(preIndex).name = prename(1:length(prename)-12);
-            end
-            
-            if ( length(runinfofiles) > 1 )
-                sel = listdlg('PromptString','Choose a prefix:',...
-                    'SelectionMode','single',...
-                    'ListString',{runinfofiles.name});
-            end
-            
-            % Create a waitbar while the runinfo file loads
-            waitLoad = waitbar(0, 'Please wait while the runinfo file loads...');
-            
-            data.prefix = runinfofiles(sel).name;
+        if ( ~isempty(runinfofiles) )     
+            data.prefix, data.vis_prefix, data.vis_covariates,...
+            data.vis_covTypes, data.vis_X, data.vis_varNamesX,...
+            data.vis_interactions, data.vis_interactionsBase,...
+            data.vis_niifiles, data.vis_N, data.vis_nVisit,...
+            data.vis_qstar = load_browse_display_path(runinfofiles);
+        
+            % Update the prefix
             preEdit = findobj('Tag', 'displayPrefix');
-            preEdit.String = data.prefix;
-            
-            % Read the runinfo .m file. Update "data" information.
-            data.vis_prefix = get(preEdit,'String');
-            runInfo = load([folderName '/' data.prefix '_runinfo.mat']);
-            waitbar(5/10)
-            data.vis_covariates = runInfo.covariates;
-            data.vis_covTypes = runInfo.covTypes;
-            data.vis_X = runInfo.X;
-            data.vis_varNamesX = runInfo.varNamesX;
-            data.vis_interactions = runInfo.interactions;
-            data.vis_interactionsBase = runInfo.interactionsBase;
-            data.vis_niifiles = runInfo.niifiles;
-            [data.vis_N, ~] = size(runInfo.X);
-            data.vis_nVisit = runInfo.nVisit;
-            data.vis_qstar = runInfo.q;
-            waitbar(1)
-            close(waitLoad);
-            
-            %Force the keeplist variable to reflect the number of ICs
-            global keeplist
-            keeplist = ones(data.vis_qstar, 1);
-
-                        
+            preEdit.String = data.prefix;    
         else
             errordlg('No runinfo file found for the analysis!')
         end
         
     end
-    
-    % Function to open the display viewer. Belongs to Panel 3.
+
+% Function to open the display viewer. Belongs to Panel 3.
     function displayCallback(~,~)
         dgroup = findobj('Tag', 'displayType');
         disp_map =  get(get(dgroup, 'SelectedObject'), 'Tag');
         keeplist = ones(data.vis_q, 1);
         if strcmp(disp_map, 'dt1')
             displayResults(data.vis_qstar, data.vis_outpath, ...
-   analysisPrefix, data.vis_N, 'grp', data.vis_varNamesX, data.vis_X, data.vis_covTypes,...
-   data.vis_interactions)
+                analysisPrefix, data.vis_N, 'grp', data.vis_varNamesX, data.vis_X, data.vis_covTypes,...
+                data.vis_interactions)
         elseif strcmp(disp_map, 'dt2')
             displayResults(data.vis_qstar, data.vis_outpath, ...
-   analysisPrefix, data.vis_N, 'subpop', data.vis_varNamesX, data.vis_X, data.vis_covTypes,...
-   data.vis_interactions)
+                analysisPrefix, data.vis_N, 'subpop', data.vis_varNamesX, data.vis_X, data.vis_covTypes,...
+                data.vis_interactions)
         elseif strcmp(disp_map, 'dt3')
             displayResults(data.vis_qstar, data.vis_outpath, ...
-   analysisPrefix, data.vis_N, 'subj', data.vis_varNamesX, data.vis_X, data.vis_covTypes,...
-   data.vis_interactions)
+                analysisPrefix, data.vis_N, 'subj', data.vis_varNamesX, data.vis_X, data.vis_covTypes,...
+                data.vis_interactions)
         elseif strcmp(disp_map, 'dt4')
             displayResults(data.vis_qstar, data.vis_outpath, ...
-   analysisPrefix, data.vis_N, 'beta', data.vis_varNamesX, data.vis_X, data.vis_covTypes,...
-   data.vis_interactions)
+                analysisPrefix, data.vis_N, 'beta', data.vis_varNamesX, data.vis_X, data.vis_covTypes,...
+                data.vis_interactions)
         end
     end
     
@@ -1359,97 +1253,12 @@ function varargout = main(varargin)
     % Save the run infoformation into a file called runinfo.mat.
     function saveContinueButton_Callback(~,~)
         
-        
-        userNeedsToInputPrefix = 1;
-        prefix = '';
-        while userNeedsToInputPrefix
-            
-            % Ask the user for a prefix for the analysis
-            prefix = inputdlg('Please input a prefix for the analysis', 'Prefix Selection');
-            
-            if ~isempty(prefix)
-                prefix = prefix{1};
-                % Check if this prefix is already in use. If it is, ask the user to
-                % verify that they want to continue + delete current contents
-                if exist([data.outpath '/' prefix '_results']) == 7
-                    qans = questdlg(['This prefix is already in use. If you continue, all previous results in the ', [data.outpath '/' prefix '_results'], ' folder will be deleted. Do you want to continue?' ] );
-                    % If yes, delete old results and proceed
-                    if strcmp(qans, 'Yes')
-                        userNeedsToInputPrefix = 0;
-                        % Delete all content from the folder
-                        rmdir(fullfile(data.outpath, [prefix '_results']), 's')
-                    end
-                % Folder not already in use
-                else
-                    userNeedsToInputPrefix = 0;
-                end
-            end
-            
-        end
-        
-        % make the results directory
-        mkdir([data.outpath '/' prefix '_results']);
-        prefix = [prefix  '_results/' prefix];
-        
-        
-        % Waitbar to let the user know data is saving
-        waitSave = waitbar(0,'Please wait while the analysis setup saves to the runinfo file');
-
-        %  save the run info, hide the warning that the variables are
-        %  unused
-        q = data.qstar; time_num = data.time_num; X = data.X;       %#ok<NASGU>
-        waitbar(1/20)
-        validVoxels=data.validVoxels; niifiles = data.niifiles;     %#ok<NASGU>
-        waitbar(2/20)
-        maskf = data.maskf; covfile = data.covf;                    %#ok<NASGU>
-        waitbar(3/20)
-        numPCA = num2str(get(findobj('Tag', 'numPCA'), 'String'));  %#ok<NASGU>
-        waitbar(4/20)
-        outfolder = data.outpath; %prefix = data.prefix;             %#ok<NASGU>
-        waitbar(5/20)
-        covariates = data.covariates;                               %#ok<NASGU>
-        waitbar(6/20)
-        covTypes = data.covTypes;                                   %#ok<NASGU>
-        waitbar(7/20)
-        varNamesX = data.varNamesX;                                 %#ok<NASGU>
-        waitbar(8/20)
-        interactions = data.interactions  ;                         %#ok<NASGU>
-        interactionsBase = data.interactionsBase;
-        waitbar(9/20)
-        thetaStar = data.thetaStar;                                 %#ok<NASGU>
-        waitbar(10/20)
-        YtildeStar = data.YtildeStar;                               %#ok<NASGU>
-        waitbar(11/20)
-        CmatStar = data.CmatStar;                                   %#ok<NASGU>
-        waitbar(12/20)
-        beta0Star = data.beta0Star;                                 %#ok<NASGU>
-        waitbar(13/20)
-        voxSize = data.voxSize;                                     %#ok<NASGU>
-        waitbar(14/20)
-        N = data.N;                                                 %#ok<NASGU>
-        waitbar(15/20)
-        qold = data.q;                                              %#ok<NASGU> 
-        waitbar(16/20)
-        varInModel = data.varInModel;%#ok<NASGU> 
-        nVisit = data.nVisit;%#ok<NASGU> 
-        waitbar(17/20)
-        varInCovFile = data.varInCovFile;%#ok<NASGU> 
-        referenceGroupNumber = data.referenceGroupNumber;
-        waitbar(18/20)
-        
-        save([data.outpath '/' prefix '_runinfo.mat'], 'q', ...
-            'time_num', 'X', 'validVoxels', 'niifiles', 'maskf', 'covfile', 'numPCA', ...
-            'outfolder', 'prefix', 'covariates', 'covTypes', 'beta0Star', 'CmatStar',...
-            'YtildeStar', 'thetaStar', 'voxSize', 'N', 'qold', 'varNamesX',...
-            'interactions', 'varInModel', 'varInCovFile', 'interactionsBase',...
-            'referenceGroupNumber', 'nVisit');
-        waitbar(20/20)
-        close(waitSave)
+        save_analysis_preparation(data);
         
         % Now cleanup earlier files (iniGuess and logfile) using the new
         % prefix
+        
         % Version of outfilename that includes the prefix
-        %move_iniguess_to_folder(outpath, prefix)
         if (writelog == 1)
             outfilename_full = strcat(data.outpath, '/', prefix, '_textlog_', date(),...
                 '_', datestr(now, 'HH_MM_SS') );
@@ -1496,45 +1305,11 @@ function varargout = main(varargin)
         fileprefix = get( findobj('Tag', 'displayPrefix'), 'String' );
         runinfoLoc = [filepath, '/', fileprefix, '_runinfo.mat'];
         
-        % Open the waitbar
-        waitLoad = waitbar(0,'Please wait while the results load');
-        
-        % Run the runinfo file
-        tempData = load(runinfoLoc);
-        waitbar(2/10)
-                
-        % Add the important parts of the runinfo file to the data object
-        % for the viewer
-        data.vis_q = tempData.q;
-        waitbar(3/10)
-        data.vis_qstar = tempData.q;
-        waitbar(4/10)
-        data.vis_outpath = tempData.outfolder;
-        waitbar(5/10)
-        %data.prefix = tempData.prefix;
-        waitbar(6/10)
-        data.vis_N = size(tempData.X, 1);
-        waitbar(7/10)
-        data.vis_covariates = tempData.covariates;
-        waitbar(8/10)
-        data.vis_X = tempData.X;
-        waitbar(9/10)
-        data.vis_covTypes = tempData.covTypes; 
-        data.vis_varNamesX = tempData.varNamesX;
-        data.vis_interactions = tempData.interactions;
-        data.vis_varInModel = tempData.varInModel;
-        data.vis_varInCovFile = tempData.varInCovFile;
-        data.vis_referenceGroupNumber = tempData.referenceGroupNumber;
-        data.vis_nVisit = tempData.nVisit;
-        analysisPrefix = tempData.prefix;
-        
-        waitbar(10/10)
-        
-        % Close the waitbar
-        close(waitLoad)
-        
-        % Set the prefix box to show the loaded prefix
-        %set(findobj( 'tag', 'displayPrefix' ), 'string', data.prefix)
+        [data.vis_q, data.vis_qstar, data.vis_outpath, data.vis_N,...
+            data.vis_covariates, data.vis_X, data.vis_covTypes,...
+            data.vis_varNamesX, data.vis_interactions, data.vis_varInModel,...
+            data.vis_varInCovFile, data.vis_referenceGroupNumber,...
+            data.vis_nVisit, analysisPrefix] = load_results_for_visualization(runinfoLoc);
         
         % Indicate that data has been loaded
         set( findobj('tag', 'displayButton'), 'enable', 'on' );
