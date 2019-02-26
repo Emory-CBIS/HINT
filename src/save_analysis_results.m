@@ -1,4 +1,4 @@
-function [ data.theoretical_beta_se_est ] = save_analysis_results( prefix, data )
+function [ theory_var ] = save_analysis_results( prefix, data )
 %save_analysis_results - function to save all the output from the EM
 %algorithm. Saves aggregate maps, ic maps, beta maps, and standard
 %deviations
@@ -13,7 +13,7 @@ path = [data.outpath '/'];
 waitSave = waitbar(0,'Please wait while the results are saved');
 
 % Save a file with the subject level IC map information
-subjFilename = [path analysisPrefix '_subject_IC_estimates.mat'];
+subjFilename = [path prefix '_subject_IC_estimates.mat'];
 subICmean = data.subICmean;
 save(subjFilename, 'subICmean');
 
@@ -24,17 +24,17 @@ for i=1:data.qstar
     waitbar((1+i) / (2+data.qstar), waitSave, ['Saving results for IC ', num2str(i)])
     
     % Save the S0 map
-    gfilename = [analysisPrefix '_S0_IC_' num2str(i) '.nii'];
+    gfilename = [prefix '_S0_IC_' num2str(i) '.nii'];
     nmat = nan(vxl);
     nmat(locs) = data.grpICmean(i,:);
     nii = make_nii(nmat);
-    save_nii(nii,strcat(path,gfilename));
+    save_nii(nii,strcat(path, gfilename));
     
     %% Create IC maps for the betas.
     % Save in the Cross-Sectional Case
     if data.nVisit == 1
         for k=1:size(data.beta_est,1)
-            bfilename = [analysisPrefix '_beta_cov' num2str(k) '_IC' num2str(i) '_V1' '.nii'];
+            bfilename = [prefix '_beta_cov' num2str(k) '_IC' num2str(i) '_V1' '.nii'];
             nmat = nan(vxl);
             nmat(locs) = data.beta_est(k,i,:);
             nii = make_nii(nmat);
@@ -56,7 +56,7 @@ for i=1:data.qstar
             nullAggregateMatrix(locs) = nullAggregateMatrix(locs) +...
                 1/data.N * squeeze(subICmean(i,j,:));
         end
-        gfilename = [analysisPrefix '_aggregateIC_' num2str(i) '_V1.nii'];
+        gfilename = [prefix '_aggregateIC_' num2str(i) '_V1.nii'];
         nii = make_nii(nullAggregateMatrix);
         save_nii(nii,strcat(data.outpath,'/',gfilename));
     else
@@ -74,7 +74,7 @@ waitbar((data.qstar+1) / (2+data.qstar), waitSave, 'Estimating variance of covar
 if data.nVisit == 1
     theory_var = VarEst_hcica(data.theta_est, data.beta_est, data.X,...
     data.z_mode, data.YtildeStar, data.G_z_dict, data.voxSize,...
-    data.validVoxels, analysisPrefix, data.outpath);
+    data.validVoxels, prefix, data.outpath);
     data.theoretical_beta_se_est = theory_var;
 else
     disp('NEED BETA ESTS FOR LICA!')

@@ -15,6 +15,6 @@ function val = scale_in(val, minval, maxval, range)
 
 % Convert the values to the proper range
 
-val = range*((double(val)-double(minval))./(double(maxval-minval))) + 1;
+val = range*((double(val)-double(minval))./(double(maxval-minval) + eps)) + 1;
 
   

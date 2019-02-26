@@ -1,4 +1,4 @@
-function [ output_args ] = InitialGuessCrossSectional( prefix, Ytilde, N, q,...
+function [ theta, beta, grpSig, s0_agg ] = InitialGuessCrossSectional( prefix, Ytilde, N, q,...
     V, p, X, nVisit, maskfl )
 %UNTITLED5 Summary of this function goes here
 %   Detailed explanation goes here
@@ -6,6 +6,7 @@ function [ output_args ] = InitialGuessCrossSectional( prefix, Ytilde, N, q,...
 
 % previous step will end in the output directory
 % Load data needed to get the initial values
+mask = load_nii(maskfl);
 V = sum(mask.img(:), 'omitnan');
 % some masks have 0s for non-voxels, other have nans. Try both
 validVoxels = find(~isnan(mask.img));
@@ -105,12 +106,12 @@ for c = 1:q
 end
 
 % Update the waitbar
-waitbar(1)
-close(h)
+%waitbar(1)
+%close(h)
 
-move_iniguess_to_folder(outdir, prefix)
+%move_iniguess_to_folder(outdir, prefix)
 
-cd(hcicadir);
+%cd(hcicadir);
 
 
 end

@@ -1143,7 +1143,8 @@ function varargout = main(varargin)
             path = get(findobj('Tag','analysisFolder'),'String');
             
             
-            data.theoretical_beta_se_est = save_analysis_results(prefix, data);
+           
+            data.theoretical_beta_se_est = save_analysis_results(analysisPrefix, data);
 
             % Disable the stop button
             set(findobj('Tag','stopButton'),'enable','off'); 
@@ -1169,7 +1170,7 @@ function varargout = main(varargin)
         set( findobj('tag', 'displayButton'), 'string', 'Display' );
         % Update the display tab with the output path
         folderName = strsplit(analysisPrefix, '/');
-        set( findobj('tag', 'displayPath'), 'string', [data.outpath folderName{1}]);
+        set( findobj('tag', 'displayPath'), 'string', fullfile(data.outpath, folderName{1}));
         set( findobj('tag', 'displayPrefix'), 'string', folderName{2});
         % Press the load results button
         loadResultsCallback;
@@ -1253,7 +1254,7 @@ function varargout = main(varargin)
     % Save the run infoformation into a file called runinfo.mat.
     function saveContinueButton_Callback(~,~)
         
-        save_analysis_preparation(data);
+        [analysisPrefix] = save_analysis_preparation(data);
         
         % Now cleanup earlier files (iniGuess and logfile) using the new
         % prefix
@@ -1265,7 +1266,6 @@ function varargout = main(varargin)
             %Copy the log file to the new file that includes the prefix
             copyfile(outfilename, outfilename_full);
         end
-        analysisPrefix = prefix;
         set(findobj('Tag', 'runButton'), 'enable', 'on');
         set(findobj('Tag','tabGroup'),'SelectedTab',findobj('Tag','tab2'))
         
@@ -1303,7 +1303,9 @@ function varargout = main(varargin)
         % Get the user selected path to the runinfo file
         filepath = get( findobj('Tag', 'displayPath'), 'String' );
         fileprefix = get( findobj('Tag', 'displayPrefix'), 'String' );
-        runinfoLoc = [filepath, '/', fileprefix, '_runinfo.mat'];
+        %runinfoLoc = [filepath, '/', fileprefix, '_runinfo.mat'];
+        runinfoLoc = fullfile(filepath, [fileprefix, '_runinfo.mat']);
+
         
         [data.vis_q, data.vis_qstar, data.vis_outpath, data.vis_N,...
             data.vis_covariates, data.vis_X, data.vis_covTypes,...

@@ -1,4 +1,4 @@
-function [ output_args ] = save_analysis_preparation( data )
+function [ prefix ] = save_analysis_preparation( data )
 %save_analysis_preparation - function to save all of the preprocessing work
 %in panel 1 to the runinfo file.
 
