@@ -359,13 +359,19 @@ end
             'visible', 'off', ...
             'Callback', @closeICSelect);
         
+        
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        %%     Trajectory Plotting Panel
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  
+        
+        
         movegui(hs.fig, 'center')
         
     end
 
     % This function is called when the user decides to compare two
     % subpopulations. It heavily changes the display window.
-    function createPanel(selectedPops)
+    function expandSubPopulationPanel(selectedPops)
         
         % Setup cell arrays for all sub population info.
         ddat.type = 'subPopCompare';
@@ -723,7 +729,7 @@ end
             set(findobj('Tag', 'subPopDisplay'), 'ColumnEditable', false);
             set(findobj('Tag', 'newSubPop'), 'Visible', 'Off');
             set(findobj('Tag', 'subPopSelect'), 'Visible', 'Off');
-            createPanel();
+            expandSubPopulationPanel();
         end
         
         % Fill out all ICs if doing IC selection.
@@ -786,10 +792,20 @@ end
         jet2=jet(64); jet2(38:end, :)=[];
         hot2=hot(64); hot2(end-5:end, :)=[]; hot2(1:4, :)=[];
         hot2(1:2:38, :)=[]; hot2(2:2:16, :)=[]; hot2=flipud(hot2);
-        hot3=[jet2; hot2]; ddat.hot3 = hot3;
-        ddat.highcolor = hot3;
+        hot3=[jet2; hot2];
+        ddat.hot3 = jet(64);
+        ddat.highcolor = jet(64);
         ddat.basecolor = gray(191);
         ddat.colorlevel = 256;
+        
+%         jet2=jet(64); jet2(38:end, :)=[];
+%         hot2=hot(64); hot2(end-5:end, :)=[]; hot2(1:4, :)=[];
+%         hot2(1:2:38, :)=[]; hot2(2:2:16, :)=[]; hot2=flipud(hot2);
+%         hot3=[jet2; hot2];
+%         ddat.hot3 = hot3;
+%         ddat.highcolor = hot3;
+%         ddat.basecolor = gray(191);
+%         ddat.colorlevel = 256;
         
         % Get the crosshair origin information.
         ddat.pixdim = double(ddat.mri_struct.hdr.dime.pixdim(2:4));
@@ -1047,8 +1063,12 @@ end
         %Get the 0.95 quantile to use as the min and max of the colorbar
         max_functmap_value = max(max(prctile(cat(ddat.nCompare,ddat.img{:}),95 ))); 
         min_functmap_value = min(min(prctile(cat(ddat.nCompare,ddat.img{:}),95 )));
-        maxval = max(max_functmap_value, abs(min_functmap_value));
-        max_functmap_value = maxval; min_functmap_value = -maxval;
+        % Redo so that they match true image
+        maxval1 = max(max(max(cat(ddat.nCompare,ddat.img{:})))); 
+        minval1 = min(min(min(cat(ddat.nCompare,ddat.img{:})))) - 1; 
+        %maxval = max(max_functmap_value, abs(min_functmap_value));
+        %max_functmap_value = maxval; min_functmap_value = -maxval;
+        max_functmap_value = maxval1; min_functmap_value = minval1;
         incr_val=max_functmap_value/5;
         int_part=floor(incr_val); frac_part=incr_val-int_part;
         incr = int_part + round(frac_part*10)/10;
@@ -1057,8 +1077,9 @@ end
             incr = 0.05;
         end
         % Update the labels for the colorbar
-        ddat.colorbar_labels = (min_functmap_value-0.05):incr:max_functmap_value+0.05;
-        ddat.colorbar_labels = round(ddat.colorbar_labels,2);
+        ddat.colorbar_labels = (min_functmap_value):incr:max_functmap_value;
+        %ddat.colorbar_labels = round(ddat.colorbar_labels,2);
+        ddat.colorbar_labels = fix(ddat.colorbar_labels*100)/100;
         ddat.scaled_pp_labels = scale_in(ddat.colorbar_labels, min_functmap_value, max_functmap_value, 63);
         % Update the colorbar
         axes(findobj('Tag', 'colorMap'));  
@@ -1801,7 +1822,7 @@ end
         set(findobj('Tag', 'newSubPop'), 'Visible', 'Off');
         set(findobj('Tag', 'subPopSelect1'), 'Visible', 'Off');
         set(findobj('Tag', 'compareSubPops'), 'Visible', 'Off');
-        createPanel(selectedSubPops);
+        expandSubPopulationPanel(selectedSubPops);
         delete(hObject.Parent);
     end
 

@@ -29,6 +29,7 @@ hot2=flipud(hot2);
 
 % Join the hot and cold colormaps into one map
 hot3=[flipud(hot2); flipud(jet2)];
+hot3 = flipud(jet(64));
 
 % Set the new colormap as the colormap
 colormap(hot3);
