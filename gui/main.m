@@ -1207,12 +1207,13 @@ function varargout = main(varargin)
         set(ehandle,'String',folderName);
         runinfofiles = dir( [folderName '/*_runinfo.mat'] );
         
-        if ( ~isempty(runinfofiles) )     
-            data.prefix, data.vis_prefix, data.vis_covariates,...
+        if ( ~isempty(runinfofiles) )   
+            preEdit = findobj('Tag', 'displayPrefix');
+            [data.prefix, data.vis_prefix, data.vis_covariates,...
             data.vis_covTypes, data.vis_X, data.vis_varNamesX,...
             data.vis_interactions, data.vis_interactionsBase,...
             data.vis_niifiles, data.vis_N, data.vis_nVisit,...
-            data.vis_qstar = load_browse_display_path(runinfofiles);
+            data.vis_qstar] = load_browse_display_path(runinfofiles, preEdit, folderName);
         
             % Update the prefix
             preEdit = findobj('Tag', 'displayPrefix');

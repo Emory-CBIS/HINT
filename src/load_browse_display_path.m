@@ -2,7 +2,7 @@ function [ prefix, vis_prefix, vis_covariates,...
             vis_covTypes, vis_X, vis_varNamesX,...
             vis_interactions, vis_interactionsBase,...
             vis_niifiles, vis_N, vis_nVisit,...
-            vis_qstar] = load_browse_display_path( input_args )
+            vis_qstar] = load_browse_display_path( runinfofiles, vis_prefix, folderName )
 %load_browse_display_path - function to load some of the basic information
 %for the visualization window. This function does half the work,
 %load_results_for_visualization does the rest
@@ -26,7 +26,7 @@ waitLoad = waitbar(0, 'Please wait while the runinfo file loads...');
 
 prefix = runinfofiles(sel).name;
 % Read the runinfo .m file. Update "data" information.
-vis_prefix = get(preEdit,'String');
+%vis_prefix = get(preEdit,'String');
 runInfo = load([folderName '/' prefix '_runinfo.mat']);
 waitbar(5/10)
 vis_covariates = runInfo.covariates;
