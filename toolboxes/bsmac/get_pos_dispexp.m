@@ -204,7 +204,9 @@ end
                 set(findobj('Tag', 'crosshairVal1'),'String',...
                 sprintf('Z = %4.2f', ddat.img{1}(ddat.sag, ddat.cor, ddat.axi)));
             end
+            
         else
+            disp('NEED TO DO THIS FOR TRAJECTORY VIEW')
             if get(findobj('Tag', 'viewZScores'), 'Value') == 0
                 for iPop = 1:ddat.nCompare
                     set(findobj('Tag', ['crosshairVal' num2str(iPop)]),'String',...

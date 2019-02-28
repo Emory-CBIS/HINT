@@ -18,6 +18,7 @@ function varargout = displayResults(varargin)
 %   X           - design matrix
 %   covTypes       - vector of 1s and 0s indicating whether each covariate is
 %                 categorical
+%   nVisit      - number of visits in the analysis
 %
 %
 
@@ -37,6 +38,7 @@ ddat.X = varargin{7};
 ddat.covTypes = varargin{8};
 ddat.betaVarEst = 0;
 ddat.interactions = varargin{9};
+ddat.nVisit = varargin{10};
 [~, ddat.p] = size(ddat.X);
 global keeplist;
 if ~isempty(keeplist)
@@ -53,6 +55,14 @@ ddat.subPopExists = 0;
 ddat.contrastExists = 0;
 ddat.viewingContrast = 0;
 
+% Keeping Track of the currently active visits in viewing window
+ddat.activeVisits = 1;
+
+% Keeping Track of open Augmenting Panels
+ddat.prevDisplaySize = [];
+ddat.trajectoryActive = 0;
+ddat.trajPreviousTag = ''; % string value of previously added line. used to clear plot
+
 % Check if an instance of displayResults already running
 hs = findall(0,'tag','displayResults');
 if (isempty(hs))
@@ -63,6 +73,7 @@ else
     figure(hs);
 end
 
+%% Function that defines all the pieces of the GUI
     function hs = addcomponents
         % Add components, save ddat in a struct
         hs.fig = figure('Units', 'normalized', ...,...
@@ -72,7 +83,8 @@ end
             'NumberTitle','off',...
             'Name','HINT Results Viewer',...
             'Resize','on',...
-            'Visible','off');
+            'Visible','off',...
+            'WindowKeyPressFcn', @KeyPress);
         fileMenu = uimenu('Label','File');
         %uimenu(fileMenu,'Label','Save','Callback','disp(''save'')');
         uimenu(fileMenu, 'Label', 'Save to JPG', 'Callback', @save_jpg);
@@ -85,7 +97,7 @@ end
         uimenu(viewerMenu, 'Label', 'Covariate Effect', 'Callback', @stBeta);
         helpMenu = uimenu('Label','Help');
         textalign = 'left';
-        licaMenu = uimenu('Label', 'Longitudinal Views', 'Tag', 'licaMenu');
+        licaMenu = uimenu('Label', 'Longitudinal Tools', 'Tag', 'licaMenu');
         uimenu(licaMenu, 'Label', 'View Voxel Trajectories', 'Callback', @shift_to_trajectory_view);
         
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -98,10 +110,12 @@ end
         
         DefaultPanel = uipanel('BackgroundColor','white',...
             'Tag', 'DefaultPanel',...
+            'units', 'normalized',...
             'Position',[0.0, 0.0 1.0 1.0], ...;
             'BackgroundColor',get(hs.fig,'color'))
         AugmentingPanel = uipanel('BackgroundColor','white',...
             'Tag', 'AugmentingPanel',...
+            'units', 'normalized',...
             'Position',[0.0, 8.0 0.0 0.0], ...;
             'BackgroundColor',get(hs.fig,'color'))
         
@@ -116,7 +130,7 @@ end
         SagAxes = axes('Parent', displayPanel, ...
             'Units', 'Normalized', ...
             'Position',[0.01 0.18 0.27 .8],...
-            'Tag', 'SagittalAxes1' ); 
+            'Tag', 'SagittalAxes1' );
         CorAxes = axes('Parent', displayPanel, ...
             'Position',[.30 .18 .27 .8],...
             'Tag', 'CoronalAxes1' );
@@ -148,12 +162,12 @@ end
         %% Location and Crosshair Control
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         locPanel = uipanel('Title','Location and Crosshair Information',...
-             'Parent', DefaultPanel,...
-             'FontSize',12,...
-             'BackgroundColor','white',...
-             'BackgroundColor',[224/256,224/256,224/256], ...
-             'Tag', 'locPanel', ...
-             'Position',[.01, 0.01 .32 .45]);
+            'Parent', DefaultPanel,...
+            'FontSize',12,...
+            'BackgroundColor','white',...
+            'BackgroundColor',[224/256,224/256,224/256], ...
+            'Tag', 'locPanel', ...
+            'Position',[.01, 0.01 .32 .45]);
         curInfo = uicontrol('Parent', locPanel, ...
             'Style', 'Text', ...
             'Units', 'Normalized', ...
@@ -199,24 +213,24 @@ end
         %% Component Selection & Masking
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         icPanel = uipanel('FontSize',12,...
-             'Parent', DefaultPanel,...
-             'BackgroundColor','white',...
-             'Position',[.35, 0.21 .32 .25], ...
-             'Tag', 'icPanel', ...
-             'BackgroundColor',[224/256,224/256,224/256]);
-        ICselect = uicontrol('Parent', icPanel,... 
+            'Parent', DefaultPanel,...
+            'BackgroundColor','white',...
+            'Position',[.35, 0.21 .32 .25], ...
+            'Tag', 'icPanel', ...
+            'BackgroundColor',[224/256,224/256,224/256]);
+        ICselect = uicontrol('Parent', icPanel,...
             'Style', 'popupmenu', ...
             'Units', 'Normalized', ...
             'Position', [0.01, 0.83, 0.48, 0.1], ...
             'Tag', 'ICselect', 'Callback', @updateIC, ...
             'String', 'Select IC');
-        viewZScores = uicontrol('Parent', icPanel,... 
+        viewZScores = uicontrol('Parent', icPanel,...
             'Style', 'checkbox', ...
             'Units', 'Normalized', ...
             'Position', [0.53, 0.46, 0.42, 0.15], ...
             'Tag', 'viewZScores', 'String', 'View Z-Scores', ...
             'Callback', @updateZImg);
-        maskSelect = uicontrol('Parent', icPanel,... 
+        maskSelect = uicontrol('Parent', icPanel,...
             'Style', 'popupmenu', ...
             'Units', 'Normalized', ...
             'Position', [0.51, 0.83, 0.48, 0.1], ...
@@ -229,19 +243,19 @@ end
             'Tag', 'viewerInfo', 'BackgroundColor', 'Black', ...
             'ForegroundColor', 'white', ...
             'HorizontalAlignment', 'Left');
-        selectCovariate = uicontrol('Parent', icPanel,... 
+        selectCovariate = uicontrol('Parent', icPanel,...
             'Style', 'popupmenu', ...
             'Units', 'Normalized', ...
             'Position', [0.01, 0.51, 0.48, 0.1], ...
             'Tag', 'selectCovariate', 'Callback', @updateIC, ...
             'String', 'Select Covariate', 'Visible', 'Off');
-        selectSubject = uicontrol('Parent', icPanel,... 
+        selectSubject = uicontrol('Parent', icPanel,...
             'Style', 'popupmenu', ...
             'Units', 'Normalized', ...
             'Position', [0.01, 0.51, 0.48, 0.1], ...
             'Tag', 'selectSubject', 'Callback', @updateIC, ...
             'String', 'Select Subject', 'Visible', 'Off');
-        keepIC = uicontrol('Parent', icPanel,... 
+        keepIC = uicontrol('Parent', icPanel,...
             'Style', 'checkbox', ...
             'Units', 'Normalized', ...
             'visible', 'off', ...
@@ -253,13 +267,13 @@ end
         %% Thresholding and Mask Creation
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         thresholdPanel = uipanel('FontSize',12,...
-             'Parent', DefaultPanel,...
-             'BackgroundColor','white',...
-             'Position',[.35, 0.01 .32 .19], ...
-             'BackgroundColor',[224/256,224/256,224/256], ...
-             'Tag', 'thresholdPanel', ...
-             'Title', 'Z Thresholding');
-        thresholdSlider = uicontrol('Parent', thresholdPanel,... 
+            'Parent', DefaultPanel,...
+            'BackgroundColor','white',...
+            'Position',[.35, 0.01 .32 .19], ...
+            'BackgroundColor',[224/256,224/256,224/256], ...
+            'Tag', 'thresholdPanel', ...
+            'Title', 'Z Thresholding');
+        thresholdSlider = uicontrol('Parent', thresholdPanel,...
             'Style', 'Slider', ...
             'Units', 'Normalized', ...
             'Position', [0.01, 0.85, 0.98, 0.1], ...
@@ -273,11 +287,11 @@ end
             'Tag', 'manualThreshold', ...
             'BackgroundColor','white',...
             'callback', @manualThreshold);
-%         t2edit1 = uicontrol('Parent',t2p1,'Style','edit',...
-%             'units', 'normalized','Position',[0.65 0.55 0.3 0.1],...
-%             'FontSize',myfont,'String','100','HorizontalAlignment',textalign,...
-%             'Tag','maxIter',...
-%             'BackgroundColor','white'); %#ok<NASGU>
+        %         t2edit1 = uicontrol('Parent',t2p1,'Style','edit',...
+        %             'units', 'normalized','Position',[0.65 0.55 0.3 0.1],...
+        %             'FontSize',myfont,'String','100','HorizontalAlignment',textalign,...
+        %             'Tag','maxIter',...
+        %             'BackgroundColor','white'); %#ok<NASGU>
         createMask = uicontrol('Parent', thresholdPanel, ...
             'Style', 'pushbutton', ...
             'String', 'Create Mask', ...
@@ -285,7 +299,7 @@ end
             'Position', [0.24, 0.01, 0.49, 0.25], ...
             'Tag', 'createMask', 'callback', @saveMask, ...
             'Visible', 'Off');
-        useEmpiricalVar = uicontrol('Parent', thresholdPanel,... 
+        useEmpiricalVar = uicontrol('Parent', thresholdPanel,...
             'Style', 'checkbox', ...
             'Units', 'Normalized', ...
             'visible', 'off', ...
@@ -306,7 +320,7 @@ end
             'Visible', 'Off', ...
             'BackgroundColor',[224/256,224/256,224/256], ...
             'Position',[.69, 0.01 .30 .45]);
-        subPopSelect = uicontrol('Parent', subPopPanel,... 
+        subPopSelect = uicontrol('Parent', subPopPanel,...
             'Style', 'popupmenu', ...
             'Units', 'Normalized', ...
             'Position', [0.255, 0.85, 0.49, 0.1], ...
@@ -338,8 +352,8 @@ end
             'Tag', 'covariateContrastControl', ...
             'Visible', 'Off', ...
             'BackgroundColor',[224/256,224/256,224/256], ...
-            'Position',[.69, 0.01 .30 .45]);        
-        contrastSelect = uicontrol('Parent', betaContrastPanel,... 
+            'Position',[.69, 0.01 .30 .45]);
+        contrastSelect = uicontrol('Parent', betaContrastPanel,...
             'Style', 'popupmenu', ...
             'Units', 'Normalized', ...
             'Position', [0.255, 0.85, 0.49, 0.1], ...
@@ -363,7 +377,7 @@ end
         
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %% IC Selection
-        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         icSelPanel = uipanel('FontSize',12,...
             'Parent', DefaultPanel,...
             'BackgroundColor','white',...
@@ -386,7 +400,7 @@ end
         
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %%     Trajectory Plotting Panel
-        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         
         % Pieces:
         % 1. viewTrajPanel - background panel
@@ -395,20 +409,35 @@ end
         
         ViewTrajPanel = uipanel('FontSize',12,...
             'Parent', AugmentingPanel,...
-            'BackgroundColor','white',...
             'Title', 'Voxel Trajectory Information', ...
             'Tag', 'ViewTrajPanel', ...
             'Visible', 'Off', ...
+            'units', 'normalized',...
             'Position',[0.0, 0.0 1.0 1.0]);
         TrajAxes = axes('Parent', ViewTrajPanel, ...
-            'Position',[.01 .5 .48 .48],...
+            'units', 'normalized',...
+            'Position',[.1 .6 0.8 .35],...
             'Tag', 'TrajAxes' );
         TrajControlPanel = uipanel('FontSize',12,...
-            'BackgroundColor','white',...
             'Title', 'Voxel Controls', ...
             'Tag', 'TrajControlPanel', ...
             'Parent', ViewTrajPanel, ...
-            'Position',[.01, 0.01 .48 .48]);
+            'units', 'normalized',...
+            'Position',[.05, 0.05 0.9 .4]);
+        TrajTable = uitable('Parent', TrajControlPanel, ...
+            'Units', 'Normalized', ...
+            'Position', [0.05, 0.3, 0.9, 0.6], ...
+            'Tag', 'TrajTable', 'RowName', '',...
+            'ColumnWidth', {30,30,30},...
+            'ColumnName', {'Sag','Cor','Axi'});
+        TrajAddCurrent = uicontrol('style', 'pushbutton',...
+            'units', 'normalized', ...
+            'Parent', TrajControlPanel,...
+            'Position', [0.1, 0.1, 0.4, 0.1],...
+            'String', 'Save current voxel', ...
+            'tag', 'TrajAddCurrent', ...
+            'visible', 'on', ...
+            'Callback', @traj_add_voxel_to_list);
         
         
         
@@ -416,39 +445,199 @@ end
         
     end
 
-    %% Function to shift view structure to include the trajectory viewer on the right
-    function shift_to_trajectory_view(varargin)
+    function KeyPress(varargin)
+        keypress = varargin{2};
+        %         %% Modifier commands
+                if ~isempty(keypress.Modifier) && ~isempty(keypress.Character)
+                    %disp(keypress.Character == 't')
+                    %disp(strcmp(keypress.Modifier{1}, 'command'))
+                    if (keypress.Character == 't') && strcmp(keypress.Modifier{1}, 'command')
+                        shift_to_trajectory_view;
+                    end
         
-        % Increase the size of the viewer window
-        currentPosition = hs.fig.Position;
-        hs.fig.Position = [currentPosition(1) currentPosition(2) 0.8 0.6];
-        
-        % Resize the Default View panel
-        set(findobj('Tag', 'DefaultPanel'), 'Position', [0.0, 0.0, 0.75, 1.0]);
-        
-        % Give the new space to the augmenting panel
-        set(findobj('Tag', 'AugmentingPanel'), 'Position', [0.75, 0.0, 0.25, 1.0]);
-        
-        % Enable the trajectory view
-        set(findobj('Tag', 'ViewTrajPanel'), 'Visible', 'On');
+                end
+%         if (keypress.Character == 't')
+%             shift_to_trajectory_view;
+%         end
     end
 
-    %%
-    % This function is called when the user decides to compare two
-    % subpopulations. It heavily changes the display window.
+%% Function to shift view structure to include the trajectory viewer on the right
+    function shift_to_trajectory_view(varargin)
+        
+        %% Turn on Trajectory View
+        
+        if (ddat.trajectoryActive == 0)
+            
+            % Increase the size of the viewer window
+            currentPosition = hs.fig.Position;
+            ddat.prevDisplaySize = currentPosition;
+            hs.fig.Position = [currentPosition(1)*.6 currentPosition(2) 0.8 0.6];
+            
+            % Resize the Default View panel
+            set(findobj('Tag', 'DefaultPanel'), 'Position', [0.0, 0.0, 0.75, 1.0]);
+            
+            % Give the new space to the augmenting panel
+            set(findobj('Tag', 'AugmentingPanel'), 'Position', [0.75, 0.0, 0.25, 1.0]);
+            
+            % Enable the trajectory view
+            set(findobj('Tag', 'ViewTrajPanel'), 'Visible', 'On');
+            
+            % Set the tracker in the ddat structure
+            ddat.trajectoryActive = 1;
+            
+            % Make sure the visit labels on the x-axis are correct
+            trajAxesHandle = findobj('Tag', 'TrajAxes');
+            set(trajAxesHandle,'XLim', [1, ddat.nVisit], 'XTick', 1:ddat.nVisit);
+            drawnow;
+            
+            % Add the currently selected voxel to the trajectory plot
+            plot_voxel_trajectory([ddat.sag, ddat.cor, ddat.axi])
+            
+            %% Turn off trajectory view
+        else
+            
+            % Remove any red lines
+            trajAxesHandle = findobj('Tag', 'TrajAxes');
+            nLine = length(trajAxesHandle.Children);
+            if nLine > 0
+                for iline = 1:nLine
+                    if all(trajAxesHandle.Children(iline).Color == [1 0 0])
+                        delete(trajAxesHandle.Children(iline));
+                        break
+                    end
+                end
+            end
+            
+            % Reset the size of the figure
+            hs.fig.Position = ddat.prevDisplaySize;
+            
+            % Take away the space from the augmenting panel
+            set(findobj('Tag', 'AugmentingPanel'), 'Position', [0.0, 0.0, 0.0, 0.0]);
+            
+            % Resize the Default View panel
+            set(findobj('Tag', 'DefaultPanel'), 'Position', [0, 0, 1.0, 1.0]);
+            
+            % Disable the trajectory view
+            set(findobj('Tag', 'ViewTrajPanel'), 'Visible', 'Off');
+            
+            % Set the tracker in the ddat structure
+            ddat.trajectoryActive = 0;
+        end
+        
+    end
+
+%% Function to add the currently selected voxel to the stored list
+    function traj_add_voxel_to_list(varargin)
+        
+        newCoordinates = [ddat.sag, ddat.cor, ddat.axi];
+        
+        % Verify that the voxel is not already in the list
+        storedCoordinates = get( findobj('Tag', 'TrajTable'), 'Data' );
+        nStored = size(storedCoordinates, 1);
+        duplicate = 0;
+        for iStored = 1:nStored
+            if all(newCoordinates == [storedCoordinates{iStored, :}])
+                duplicate = 1;
+                break
+            end
+        end
+        
+        % If not a duplicate, add it to the list
+        if duplicate == 0
+            % Add to the list
+            storedCoordinates{nStored+1, 1} = ddat.sag;
+            storedCoordinates{nStored+1, 2} = ddat.cor;
+            storedCoordinates{nStored+1, 3} = ddat.axi;
+            set( findobj('Tag', 'TrajTable'), 'Data', storedCoordinates );
+            % Plot the new voxel
+            plot_voxel_trajectory(newCoordinates)
+        end
+        
+    end
+
+%% Function to plot the trajectory of the currently selected voxel
+    function plot_voxel_trajectory(voxelIndex)
+        
+        % verify that trajectories are being plotted
+        if ddat.trajectoryActive == 1
+            
+            % Get the axes to plot to
+            trajAxesHandle = findobj('Tag', 'TrajAxes');
+            
+            %% check if this is a new voxel, if so, delete previous red line
+            if ~strcmp(num2str(voxelIndex), ddat.trajPreviousTag)
+                % Delete the previously selected red line
+                for iline = 1:length(trajAxesHandle.Children)
+                    if strcmp(trajAxesHandle.Children(iline).Tag, ddat.trajPreviousTag)
+                        % check if red line
+                        if all(trajAxesHandle.Children(iline).Color == [1 0 0])
+                            delete(trajAxesHandle.Children(iline));
+                            break
+                        end
+                    end
+                end
+            end
+            
+            % Get the trajectory for the currently selected voxel
+            traj = zeros(ddat.nVisit, 1);
+            for iVisit = 1:ddat.nVisit
+                traj(iVisit) = ddat.oimg{1, iVisit}(voxelIndex(1), voxelIndex(2), voxelIndex(3));
+            end
+            
+            
+            % Make sure the yaxis of the plot matches
+            if any(~isnan(traj))
+                minY = min(traj);
+                maxY = max(traj);
+                range = maxY - minY;
+                if trajAxesHandle.YLim(1) > (minY - (0.05*range))
+                    trajAxesHandle.YLim(1) = (minY - (0.05*range));
+                end
+                if trajAxesHandle.YLim(2) < (maxY + (0.05*range))
+                    trajAxesHandle.YLim(2) = (maxY + (0.05*range));
+                end
+            end
+            
+            % Give the new line a name based on its coordinates
+            lineName = num2str(voxelIndex);
+            
+            % check if the line name is already in use, if so, the new line
+            % should be blue instead of red (stored)
+            if (length(trajAxesHandle.Children) > 0) && strcmp(lineName, trajAxesHandle.Children(1).Tag)
+                % Plot the line to be stored
+                line(trajAxesHandle, 1:ddat.nVisit, traj, 'Tag', lineName, 'Color', 'Blue');
+                drawnow;
+            else
+                % Plot a new line
+                line(trajAxesHandle, 1:ddat.nVisit, traj, 'Tag', lineName, 'Color', 'Red');
+                drawnow;
+            end
+            
+            
+            % Store this to know what to delete when moving to a new
+            % position
+            ddat.trajPreviousTag = lineName;
+            
+        end
+        
+    end
+
+%%
+% This function is called when the user decides to compare two
+% subpopulations. It heavily changes the display window.
     function expandSubPopulationPanel(selectedPops)
         
         % Setup cell arrays for all sub population info.
         ddat.type = 'subPopCompare';
-        ddat.axial_image = cell(ddat.nCompare, 1);
-        ddat.sagittal_image = cell(ddat.nCompare, 1);
-        ddat.coronal_image = cell(ddat.nCompare, 1);
-        ddat.axial_xline = cell(ddat.nCompare, 1);
-        ddat.axial_yline = cell(ddat.nCompare, 1);
-        ddat.coronal_xline = cell(ddat.nCompare, 1);
-        ddat.coronal_yline = cell(ddat.nCompare, 1);
-        ddat.sagittal_xline = cell(ddat.nCompare, 1);
-        ddat.sagittal_yline = cell(ddat.nCompare, 1);
+        ddat.axial_image = cell(ddat.nCompare, ddat.nVisit);
+        ddat.sagittal_image = cell(ddat.nCompare, ddat.nVisit);
+        ddat.coronal_image = cell(ddat.nCompare, ddat.nVisit);
+        ddat.axial_xline = cell(ddat.nCompare, ddat.nVisit);
+        ddat.axial_yline = cell(ddat.nCompare, ddat.nVisit);
+        ddat.coronal_xline = cell(ddat.nCompare, ddat.nVisit);
+        ddat.coronal_yline = cell(ddat.nCompare, ddat.nVisit);
+        ddat.sagittal_xline = cell(ddat.nCompare, ddat.nVisit);
+        ddat.sagittal_yline = cell(ddat.nCompare, ddat.nVisit);
         
         % Loop through and edit the properties of the original viewer
         % (change sizes, delete items, etc)
@@ -477,7 +666,7 @@ end
         % Do this outside because we dont want numel in hs to change during
         % the loop
         delete(hs.fig.Children(indToDelete));
-   
+        
         % Create a new viewing panel
         displayPanel = uipanel('BackgroundColor','white',...
             'tag', 'subPopDisplayPanel',...
@@ -523,7 +712,7 @@ end
                 'Units', 'Normalized', ...
                 'Position', [0.01, 0.01, 0.98, 0.48], ...
                 'Tag', ['crosshairVal' num2str(subGroup)]);
-            subPopSelect = uicontrol('Parent', infoPanel,... 
+            subPopSelect = uicontrol('Parent', infoPanel,...
                 'Style', 'popupmenu', ...
                 'Units', 'Normalized', ...
                 'Position', [0.01, 0.52, 0.98, 0.48], ...
@@ -531,7 +720,7 @@ end
                 'Callback', @updateSubPopulation, ...
                 'String', 'No Sub-Population Created', ...
                 'Visible', 'Off');
-            subPopListing = uicontrol('Parent', infoPanel,... 
+            subPopListing = uicontrol('Parent', infoPanel,...
                 'Style', 'Text', ...
                 'Units', 'Normalized', ...
                 'Position', [0.01, 0.52, 0.98, 0.48], ...
@@ -582,21 +771,21 @@ end
             'Units', 'Normalized', ...
             'String', 'Close Window', ...
             'Position', [0.0, 0.0, 1, 1], ...
-            'Tag', 'closeCompare', 'Callback', @stSubPop); 
+            'Tag', 'closeCompare', 'Callback', @stSubPop);
         
         hs.fig.Children = [hs.fig.Children(:,1); (newDisplay')];
- 
+        
         createCombinedImage;
         
         % Loop through and update all sub populations
         for subPop=1:ddat.nCompare
-                
+            
             for cl = 1:3
                 Saxial(:, :, cl) = squeeze(ddat.combinedImg{subPop}(cl).combound(:, :, ddat.axi))';
                 Scor(:, :, cl) = squeeze(ddat.combinedImg{subPop}(cl).combound(:,ddat.cor,:))';
                 Ssag(:, :, cl) = squeeze(ddat.combinedImg{subPop}(cl).combound(ddat.sag,:,:))';
             end
-
+            
             aspect = 1./ddat.daspect;
             % Setup Axial Image
             axes(findobj('Tag', ['AxialAxes' num2str(subPop)]));
@@ -604,24 +793,25 @@ end
             set(gca,'YDir','normal','XLimMode','manual','YLimMode','manual',...
                 'ClimMode','manual','YColor',[0 0 0],'XColor',[0 0 0],'xtick',[],'ytick',[],'Tag',['AxialAxes' num2str(subPop)])
             daspect(gca,aspect([1 3 2]));
-            set(ddat.axial_image{subPop},'ButtonDownFcn','get_pos_dispexp(''axi'');');
+            %set(ddat.axial_image{subPop},'ButtonDownFcn','get_pos_dispexp(''axi''); plot_voxel_trajectory([''ddat.sag'', ''ddat.cor'', ''ddat.axi'']);');
+            set(ddat.axial_image{subPop},'ButtonDownFcn',{@image_button_press, 'axi'});
             pos_axi = [ddat.sag, ddat.cor];
             crosshair = plot_crosshair(pos_axi, [], gca);
             ddat.axial_xline{subPop} = crosshair.lx;
             ddat.axial_yline{subPop} = crosshair.ly;
-
+            
             % Setup Coronal Image
             axes(findobj('Tag', ['CoronalAxes' num2str(subPop)] ));
             ddat.coronal_image{subPop} = image(Scor);
             set(gca,'YDir','normal','XLimMode','manual','YLimMode','manual',...
                 'ClimMode','manual','YColor',[0 0 0],'XColor',[0 0 0],'xtick',[],'ytick',[],'Tag',['CoronalAxes' num2str(subPop)])
             daspect(gca,aspect([1 3 2]));
-            set(ddat.coronal_image{subPop},'ButtonDownFcn','get_pos_dispexp(''cor'');');
+            set(ddat.coronal_image{subPop},'ButtonDownFcn',{@image_button_press, 'cor'});
             pos_cor = [ddat.sag, ddat.axi];
             crosshair = plot_crosshair(pos_cor, [], gca);
             ddat.coronal_xline{subPop} = crosshair.lx;
             ddat.coronal_yline{subPop} = crosshair.ly;
-
+            
             % Setup Sagital image
             %test = findobj('Tag', ['SagittalAxes' num2str(subPop)] );
             axes(findobj('Tag', ['SagittalAxes' num2str(subPop)] ));
@@ -629,12 +819,12 @@ end
             set(gca,'YDir','normal','XLimMode','manual','YLimMode','manual',...
                 'ClimMode','manual','YColor',[0 0 0],'XColor',[0 0 0],'xtick',[],'ytick',[],'Tag',['SagittalAxes' num2str(subPop)])
             daspect(gca,aspect([2 3 1]));
-            set(ddat.sagittal_image{subPop},'ButtonDownFcn','get_pos_dispexp(''sag'');');
+            set(ddat.sagittal_image{subPop},'ButtonDownFcn',{@image_button_press, 'sag'});
             pos_sag = [ddat.cor, ddat.axi];
             crosshair = plot_crosshair(pos_sag, [], gca);
             ddat.sagittal_xline{subPop} = crosshair.lx;
             ddat.sagittal_yline{subPop} = crosshair.ly;
-                
+            
         end % end of sub population loop
         
         %%%%% Setup the Sliders %%%%
@@ -656,11 +846,17 @@ end
         
         updateCrosshairValue;
         redisplay;
-        updateInfoText;             
+        updateInfoText;
     end
-    
-    % initialDisp - sets up the initial state of the display window based
-    % on the user selection (aggregate viewer, covariate effect viewer, etc)
+
+%% Shared button press function
+    function image_button_press(src, event, type)
+        get_pos_dispexp(type);
+        plot_voxel_trajectory([ddat.sag, ddat.cor, ddat.axi]);
+    end
+
+%% initialDisp - sets up the initial state of the display window based
+% on the user selection (aggregate viewer, covariate effect viewer, etc)
     function initialDisp(hObject,callbackdata)
         set(findobj('Tag', 'thresholdSlider'), 'Value', 0);
         set(findobj('Tag', 'manualThreshold'), 'String', '0');
@@ -669,16 +865,16 @@ end
         ddat.nCompare = 1;
         % Stretch containers storing the images to have the correct number
         % of objects (1)
-        ddat.axial_image = cell(ddat.nCompare, 1);
-        ddat.sagittal_image = cell(ddat.nCompare, 1);
-        ddat.coronal_image = cell(ddat.nCompare, 1);
-        ddat.axial_xline = cell(ddat.nCompare, 1);
-        ddat.axial_yline = cell(ddat.nCompare, 1);
-        ddat.coronal_xline = cell(ddat.nCompare, 1);
-        ddat.coronal_yline = cell(ddat.nCompare, 1);
-        ddat.sagittal_xline = cell(ddat.nCompare, 1);
-        ddat.sagittal_yline = cell(ddat.nCompare, 1);
-        ddat.img = cell(ddat.nCompare, 1); ddat.oimg = cell(ddat.nCompare,1);
+        ddat.axial_image    = cell(ddat.nCompare, ddat.nVisit);
+        ddat.sagittal_image = cell(ddat.nCompare, ddat.nVisit);
+        ddat.coronal_image  = cell(ddat.nCompare, ddat.nVisit);
+        ddat.axial_xline    = cell(ddat.nCompare, ddat.nVisit);
+        ddat.axial_yline    = cell(ddat.nCompare, ddat.nVisit);
+        ddat.coronal_xline  = cell(ddat.nCompare, ddat.nVisit);
+        ddat.coronal_yline  = cell(ddat.nCompare, ddat.nVisit);
+        ddat.sagittal_xline = cell(ddat.nCompare, ddat.nVisit);
+        ddat.sagittal_yline = cell(ddat.nCompare, ddat.nVisit);
+        ddat.img = cell(ddat.nCompare, ddat.nVisit); ddat.oimg = cell(ddat.nCompare, ddat.nVisit);
         
         % Change what display panels are seen based on what viewer is open.
         if strcmp(ddat.type, 'grp')
@@ -692,9 +888,13 @@ end
             set( findobj('Tag', 'thresholdPanel'), 'Position',[.56, 0.01 .32 .19]);
             set( findobj('Tag', 'icPanel'), 'Position',[.56, 0.21 .32 .25]);
             set( findobj('Tag', 'locPanel'), 'Position',[.12, 0.01 .32 .45]);
-            % load the data
-            ndata = load_nii([ddat.outdir '/' ddat.outpre '_aggregate' 'IC_1_visit1.nii']);
-            ddat.img{1} = ndata.img; ddat.oimg{1} = ndata.img;
+            
+            % load the aggregate map for each visit
+            for iVisit = 1:ddat.nVisit
+                ndata = load_nii([ddat.outdir '/' ddat.outpre '_aggregate' 'IC_1_visit' num2str(iVisit) '.nii']);
+                ddat.img{1, iVisit} = ndata.img; ddat.oimg{1, iVisit} = ndata.img;
+            end
+            
         elseif strcmp(ddat.type, 'subpop')
             set(findobj('Tag', 'useEmpiricalVar'), 'Visible', 'Off');
             set(findobj('Tag', 'selectCovariate'), 'Visible', 'Off');
@@ -738,7 +938,7 @@ end
             end
             % load the data
             ndata = load_nii([ddat.outdir '/' ddat.outpre '_beta_cov1_IC1.nii']);
-            ddat.img{1} = ndata.img; ddat.oimg{1} = ndata.img; 
+            ddat.img{1} = ndata.img; ddat.oimg{1} = ndata.img;
             set(findobj('Tag', 'selectCovariate'), 'Visible', 'On');
             setupCovMenu;
         elseif strcmp(ddat.type, 'subj')
@@ -761,7 +961,7 @@ end
             set(findobj('Tag', 'selectSubject'), 'Visible', 'On');
             setupSubMenu;
         elseif strcmp(ddat.type, 'icsel')
-            ndata = load_nii([ddat.outdir '/_iniIC_1.nii']); 
+            ndata = load_nii([ddat.outdir '/_iniIC_1.nii']);
             % need to turn the 0's into NaN values
             zeroImg = ndata.img; zeroImg(find(ndata.img == 0)) = nan;
             ddat.img{1} = zeroImg; ddat.oimg{1} = zeroImg;
@@ -771,7 +971,7 @@ end
             set(findobj('Tag', 'icSelectCloseButton'), 'Visible', 'On');
             setupICMenu;
             
-        % setup display window for the reduced dimension estimates
+            % setup display window for the reduced dimension estimates
         elseif strcmp(ddat.type, 'reEst')
             ndata = load_nii([ddat.outdir '/' ddat.outpre '_iniguess/' ddat.outpre '_reducedIniGuess_GroupMap_IC_1.nii']);
             % need to turn the 0's into NaN values
@@ -786,7 +986,7 @@ end
             set( findobj('Tag', 'icPanel'), 'Position',[.56, 0.21 .32 .25]);
             set( findobj('Tag', 'locPanel'), 'Position',[.12, 0.01 .32 .45]);
             setupICMenu;
-        % This should only be called from subpopulation display
+            % This should only be called from subpopulation display
         elseif strcmp(ddat.type, 'subPopCompare')
             ddat.nCompare = 2;
             set(findobj('Tag', 'SubpopulationControl'), 'Visible', 'On');
@@ -803,35 +1003,35 @@ end
             for ic=1:ddat.q
                 newstring{ic} = strcat(['IC ' num2str(ic)]);
             end
-        % Fill out only the keeplist ICs if doing any other type of viewer.
+            % Fill out only the keeplist ICs if doing any other type of viewer.
         else
             newstring = cell(ddat.qstar, 1);
             for ic=1:ddat.qstar
                 newstring{ic} = strcat(['IC ' num2str(ic)]);
             end
         end
-        set(findobj('Tag', 'ICselect'), 'String', newstring); 
+        set(findobj('Tag', 'ICselect'), 'String', newstring);
         set(findobj('Tag', 'ICselect'), 'Value', 1);
         
         % Set the Z-score selection box to be off.
         set(findobj('Tag', 'viewZScores'), 'Value', 0);
         ddat.isZ = 0;
-
+        
         % Look for an appropriately sized mask file.
         maskSearch;
         
         % Get the size of each dimension.
-        dim = size(ddat.img{1});
+        dim = size(ddat.img{1, 1});
         ddat.xdim = dim(1); ddat.ydim = dim(2); ddat.zdim = dim(3);
         
         if strcmp(ddat.type, 'beta')
-        %%% Create the beta variance estimate map
-        ddat.betaVarEst = zeros(ddat.p, ddat.p, ddat.xdim, ddat.ydim, ddat.zdim);
-        % Fill out the beta map for the current IC
-        currentIC = get(findobj('Tag', 'ICselect'), 'val');
-        newMap = load(fullfile(ddat.outdir,...
-            [ddat.outpre '_BetaVarEst_IC_' num2str(currentIC) '.mat']));
-        ddat.betaVarEst = newMap.betaVarEst;
+            %%% Create the beta variance estimate map
+            ddat.betaVarEst = zeros(ddat.p, ddat.p, ddat.xdim, ddat.ydim, ddat.zdim);
+            % Fill out the beta map for the current IC
+            currentIC = get(findobj('Tag', 'ICselect'), 'val');
+            newMap = load(fullfile(ddat.outdir,...
+                [ddat.outpre '_BetaVarEst_IC_' num2str(currentIC) '.mat']));
+            ddat.betaVarEst = newMap.betaVarEst;
         end
         
         % Load the brain region information
@@ -845,14 +1045,14 @@ end
         elseif ddat.xdim == 45 && ddat.ydim == 54 && ddat.zdim == 45
             RegionMap = load_nii('templates/brodmann_RPI_MNI_4mm.nii');
         end
-            
+        
         RegionName = brodmannMap.brodmann(:, 1:2);
         ddat.total_region_name = RegionName;
         ddat.region_struct = RegionMap;
         
         % Set up the anatomical image.
         setupAnatomical;
-
+        
         % Set up the initial colorbar.
         jet2=jet(64); jet2(38:end, :)=[];
         hot2=hot(64); hot2(end-5:end, :)=[]; hot2(1:4, :)=[];
@@ -863,30 +1063,30 @@ end
         ddat.basecolor = gray(191);
         ddat.colorlevel = 256;
         
-%         jet2=jet(64); jet2(38:end, :)=[];
-%         hot2=hot(64); hot2(end-5:end, :)=[]; hot2(1:4, :)=[];
-%         hot2(1:2:38, :)=[]; hot2(2:2:16, :)=[]; hot2=flipud(hot2);
-%         hot3=[jet2; hot2];
-%         ddat.hot3 = hot3;
-%         ddat.highcolor = hot3;
-%         ddat.basecolor = gray(191);
-%         ddat.colorlevel = 256;
+        %         jet2=jet(64); jet2(38:end, :)=[];
+        %         hot2=hot(64); hot2(end-5:end, :)=[]; hot2(1:4, :)=[];
+        %         hot2(1:2:38, :)=[]; hot2(2:2:16, :)=[]; hot2=flipud(hot2);
+        %         hot3=[jet2; hot2];
+        %         ddat.hot3 = hot3;
+        %         ddat.highcolor = hot3;
+        %         ddat.basecolor = gray(191);
+        %         ddat.colorlevel = 256;
         
         % Get the crosshair origin information.
         ddat.pixdim = double(ddat.mri_struct.hdr.dime.pixdim(2:4));
         if any(ddat.pixdim <= 0)
-          ddat.pixdim(find(ddat.pixdim <= 0)) = 1;
+            ddat.pixdim(find(ddat.pixdim <= 0)) = 1;
         end
         origin = abs(ddat.mri_struct.hdr.hist.originator(1:3));
         if isempty(origin) || all(origin == 0)		% according to SPM
-            origin = (dim+1)/2;   
+            origin = (dim+1)/2;
         end
         origin = round(origin);
         if any(origin > dim)				% simulate fMRI
-          origin(find(origin > dim)) = dim(find(origin > dim));
+            origin(find(origin > dim)) = dim(find(origin > dim));
         end
         if any(origin <= 0)
-          origin(find(origin <= 0)) = 1;
+            origin(find(origin <= 0)) = 1;
         end
         ddat.daspect = ddat.pixdim ./ min(ddat.pixdim);
         ddat.origin = origin; ddat.sag = origin(1); ddat.cor = origin(2);
@@ -896,56 +1096,67 @@ end
         % create the combined images
         createCombinedImage;
         
+        % Get the number of visits actively being viewed
+        nVisitViewed = numel(ddat.activeVisits);
+        
         % Loop over sub-populations filling out the images.
         for subPop=1:ddat.nCompare
             
-            % Fill out the images data.
-            for cl = 1:3
-                Saxial(:, :, cl) = squeeze(ddat.combinedImg{subPop}(cl).combound(:, :, ddat.axi))';
-                Scor(:, :, cl) = squeeze(ddat.combinedImg{subPop}(cl).combound(:,ddat.cor,:))';
-                Ssag(:, :, cl) = squeeze(ddat.combinedImg{subPop}(cl).combound(ddat.sag,:,:))';
-            end
-
-            aspect = 1./ddat.daspect;
+            % Loop over the active visits, note this might not be in
+            % numerical order
+            for iVisit = 1:nVisitViewed
+                currentVisitIndex = ddat.activeVisits(iVisit);
+                
+                % Fill out the images data.
+                for cl = 1:3
+                    Saxial(:, :, cl) = squeeze(ddat.combinedImg{subPop, currentVisitIndex}(cl).combound(:, :, ddat.axi))';
+                    Scor(:, :, cl) = squeeze(ddat.combinedImg{subPop, currentVisitIndex}(cl).combound(:,ddat.cor,:))';
+                    Ssag(:, :, cl) = squeeze(ddat.combinedImg{subPop, currentVisitIndex}(cl).combound(ddat.sag,:,:))';
+                end
+                
+                aspect = 1./ddat.daspect;
+                
+                % Setup Axial Image
+                axes(findobj('Tag', ['AxialAxes' num2str(subPop)]));
+                ddat.axial_image{subPop, currentVisitIndex} = image(Saxial);
+                set(gca,'YDir','normal','XLimMode','manual','YLimMode','manual',...
+                    'ClimMode','manual','YColor',[0 0 0],'XColor',[0 0 0],'xtick',[],'ytick',[],'Tag',['AxialAxes' num2str(subPop)])
+                daspect(gca,aspect([1 3 2]));
+                %set(ddat.axial_image{subPop, currentVisitIndex},'ButtonDownFcn','get_pos_dispexp(''axi'');');
+                set(ddat.axial_image{subPop, currentVisitIndex},'ButtonDownFcn', {@image_button_press, 'axi'});
+                pos_axi = [ddat.sag, ddat.cor];
+                crosshair = plot_crosshair(pos_axi, [], gca);
+                ddat.axial_xline{subPop, currentVisitIndex} = crosshair.lx;
+                ddat.axial_yline{subPop, currentVisitIndex} = crosshair.ly;
+                
+                % Setup Coronal Image
+                axes(findobj('Tag', ['CoronalAxes' num2str(subPop)] ));
+                ddat.coronal_image{subPop, currentVisitIndex} = image(Scor);
+                set(gca,'YDir','normal','XLimMode','manual','YLimMode','manual',...
+                    'ClimMode','manual','YColor',[0 0 0],'XColor',[0 0 0],'xtick',[],'ytick',[],'Tag',['CoronalAxes' num2str(subPop)])
+                daspect(gca,aspect([1 3 2]));
+                set(ddat.coronal_image{subPop, currentVisitIndex},'ButtonDownFcn', {@image_button_press, 'cor'});
+                pos_cor = [ddat.sag, ddat.axi];
+                crosshair = plot_crosshair(pos_cor, [], gca);
+                ddat.coronal_xline{subPop, currentVisitIndex} = crosshair.lx;
+                ddat.coronal_yline{subPop, currentVisitIndex} = crosshair.ly;
+                
+                % Setup Sagital image
+                axes(findobj('Tag', ['SagittalAxes' num2str(subPop, currentVisitIndex)] ));
+                ddat.sagittal_image{subPop, currentVisitIndex} = image(Ssag);
+                set(gca,'YDir','normal','XLimMode','manual','YLimMode','manual',...
+                    'ClimMode','manual','YColor',[0 0 0],'XColor',[0 0 0],'xtick',[],'ytick',[],'Tag',['SagittalAxes' num2str(subPop)])
+                daspect(gca,aspect([2 3 1]));
+                set(ddat.sagittal_image{subPop, currentVisitIndex},'ButtonDownFcn', {@image_button_press, 'sag'});
+                pos_sag = [ddat.cor, ddat.axi];
+                crosshair = plot_crosshair(pos_sag, [], gca);
+                ddat.sagittal_xline{subPop, currentVisitIndex} = crosshair.lx;
+                ddat.sagittal_yline{subPop, currentVisitIndex} = crosshair.ly;
+                
+            end % end of visit loop
             
-            % Setup Axial Image
-            axes(findobj('Tag', ['AxialAxes' num2str(subPop)]));
-            ddat.axial_image{subPop} = image(Saxial);
-            set(gca,'YDir','normal','XLimMode','manual','YLimMode','manual',...
-                'ClimMode','manual','YColor',[0 0 0],'XColor',[0 0 0],'xtick',[],'ytick',[],'Tag',['AxialAxes' num2str(subPop)])
-            daspect(gca,aspect([1 3 2]));
-            set(ddat.axial_image{subPop},'ButtonDownFcn','get_pos_dispexp(''axi'');');
-            pos_axi = [ddat.sag, ddat.cor];
-            crosshair = plot_crosshair(pos_axi, [], gca);
-            ddat.axial_xline{subPop} = crosshair.lx;
-            ddat.axial_yline{subPop} = crosshair.ly;
-
-            % Setup Coronal Image
-            axes(findobj('Tag', ['CoronalAxes' num2str(subPop)] ));
-            ddat.coronal_image{subPop} = image(Scor);
-            set(gca,'YDir','normal','XLimMode','manual','YLimMode','manual',...
-                'ClimMode','manual','YColor',[0 0 0],'XColor',[0 0 0],'xtick',[],'ytick',[],'Tag',['CoronalAxes' num2str(subPop)])
-            daspect(gca,aspect([1 3 2]));
-            set(ddat.coronal_image{subPop},'ButtonDownFcn','get_pos_dispexp(''cor'');');
-            pos_cor = [ddat.sag, ddat.axi];
-            crosshair = plot_crosshair(pos_cor, [], gca);
-            ddat.coronal_xline{subPop} = crosshair.lx;
-            ddat.coronal_yline{subPop} = crosshair.ly;
-
-            % Setup Sagital image
-            axes(findobj('Tag', ['SagittalAxes' num2str(subPop)] ));
-            ddat.sagittal_image{subPop} = image(Ssag);
-            set(gca,'YDir','normal','XLimMode','manual','YLimMode','manual',...
-                'ClimMode','manual','YColor',[0 0 0],'XColor',[0 0 0],'xtick',[],'ytick',[],'Tag',['SagittalAxes' num2str(subPop)])
-            daspect(gca,aspect([2 3 1]));
-            set(ddat.sagittal_image{subPop},'ButtonDownFcn','get_pos_dispexp(''sag'');');
-            pos_sag = [ddat.cor, ddat.axi];
-            crosshair = plot_crosshair(pos_sag, [], gca);
-            ddat.sagittal_xline{subPop} = crosshair.lx;
-            ddat.sagittal_yline{subPop} = crosshair.ly;
-        
         end % end of sub population loop
-
+        
         %%%%% Set up each of the sliders %%%%%
         % Sagittal Slider
         xslider_step(1) = 1/(ddat.xdim);
@@ -980,10 +1191,10 @@ end
         updateInfoText;
     end
 
-    % Function to generate the single subject maps. This is preferable to
-    % storing all of the maps in case there are many subjects
+%% Function to generate the single subject maps. This is preferable to
+% storing all of the maps in case there are many subjects
     function generateSingleSubjMap(hObject, callbackdata)
-
+        
         disp('Generating map for requested subject.')
         % Get the requested subject number
         subnum = get( findobj('Tag', 'selectSubject'), 'Value' );
@@ -1000,7 +1211,7 @@ end
         ddat.img{1} = nmat; ddat.oimg{1} = nmat;
     end
 
-    % Function to setup anatomical image.
+%% Function to setup anatomical image.
     function setupAnatomical(hObject, callbackdata)
         
         % 2mm voxel case
@@ -1012,7 +1223,7 @@ end
             ddat.mri_struct = load_nii('templates/MNI152_T1_3mm.nii');
         elseif ddat.xdim == 45 && ddat.ydim == 54 && ddat.zdim == 45
             ddat.mri_struct = load_nii('templates/MNI152_T1_4mm.nii');
-        % Handle case where no mask was found.
+            % Handle case where no mask was found.
         else
             mriHolder = ones(ddat.xdim, ddat.ydim, ddat.zdim);
             ddat.mri_struct = make_nii(mriHolder);
@@ -1020,14 +1231,14 @@ end
         minVal = min(ddat.mri_struct.img(:));
         maxVal = max(ddat.mri_struct.img(:));
         ddat.scaledImg = scale_in(ddat.mri_struct.img, minVal, maxVal, 190);
-    
+        
     end
 
-    % Function to combine the anatomical image and the functional image.
-    % Taken from bs-mac viewer.
+% Function to combine the anatomical image and the functional image.
+% Taken from bs-mac viewer.
     function createCombinedImage(hObject,callbackdata)
-        ddat.scaledFunc = cell(ddat.nCompare, 1);
-        ddat.combinedImg = cell(ddat.nCompare, 1);
+        ddat.scaledFunc = cell(ddat.nCompare, ddat.nVisit);
+        ddat.combinedImg = cell(ddat.nCompare, ddat.nVisit);
         
         % Find the min and max value of each image.
         minVal1 = min(min(min(cat(1,ddat.img{:}))));
@@ -1036,43 +1247,61 @@ end
         % Loop over each sub-population to compare and create the combined
         % image.
         for iPop = 1:ddat.nCompare
-            % Scale the functional image
-            tempImage = ddat.img{iPop};
-            tempImage(isnan(ddat.img{iPop})) = minVal1 - 1;
-            minVal2 = minVal1 - 1;
-            ddat.scaledFunc{iPop} = scale_in(tempImage, minVal2, maxVal1, 63);
-            newColormap = [(gray(191));zeros(1, 3); ddat.highcolor];%%index 192 is not used, just for seperate the base and top colormap;
-            ddat.color_map = newColormap;
-            ddat.combinedImg{iPop} = overlay_w_transparency(uint16(ddat.scaledImg),...
-                uint16(ddat.scaledFunc{iPop}),1, 0.6, newColormap, ddat.highcolor);
-        end
+            
+            % Loop over each visit
+            for iVisit = 1:ddat.nVisit
+                % Scale the functional image
+                tempImage = ddat.img{iPop, iVisit};
+                tempImage(isnan(ddat.img{iPop, iVisit})) = minVal1 - 1;
+                minVal2 = minVal1 - 1;
+                ddat.scaledFunc{iPop, iVisit} = scale_in(tempImage, minVal2, maxVal1, 63);
+                newColormap = [(gray(191));zeros(1, 3); ddat.highcolor];%%index 192 is not used, just for seperate the base and top colormap;
+                ddat.color_map = newColormap;
+                ddat.combinedImg{iPop, iVisit} = overlay_w_transparency(uint16(ddat.scaledImg),...
+                    uint16(ddat.scaledFunc{iPop, iVisit}),1, 0.6, newColormap, ddat.highcolor);
+            end% end loop over visits
+            
+        end % end loop over sub-populations
     end
 
-    % Function to replace the brain images on the viewer.
+% Function to replace the brain images on the viewer.
     function redisplay(hObject,callbackdata)
+        
+        % Get the number of visits actively being viewed
+        nVisitViewed = numel(ddat.activeVisits);
+        
         % Loop over the number of subgroups currently being viewed.
         for iInd = 1:ddat.nCompare
-            % Grab the data for the selected slices and update axes obj.
-            for cl = 1:3
-                Saxi(:, :, cl) = squeeze(ddat.combinedImg{iInd}(cl).combound(:, :, ddat.axi))';
-                Scor(:, :, cl) = squeeze(ddat.combinedImg{iInd}(cl).combound(:,ddat.cor,:))';
-                Ssag(:, :, cl) = squeeze(ddat.combinedImg{iInd}(cl).combound(ddat.sag,:,:))';
-            end
-            ddat.cor_mm = (ddat.cor-ddat.origin(2))*ddat.pixdim(2);
-            axesC = (findobj('Tag', ['CoronalAxes' num2str(iInd)] ));
-            set(ddat.coronal_image{iInd},'CData',Scor);
-            axesC = (findobj('Tag', ['AxialAxes' num2str(iInd)] ));
-            set(ddat.axial_image{iInd},'CData',Saxi);
-            axesC = (findobj('Tag', ['SagittalAxes' num2str(iInd)] ));
-            set(ddat.sagittal_image{iInd},'CData',Ssag);           
-        end
+            
+            % Loop over the active visits, note this might not be in
+            % numerical order
+            for iVisit = 1:nVisitViewed
+                currentVisitIndex = ddat.activeVisits(iVisit);
+                
+                % Grab the data for the selected slices and update axes obj.
+                for cl = 1:3
+                    Saxi(:, :, cl) = squeeze(ddat.combinedImg{iInd, currentVisitIndex}(cl).combound(:, :, ddat.axi))';
+                    Scor(:, :, cl) = squeeze(ddat.combinedImg{iInd, currentVisitIndex}(cl).combound(:,ddat.cor,:))';
+                    Ssag(:, :, cl) = squeeze(ddat.combinedImg{iInd, currentVisitIndex}(cl).combound(ddat.sag,:,:))';
+                end
+                ddat.cor_mm = (ddat.cor-ddat.origin(2))*ddat.pixdim(2);
+                axesC = (findobj('Tag', ['CoronalAxes' num2str(iInd)] ));
+                set(ddat.coronal_image{iInd, currentVisitIndex},'CData',Scor);
+                axesC = (findobj('Tag', ['AxialAxes' num2str(iInd)] ));
+                set(ddat.axial_image{iInd, currentVisitIndex},'CData',Saxi);
+                axesC = (findobj('Tag', ['SagittalAxes' num2str(iInd)] ));
+                set(ddat.sagittal_image{iInd, currentVisitIndex},'CData',Ssag);
+            end % end of loop over viewed visits
+            
+        end % end of loop over sub-populations
         
         % Update the colormap (here as a safety precaution).
         axesC = findobj('Tag', 'colorMap');
         updateColorbar;
+        
     end
-    
-    % Function to setup the covariate menu when viewing sub-populations.
+
+% Function to setup the covariate menu when viewing sub-populations.
     function setupCovMenu(hObject, callbackdata)
         newstring = cell(ddat.p, 1);
         for covariate=1:ddat.p
@@ -1081,7 +1310,7 @@ end
         set(findobj('Tag', 'selectCovariate'), 'String', newstring);
     end
 
-    % Function to setup the subject menu when viewing individual subjects.
+% Function to setup the subject menu when viewing individual subjects.
     function setupSubMenu(hObject, callbackdata)
         newstring = cell(ddat.nsub, 1);
         for subject=1:ddat.nsub
@@ -1090,7 +1319,7 @@ end
         set(findobj('Tag', 'selectSubject'), 'String', newstring);
     end
 
-    % Function to setup the IC menu.
+% Function to setup the IC menu.
     function setupICMenu(hObject, callbackdata)
         newstring = cell(ddat.q, 2);
         for ic = 1:ddat.q
@@ -1100,7 +1329,16 @@ end
         set(findobj('Tag', 'icSelRef'), 'Data', newstring);
     end
 
-    % Function to look for a mask object created by the user for this IC
+%% Function to fill out the visits in the visit menu
+    function setupVisitMenu(hObject, callbackdata)
+        newstring = cell(ddat.nVisit, 1);
+        for iVisit=1:ddat.nVisit
+            newstring{iVisit} = ['Visit ' num2str(subject)];
+        end
+        set(findobj('Tag', 'selectVisit'), 'String', newstring);
+    end
+
+%% Function to look for a mask object created by the user for this IC
     function maskSearch(hObject,  callbackdata)
         % Get the the current IC
         currentIC = get(findobj('Tag', 'ICselect'), 'val');
@@ -1115,7 +1353,7 @@ end
                 newstring{m} = fls(m-1).name;
             end
             set( findobj('Tag', 'maskSelect'), 'String', newstring);
-        % handle the case where no masks were found
+            % handle the case where no masks were found
         else
             ddat.maskExist = 0;
             set( findobj('Tag', 'maskSelect'), 'Value', 1);
@@ -1123,14 +1361,14 @@ end
         end
     end
 
-    % Function to update the colorbar
+%% Function to update the colorbar
     function updateColorbar(hObject, callbackdata)
         %Get the 0.95 quantile to use as the min and max of the colorbar
-        max_functmap_value = max(max(prctile(cat(ddat.nCompare,ddat.img{:}),95 ))); 
+        max_functmap_value = max(max(prctile(cat(ddat.nCompare,ddat.img{:}),95 )));
         min_functmap_value = min(min(prctile(cat(ddat.nCompare,ddat.img{:}),95 )));
         % Redo so that they match true image
-        maxval1 = max(max(max(cat(ddat.nCompare,ddat.img{:})))); 
-        minval1 = min(min(min(cat(ddat.nCompare,ddat.img{:})))) - 1; 
+        maxval1 = max(max(max(cat(ddat.nCompare,ddat.img{:}))));
+        minval1 = min(min(min(cat(ddat.nCompare,ddat.img{:})))) - 1;
         %maxval = max(max_functmap_value, abs(min_functmap_value));
         %max_functmap_value = maxval; min_functmap_value = -maxval;
         max_functmap_value = maxval1; min_functmap_value = minval1;
@@ -1147,12 +1385,12 @@ end
         ddat.colorbar_labels = fix(ddat.colorbar_labels*100)/100;
         ddat.scaled_pp_labels = scale_in(ddat.colorbar_labels, min_functmap_value, max_functmap_value, 63);
         % Update the colorbar
-        axes(findobj('Tag', 'colorMap'));  
+        axes(findobj('Tag', 'colorMap'));
         set(gca,'NextPlot','add')
         colorbar_plot( findobj('Tag', 'colorMap'), ddat.colorbar_labels, ddat.scaled_pp_labels);
     end
 
-    % Function to load a new IC - called when the user changes ICs.
+%% Function to load a new IC - called when the user changes ICs.
     function updateIC(hObject, callbackdata)
         % Turn off contrast
         ddat.viewingContrast = 0;
@@ -1160,22 +1398,25 @@ end
         newIC = get(findobj('Tag', 'ICselect'), 'val');
         % file based on current viewer
         if strcmp(ddat.type, 'grp')
-            newFile = [ddat.outdir '/' ddat.outpre '_aggregateIC_' num2str(newIC) '.nii'];
-            newData = load_nii(newFile);
-            ddat.img{1} = newData.img; ddat.oimg{1} = newData.img;
+            % Load each visit for this subject
+            for iVisit = 1:ddat.nVisit
+                newFile = [ddat.outdir '/' ddat.outpre '_aggregateIC_' num2str(newIC) '_visit' num2str(iVisit) '.nii'];
+                newData = load_nii(newFile);
+                ddat.img{1, iVisit} = newData.img; ddat.oimg{1, iVisit} = newData.img;
+            end
         elseif strcmp(ddat.type, 'subpop')
             newFile = [ddat.outdir '/' ddat.outpre '_S0_IC_' num2str(newIC) '.nii'];
             updateSubPopulation;
         elseif strcmp(ddat.type, 'beta')
-                covnum = get(findobj('Tag', 'selectCovariate'), 'Value');
-                ndata = load_nii([ddat.outdir '/' ddat.outpre...
-                    '_beta_cov' num2str(covnum) '_IC' num2str(newIC) '.nii']);
-                ddat.img{1} = ndata.img; ddat.oimg{1} = ndata.img;
-                        % Fill out the beta map for the current IC
-                newIC = get(findobj('Tag', 'ICselect'), 'val');
-                newMap = load(fullfile(ddat.outdir,...
-                    [ddat.outpre '_BetaVarEst_IC_' num2str(newIC) '.mat']));
-                ddat.betaVarEst = newMap.betaVarEst;
+            covnum = get(findobj('Tag', 'selectCovariate'), 'Value');
+            ndata = load_nii([ddat.outdir '/' ddat.outpre...
+                '_beta_cov' num2str(covnum) '_IC' num2str(newIC) '.nii']);
+            ddat.img{1} = ndata.img; ddat.oimg{1} = ndata.img;
+            % Fill out the beta map for the current IC
+            newIC = get(findobj('Tag', 'ICselect'), 'val');
+            newMap = load(fullfile(ddat.outdir,...
+                [ddat.outpre '_BetaVarEst_IC_' num2str(newIC) '.mat']));
+            ddat.betaVarEst = newMap.betaVarEst;
         elseif strcmp(ddat.type, 'subj')
             generateSingleSubjMap;
         elseif strcmp(ddat.type, 'icsel')
@@ -1207,7 +1448,7 @@ end
                     xb = beta.img * str2double(covariateSettings( subPop , xi));
                     newFunc = newFunc + xb;
                 end
-                ddat.img{subPop} = newFunc; ddat.oimg{subPop} = newFunc;                
+                ddat.img{subPop} = newFunc; ddat.oimg{subPop} = newFunc;
             end
         end
         
@@ -1223,18 +1464,18 @@ end
         end
     end
 
-    % Function to update the value at crosshair when user clicks on a slice
+% Function to update the value at crosshair when user clicks on a slice
     function updateCrosshairValue(hObject, callbackdata)
         % Handle case where only one image is being viewed
         if ddat.nCompare == 1
             if get(findobj('Tag', 'viewZScores'), 'Value') == 0
-            set(findobj('Tag', 'crosshairVal1'),'String',...
-                sprintf('Value at Voxel: %4.2f', ddat.img{1}(ddat.sag, ddat.cor, ddat.axi)));
+                set(findobj('Tag', 'crosshairVal1'),'String',...
+                    sprintf('Value at Voxel: %4.2f', ddat.img{1}(ddat.sag, ddat.cor, ddat.axi)));
             elseif get(findobj('Tag', 'viewZScores'), 'Value') == 1
                 set(findobj('Tag', 'crosshairVal1'),'String',...
-                sprintf('Z = %4.2f', ddat.img{1}(ddat.sag, ddat.cor, ddat.axi)));
+                    sprintf('Z = %4.2f', ddat.img{1}(ddat.sag, ddat.cor, ddat.axi)));
             end
-        % Handle case where images are being compared
+            % Handle case where images are being compared
         else
             if get(findobj('Tag', 'viewZScores'), 'Value') == 0
                 for iPop = 1:ddat.nCompare
@@ -1252,7 +1493,7 @@ end
         end
     end
 
-    % Function to apply a user created mask to the data.
+% Function to apply a user created mask to the data.
     function applyMask(hObject, callbackdata)
         % Find what mask has been selected
         maskOptions = findobj('Tag', 'maskSelect');
@@ -1277,8 +1518,8 @@ end
         redisplay;
     end
 
-    % Check if user has selected Z-scores or not and update corresponding
-    % GUI elements.
+% Check if user has selected Z-scores or not and update corresponding
+% GUI elements.
     function updateZImg(hObject, callbackdata)
         
         % Find out if should be looking at Z-scores
@@ -1333,7 +1574,7 @@ end
         updateInfoText;
     end
 
-    % Function to let the user know where in the brain they have clicked.
+% Function to let the user know where in the brain they have clicked.
     function updateInfoText(hObject, callbackdata)
         cIC = get(findobj('Tag', 'ICselect'), 'Value');
         if get(findobj('Tag', 'viewZScores'), 'Value')
@@ -1363,10 +1604,10 @@ end
                     vOrZ = 'Voxel Values';
                 end
                 viewObj = get(findobj('Tag',...
-                        ['contrastSelect' num2str(1)]))
+                    ['contrastSelect' num2str(1)]))
                 contrastInd = num2str(viewObj.Value);
                 endText = ['contrast C' contrastInd ', '];
-                newString = ['Viewing ' endText vOrZ ' for IC ' num2str(cIC)];  
+                newString = ['Viewing ' endText vOrZ ' for IC ' num2str(cIC)];
                 set(findobj('Tag', 'viewerInfo'), 'String', newString);
             end
         elseif strcmp(ddat.type, 'subj')
@@ -1379,11 +1620,11 @@ end
         elseif strcmp(ddat.type, 'subPopCompare')
             endText = '';
         end
-        newString = ['Viewing ' endText vOrZ ' for IC ' num2str(cIC)];  
+        newString = ['Viewing ' endText vOrZ ' for IC ' num2str(cIC)];
         set(findobj('Tag', 'viewerInfo'), 'String', newString);
     end
 
-    % Update sagittal slider.
+% Update sagittal slider.
     function sagSliderMove(hObject, callbackdata)
         for iPop = 1:ddat.nCompare
             axes(findobj('Tag', ['SagittalAxes' num2str(iPop)]));
@@ -1397,13 +1638,13 @@ end
             set(findobj('Tag','crosshairPos'),'String',...
                 sprintf('%7.0d %7.0d %7.0d',ddat.sag,ddat.cor, ddat.axi));
             updateInfoText;
-                        if ddat.nCompare == 1
+            if ddat.nCompare == 1
                 if get(findobj('Tag', 'viewZScores'), 'Value') == 0
-                set(findobj('Tag', 'crosshairVal1'),'String',...
-                    sprintf('Value at Voxel: %4.2f', ddat.img{1}(ddat.sag, ddat.cor, ddat.axi)));
+                    set(findobj('Tag', 'crosshairVal1'),'String',...
+                        sprintf('Value at Voxel: %4.2f', ddat.img{1}(ddat.sag, ddat.cor, ddat.axi)));
                 elseif get(findobj('Tag', 'viewZScores'), 'Value') == 1
                     set(findobj('Tag', 'crosshairVal1'),'String',...
-                    sprintf('Z = %4.2f', ddat.img{1}(ddat.sag, ddat.cor, ddat.axi)));
+                        sprintf('Z = %4.2f', ddat.img{1}(ddat.sag, ddat.cor, ddat.axi)));
                 end
             else
                 if get(findobj('Tag', 'viewZScores'), 'Value') == 0
@@ -1422,19 +1663,26 @@ end
             end
             valId = cell2mat(ddat.total_region_name(:, 1));
             curIdVal = ddat.region_struct.img(ddat.sag, ddat.cor, ddat.axi);
-            curIdPos = find(ismember(valId, curIdVal)); 
+            curIdPos = find(ismember(valId, curIdVal));
             if curIdPos
                 set(findobj('Tag', 'curInfo'), 'ForegroundColor','g',...
                     'FontSize', 10, 'HorizontalAlignment', 'left', 'String', ...
-                     sprintf('Current crosshair is located in the region: %s', ...
-                              ddat.total_region_name{curIdPos, 2}));
+                    sprintf('Current crosshair is located in the region: %s', ...
+                    ddat.total_region_name{curIdPos, 2}));
             else
                 set(findobj('Tag', 'curInfo'), 'String', '');
             end
         end
+        
+        
+        % Add the currently selected voxel to the trajectory plot
+        if ddat.trajectoryActive == 1
+            plot_voxel_trajectory([ddat.sag, ddat.cor, ddat.axi])
+        end
+        
     end
 
-    % Update coronal slider.
+% Update coronal slider.
     function corSliderMove(hObject, callbackdata)
         for iPop = 1:ddat.nCompare
             axes(findobj('Tag', ['CoronalAxes' num2str(iPop)]));
@@ -1450,11 +1698,11 @@ end
             updateInfoText;
             if ddat.nCompare == 1
                 if get(findobj('Tag', 'viewZScores'), 'Value') == 0
-                set(findobj('Tag', 'crosshairVal1'),'String',...
-                    sprintf('Value at Voxel: %4.2f', ddat.img{1}(ddat.sag, ddat.cor, ddat.axi)));
+                    set(findobj('Tag', 'crosshairVal1'),'String',...
+                        sprintf('Value at Voxel: %4.2f', ddat.img{1}(ddat.sag, ddat.cor, ddat.axi)));
                 elseif get(findobj('Tag', 'viewZScores'), 'Value') == 1
                     set(findobj('Tag', 'crosshairVal1'),'String',...
-                    sprintf('Z = %4.2f', ddat.img{1}(ddat.sag, ddat.cor, ddat.axi)));
+                        sprintf('Z = %4.2f', ddat.img{1}(ddat.sag, ddat.cor, ddat.axi)));
                 end
             else
                 if get(findobj('Tag', 'viewZScores'), 'Value') == 0
@@ -1473,19 +1721,26 @@ end
             end
             valId = cell2mat(ddat.total_region_name(:, 1));
             curIdVal = ddat.region_struct.img(ddat.sag, ddat.cor, ddat.axi);
-            curIdPos = find(ismember(valId, curIdVal)); 
+            curIdPos = find(ismember(valId, curIdVal));
             if curIdPos
                 set(findobj('Tag', 'curInfo'), 'ForegroundColor','g',...
                     'FontSize', 10, 'HorizontalAlignment', 'left', 'String', ...
-                     sprintf('Current crosshair is located in the region: %s', ...
-                              ddat.total_region_name{curIdPos, 2}));
+                    sprintf('Current crosshair is located in the region: %s', ...
+                    ddat.total_region_name{curIdPos, 2}));
             else
                 set(findobj('Tag', 'curInfo'), 'String', '');
             end
         end
+        
+        % Add the currently selected voxel to the trajectory plot
+        if ddat.trajectoryActive == 1
+            plot_voxel_trajectory([ddat.sag, ddat.cor, ddat.axi])
+        end
+        
+        
     end
 
-    % Update axial slider.
+% Update axial slider.
     function axiSliderMove(hObject, callbackdata)
         for iPop = 1:ddat.nCompare
             axes(findobj('Tag', ['AxialAxes' num2str(iPop)]));
@@ -1497,15 +1752,15 @@ end
             set(ddat.coronal_xline{iPop},'Ydata',[ddat.axi ddat.axi]);
             set(ddat.sagittal_xline{iPop},'Ydata',[ddat.axi ddat.axi]);
             set(findobj('Tag','crosshairPos'),'String',...
-                sprintf('%7.0d %7.0d %7.0d',ddat.sag,ddat.cor, ddat.axi));   
+                sprintf('%7.0d %7.0d %7.0d',ddat.sag,ddat.cor, ddat.axi));
             updateInfoText;
-                        if ddat.nCompare == 1
+            if ddat.nCompare == 1
                 if get(findobj('Tag', 'viewZScores'), 'Value') == 0
-                set(findobj('Tag', 'crosshairVal1'),'String',...
-                    sprintf('Value at Voxel: %4.2f', ddat.img{1}(ddat.sag, ddat.cor, ddat.axi)));
+                    set(findobj('Tag', 'crosshairVal1'),'String',...
+                        sprintf('Value at Voxel: %4.2f', ddat.img{1}(ddat.sag, ddat.cor, ddat.axi)));
                 elseif get(findobj('Tag', 'viewZScores'), 'Value') == 1
                     set(findobj('Tag', 'crosshairVal1'),'String',...
-                    sprintf('Z = %4.2f', ddat.img{1}(ddat.sag, ddat.cor, ddat.axi)));
+                        sprintf('Z = %4.2f', ddat.img{1}(ddat.sag, ddat.cor, ddat.axi)));
                 end
             else
                 if get(findobj('Tag', 'viewZScores'), 'Value') == 0
@@ -1524,19 +1779,25 @@ end
             end
             valId = cell2mat(ddat.total_region_name(:, 1));
             curIdVal = ddat.region_struct.img(ddat.sag, ddat.cor, ddat.axi);
-            curIdPos = find(ismember(valId, curIdVal)); 
+            curIdPos = find(ismember(valId, curIdVal));
             if curIdPos
                 set(findobj('Tag', 'curInfo'), 'ForegroundColor','g',...
                     'FontSize', 10, 'HorizontalAlignment', 'left', 'String', ...
-                     sprintf('Current crosshair is located in the region: %s', ...
-                              ddat.total_region_name{curIdPos, 2}));
+                    sprintf('Current crosshair is located in the region: %s', ...
+                    ddat.total_region_name{curIdPos, 2}));
             else
                 set(findobj('Tag', 'curInfo'), 'String', '');
             end
         end
+        
+        % Add the currently selected voxel to the trajectory plot
+        if ddat.trajectoryActive == 1
+            plot_voxel_trajectory([ddat.sag, ddat.cor, ddat.axi])
+        end
+        
     end
-   
-    % Function to edit the z-threshold required to view on brain image.
+
+% Function to edit the z-threshold required to view on brain image.
     function editThreshold(hObject, callbackdata)
         
         % Get user selected cutoff
@@ -1562,8 +1823,8 @@ end
         updateInfoText;
     end
 
-    % Function to handle Z-thresholding if the user manually enters a
-    % value.
+% Function to handle Z-thresholding if the user manually enters a
+% value.
     function manualThreshold(hObject, callbackdata)
         newCutoff = get( findobj('Tag', 'manualThreshold'), 'string');
         if all(ismember(newCutoff, '0123456789+-.eEdD')) & ~isempty(newCutoff)
@@ -1573,8 +1834,8 @@ end
                 set( findobj('Tag', 'manualThreshold'), 'string', ...
                     get( findobj('Tag', 'thresholdSlider'), 'value'));
             else
-            set( findobj('Tag', 'thresholdSlider'), 'value', str2double(newCutoff));
-            editThreshold;
+                set( findobj('Tag', 'thresholdSlider'), 'value', str2double(newCutoff));
+                editThreshold;
             end
         else
             warndlg('Please input a valid number', 'Input Error');
@@ -1583,8 +1844,8 @@ end
         end
     end
 
-    % Function to save a thresholded mask for future use. Should only be
-    % available from the group level IC window.
+% Function to save a thresholded mask for future use. Should only be
+% available from the group level IC window.
     function saveMask(hObject, callbackdata)
         newfile = strcat(ddat.outdir, '/' , ddat.outpre, '_maskIC_',...
             num2str(get(findobj('Tag', 'ICselect'), 'Value')), '_zthresh_',...
@@ -1594,8 +1855,8 @@ end
         maskSearch;
     end
 
-    % SubPopulation Panel Functions
-    % Function to allow the user to add another sub population to the list
+% SubPopulation Panel Functions
+% Function to allow the user to add another sub population to the list
     function addNewSubPop(hObject, callbackdata)
         olddata = findobj('Tag', 'subPopDisplay'); olddim = size(olddata.Data);
         oldrownames = olddata.RowName;
@@ -1620,7 +1881,7 @@ end
         ceditable = false(1, ddat.p);
         ceditable(1:length(ddat.varNamesX)) = 1;
         set(findobj('Tag', 'subPopDisplay'), 'ColumnEditable', ceditable);
-
+        
         % change the drop down menu
         newString = cell(olddim(1)+1,1);
         oldstring = get(findobj('Tag', 'subPopSelect1'), 'String');
@@ -1634,36 +1895,36 @@ end
         newString(olddim(1) + 1) = {['SubPop' num2str(olddim(1)+1)]};
         % Update all sub population selection viewers
         for iPop = 1:ddat.nCompare
-            set(findobj('Tag', ['subPopSelect' num2str(iPop)]),'String', newString);  
+            set(findobj('Tag', ['subPopSelect' num2str(iPop)]),'String', newString);
         end
     end
 
-    % Function to allow the user to specifiy covariates for a new
-    % sub-population.
+% Function to allow the user to specifiy covariates for a new
+% sub-population.
     function newPopCellEdit(hObject, callbackdata)
         % When the user edits a cell, need to make sure that it is a valid level
         coledit = callbackdata.Indices(2);
         % Make sure input value is a number and not a string
         %if all(ismember(callbackdata.NewData, '0123456789+-.eEdD')) & ~isempty(callbackdata.NewData)
         if all(ismember(callbackdata.NewData, '0123456789.-')) & ~isempty(callbackdata.NewData)
-        % check if the edited cell is categorical, should be binary
-        if length(unique(ddat.X(:, coledit))) == 2
-            if ~(str2num(callbackdata.NewData) == 1 || str2num(callbackdata.NewData) == 0)
-                warndlg('Categorical covariates should be set to either 0 or 1', 'Data input error');
-                newTable = get(findobj('Tag', 'subPopDisplay'), 'Data');
-                newTable(callbackdata.Indices(1), coledit) = {''};
-                set(findobj('Tag', 'subPopDisplay'), 'Data', newTable);
+            % check if the edited cell is categorical, should be binary
+            if length(unique(ddat.X(:, coledit))) == 2
+                if ~(str2num(callbackdata.NewData) == 1 || str2num(callbackdata.NewData) == 0)
+                    warndlg('Categorical covariates should be set to either 0 or 1', 'Data input error');
+                    newTable = get(findobj('Tag', 'subPopDisplay'), 'Data');
+                    newTable(callbackdata.Indices(1), coledit) = {''};
+                    set(findobj('Tag', 'subPopDisplay'), 'Data', newTable);
+                end
+            else
+                % make sure it is in the range of values recorded before
+                minval = min(ddat.X(:,coledit));
+                maxval = max(ddat.X(:,coledit));
+                if (str2num(callbackdata.NewData) < minval || str2num(callbackdata.NewData) > maxval)
+                    warndlg('The value input is more extreme than any value for this covariate in the data set', 'Warning');
+                end
             end
         else
-            % make sure it is in the range of values recorded before
-            minval = min(ddat.X(:,coledit));
-            maxval = max(ddat.X(:,coledit));
-            if (str2num(callbackdata.NewData) < minval || str2num(callbackdata.NewData) > maxval)
-                warndlg('The value input is more extreme than any value for this covariate in the data set', 'Warning');
-            end
-        end
-        else
-        	warndlg('Please input a number, see covariate table for examples', 'Warning');
+            warndlg('Please input a number, see covariate table for examples', 'Warning');
             newTable = get(findobj('Tag', 'subPopDisplay'), 'Data');
             newTable(callbackdata.Indices(1), coledit) = {[]};
             set(findobj('Tag', 'subPopDisplay'), 'Data', newTable);
@@ -1722,8 +1983,8 @@ end
         
     end
 
-    % Function to allow a user to select what sub-population is being
-    % viewed.
+% Function to allow a user to select what sub-population is being
+% viewed.
     function updateSubPopulation(hObject, callbackdata)
         % find the viewer that needs to be updated
         if exist('hObject.Tag')
@@ -1731,27 +1992,27 @@ end
         else
             viewer = 1;
         end
-            % Load the IC
-            newIC = get( findobj('Tag', 'ICselect'), 'value');
-            newFile = strcat(ddat.outdir,'/',ddat.outpre,'_S0_IC_',num2str(newIC),'.nii');
-            newDat = load_nii(newFile); newFunc = newDat.img;
-
-            covariateSettings = get(findobj('Tag', 'subPopDisplay'), 'Data');
-            for xi = 1:ddat.p
-                beta = load_nii([ddat.outdir '/' ddat.outpre '_beta_cov' num2str(xi) '_IC' num2str(newIC) '.nii']);
-                max(max(max(beta.img)))
-                xb = beta.img .* str2double(covariateSettings( get(findobj('Tag',...
-                    ['subPopSelect' num2str(viewer)]), 'Value') , xi));
-                newFunc = newFunc + xb;
-            end
-
-            ddat.img{viewer} = newFunc; ddat.oimg{viewer} = newFunc;
-            createCombinedImage;
-            redisplay;
-            updateInfoText;
+        % Load the IC
+        newIC = get( findobj('Tag', 'ICselect'), 'value');
+        newFile = strcat(ddat.outdir,'/',ddat.outpre,'_S0_IC_',num2str(newIC),'.nii');
+        newDat = load_nii(newFile); newFunc = newDat.img;
+        
+        covariateSettings = get(findobj('Tag', 'subPopDisplay'), 'Data');
+        for xi = 1:ddat.p
+            beta = load_nii([ddat.outdir '/' ddat.outpre '_beta_cov' num2str(xi) '_IC' num2str(newIC) '.nii']);
+            max(max(max(beta.img)))
+            xb = beta.img .* str2double(covariateSettings( get(findobj('Tag',...
+                ['subPopSelect' num2str(viewer)]), 'Value') , xi));
+            newFunc = newFunc + xb;
+        end
+        
+        ddat.img{viewer} = newFunc; ddat.oimg{viewer} = newFunc;
+        createCombinedImage;
+        redisplay;
+        updateInfoText;
     end
 
-    % Function to update the displayed contrast from the covariate viewer
+% Function to update the displayed contrast from the covariate viewer
     function updateContrastDisp(hObject, callbackdata)
         % find the viewer that needs to be updated
         if exist('hObject.Tag')
@@ -1770,7 +2031,7 @@ end
         if isempty(contrastSettings)
             performContrastUpdate = 0;
             f = warndlg('Please specify a contrast before viewing.')
-        % check nothing empty
+            % check nothing empty
         else
             tempsettings = contrastSettings( get(findobj('Tag',['contrastSelect' num2str(viewer)]), 'Value') , :);
             all0 = 0;
@@ -1782,7 +2043,7 @@ end
             if any( cellfun(@isempty, tempsettings) )
                 performContrastUpdate = 0;
                 f = warndlg('Please fill out all covariate values before viewing.')
-            % check that not all zero
+                % check that not all zero
             elseif all0 == 1
                 performContrastUpdate = 0;
                 f = warndlg('Contrast must have at least one non-zero value.')
@@ -1797,7 +2058,7 @@ end
             % Load the first piece
             beta = load_nii([ddat.outdir '/' ddat.outpre '_beta_cov' num2str(1) '_IC' num2str(newIC) '.nii']);
             newFunc = beta.img .* str2double(contrastSettings( get(findobj('Tag',...
-                    ['contrastSelect' num2str(viewer)]), 'Value') , 1));
+                ['contrastSelect' num2str(viewer)]), 'Value') , 1));
             % Load the remaining pieces
             for xi = 2:ddat.p
                 beta = load_nii([ddat.outdir '/' ddat.outpre '_beta_cov' num2str(xi) '_IC' num2str(newIC) '.nii']);
@@ -1806,7 +2067,7 @@ end
                     ['contrastSelect' num2str(viewer)]), 'Value') , xi));
                 newFunc = newFunc + xb;
             end
-
+            
             ddat.img{viewer} = newFunc; ddat.oimg{viewer} = newFunc;
             updateZImg;
             createCombinedImage;
@@ -1822,17 +2083,17 @@ end
                 vOrZ = 'Voxel Values';
             end
             viewObj = get(findobj('Tag',...
-                    ['contrastSelect' num2str(viewer)]))
+                ['contrastSelect' num2str(viewer)]))
             contrastInd = num2str(viewObj.Value);
             endText = ['contrast C' contrastInd ', '];
-            newString = ['Viewing ' endText vOrZ ' for IC ' num2str(cIC)];  
+            newString = ['Viewing ' endText vOrZ ' for IC ' num2str(cIC)];
             set(findobj('Tag', 'viewerInfo'), 'String', newString);
             
         end
     end
-    
-    % Function to allow user to select sub populations to compare. Opens a
-    % new window.
+
+% Function to allow user to select sub populations to compare. Opens a
+% new window.
     function compareSubPopulations(hObject, callbackdata)
         newfig = figure('Units', 'normalized', ...,...
             'position', [0.3 0.3 0.3 0.3],...
@@ -1856,7 +2117,7 @@ end
             'Tag', 'subPopListBox', 'Callback', @subPopSelectCall); %#ok<NASGU>
         % set the list box to have the correct number of sub populations
         set(findobj('Tag', 'subPopListBox'), 'String', get(findobj('Tag', 'subPopDisplay'), 'RowName') );
-        set(findobj('Tag', 'subPopListBox'), 'Max', 3); 
+        set(findobj('Tag', 'subPopListBox'), 'Max', 3);
         numSelectedText = uicontrol('Parent', newfig, ...
             'Style', 'Text', 'String', 'Number of selected sub-populations: ', ...
             'Units', 'Normalized', ...
@@ -1874,7 +2135,7 @@ end
         movegui(newfig, 'center')
     end
 
-    % Function to launch a comparison window
+% Function to launch a comparison window
     function launchCompareWindow(hObject, callbackdata)
         selectedSubPops = get(findobj('Tag', 'subPopListBox'), 'Value');
         %close;
@@ -1891,16 +2152,16 @@ end
         delete(hObject.Parent);
     end
 
-    % Counts the number of sub-populations selected.
+% Counts the number of sub-populations selected.
     function subPopSelectCall(hObject, callbackdata)
         selectedPops = hObject.Value;
         [nothing, numPop] = size(selectedPops);
         set(findobj('Tag', 'numSelected'), 'String', num2str(numPop));
     end
 
-    % Function for the IC selection process. Creates the menu with all of
-    % the ICs and whether or not they have been selected for the EM
-    % algorithm.
+% Function for the IC selection process. Creates the menu with all of
+% the ICs and whether or not they have been selected for the EM
+% algorithm.
     function updateICSelMenu(hObject, callbackdata)
         %global keeplist;
         isSelected = callbackdata.Source.Value;
@@ -1915,8 +2176,8 @@ end
         set(findobj('Tag', 'icSelRef'), 'Data', currentTable);
     end
 
-    % Functions from the task bar for display viewer switching
-    % Function to switch to the sub population viewer.
+% Functions from the task bar for display viewer switching
+% Function to switch to the sub population viewer.
     function stSubPop(hObject, callbackdata)
         if strcmp(ddat.type, 'subPopCompare')
             revertToDisp;
@@ -1925,7 +2186,7 @@ end
         initialDisp;
     end
 
-    % Function to switch to the group level viewer.
+% Function to switch to the group level viewer.
     function stGrp(hObject, callbackdata)
         if strcmp(ddat.type, 'subPopCompare')
             revertToDisp;
@@ -1934,7 +2195,7 @@ end
         initialDisp;
     end
 
-    % Function to switch to the subject level viewer.
+% Function to switch to the subject level viewer.
     function stSubj(~, ~)
         if strcmp(ddat.type, 'subPopCompare')
             revertToDisp;
@@ -1943,7 +2204,7 @@ end
         initialDisp;
     end
 
-    % Function to switch to the beta map viewer.
+% Function to switch to the beta map viewer.
     function stBeta(~, ~)
         if strcmp(ddat.type, 'subPopCompare')
             revertToDisp;
@@ -1952,8 +2213,8 @@ end
         initialDisp;
     end
 
-    % Function to undo the changes made by the sub population compare
-    % window
+% Function to undo the changes made by the sub population compare
+% window
     function revertToDisp(~, ~)
         
         set(findobj('Tag', 'closePanel'), 'Visible', 'Off')
@@ -2018,15 +2279,15 @@ end
         set(findobj('Tag', 'subPopSelect1'), 'Visible', 'On');
         set(findobj('Tag', 'subPopDisplay'), 'ColumnEditable', true);
         
-    end  
+    end
 
-    % Close button for the IC selection window.
+% Close button for the IC selection window.
     function closeICSelect(hObject, ~)
         delete(hObject.Parent);
     end
 
-    % Beta Panel Functions
-    % Function to allow the user to add another contrast to the list
+% Beta Panel Functions
+% Function to allow the user to add another contrast to the list
     function addNewContrast(hObject, callbackdata)
         olddata = findobj('Tag', 'contrastDisplay'); olddim = size(olddata.Data);
         oldrownames = olddata.RowName;
@@ -2051,7 +2312,7 @@ end
         ceditable = false(1, ddat.p);
         ceditable(1:size(ddat.interactions,2)) = 1;
         set(findobj('Tag', 'contrastDisplay'), 'ColumnEditable', ceditable);
-
+        
         % change the drop down menu
         newString = cell(olddim(1)+1,1);
         oldstring = get(findobj('Tag', 'contrastSelect1'), 'String');
@@ -2065,7 +2326,7 @@ end
         newString(olddim(1) + 1) = {['C' num2str(olddim(1)+1)]};
         % Update all sub population selection viewers
         for iPop = 1:ddat.nCompare
-            set(findobj('Tag', ['contrastSelect' num2str(iPop)]),'String', newString);  
+            set(findobj('Tag', ['contrastSelect' num2str(iPop)]),'String', newString);
         end
         ddat.contrastExists = 1;
     end
@@ -2082,12 +2343,12 @@ end
                 answer = inputdlg('Please enter contrast name to remove (C1, C2,...)')
                 if isempty(answer)
                     waitingForResponse = 0;
-                % if user input something, check that it is valid
+                    % if user input something, check that it is valid
                 else
                     validContrasts = get(findobj('Tag', 'contrastDisplay'), 'RowName');
                     matchedIndex = strfind(validContrasts, answer);
                     % Reduce to just first match to guard against C1 and
-                    % C11 
+                    % C11
                     removeIndex = 0;
                     for iContrast = 1:length(validContrasts)
                         % handle more than one contrast
@@ -2096,16 +2357,16 @@ end
                                 removeIndex = iContrast;
                                 break; % break out of the loop
                             end
-                        % handle only one contrast
+                            % handle only one contrast
                         else
                             if matchedIndex == 1
                                 removeIndex = iContrast;
                                 break; % break out of the loop
-                            end 
+                            end
                         end
                     end
                     % If a valid contrast was entered, then proceed
-                    if removeIndex > 0 
+                    if removeIndex > 0
                         waitingForResponse = 0;
                         
                         olddata = findobj('Tag', 'contrastDisplay'); olddim = size(olddata.Data);
@@ -2129,14 +2390,14 @@ end
                             newRowNames = oldrownames(1:olddim(1) - 1);
                             newRowNames = cellstr(newRowNames);
                         end
-
+                        
                         set(findobj('Tag', 'contrastDisplay'), 'Data', newTable);
                         set(findobj('Tag', 'contrastDisplay'), 'RowName', newRowNames);
                         % Make it so that only the main effects can be edited
                         ceditable = false(1, ddat.p);
                         ceditable(1:size(ddat.interactions,2)) = 1;
                         set(findobj('Tag', 'contrastDisplay'), 'ColumnEditable', ceditable);
-
+                        
                         % change the drop down menu
                         newString = cell(olddim(1)-1, 1);
                         oldstring = get(findobj('Tag', 'contrastSelect1'), 'String');
@@ -2182,15 +2443,15 @@ end
                         
                         % Update all sub population selection viewers
                         for iPop = 1:ddat.nCompare
-                            set(findobj('Tag', ['contrastSelect' num2str(iPop)]),'String', newString);  
+                            set(findobj('Tag', ['contrastSelect' num2str(iPop)]),'String', newString);
                         end
                         
                         
                     end
-                end 
+                end
             end
-        % update "viewing contrast" as well
-        % check that whatever is on screen is valid BE CAREFUL HERE!!
+            % update "viewing contrast" as well
+            % check that whatever is on screen is valid BE CAREFUL HERE!!
         else
             warnbox = warndlg('No contrasts have been specified')
         end
@@ -2199,13 +2460,13 @@ end
 
     function save_jpg(hObject, callbackdata)
         
-        %saveas() 
+        %saveas()
         startString = fullfile(ddat.outdir, [ddat.outpre, '_myfigure.jpg']);
         definput = {startString};
         answer = inputdlg('Please enter the filename for the image.',...
             'Input filename',...
             [1, 70], definput);
-                
+        
         %picfig = figure('pos',[10 10 900 300]);
         picfig = figure('units', 'normalized', 'pos', [0.2, 0.2, 0.6, 0.3]);
         copyobj(findobj('tag', 'viewingPanelNormal'), picfig)
