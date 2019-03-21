@@ -429,7 +429,8 @@ end
             'Position', [0.05, 0.3, 0.9, 0.6], ...
             'Tag', 'TrajTable', 'RowName', '',...
             'ColumnWidth', {30,30,30},...
-            'ColumnName', {'Sag','Cor','Axi'});
+            'ColumnName', {'Sag','Cor','Axi'}, ...
+            'CellSelectionCallback', @traj_box_cell_select);
         TrajAddCurrent = uicontrol('style', 'pushbutton',...
             'units', 'normalized', ...
             'Parent', TrajControlPanel,...
@@ -618,6 +619,49 @@ end
             % position
             ddat.trajPreviousTag = lineName;
             
+        end
+        
+    end
+
+    %% Function to move the viewer window to a selected voxel
+    function traj_box_cell_select(hObject, eventdata, handles)
+        
+        % Verify input is valid
+        if ~isempty(eventdata.Indices)%&&~isempty(data)
+            
+            % Get the selected row
+            selected_row = eventdata.Indices(1);
+
+            % Get the corresponding coordinates
+            ddat.sag = eventdata.Source.Data{selected_row, 1};
+            ddat.cor = eventdata.Source.Data{selected_row, 2};
+            ddat.axi = eventdata.Source.Data{selected_row, 3};
+            
+            % Move the display window to this position
+            redisplay;
+            % Force set axis info
+            %src.Parent.Children
+            cld = get(findobj('tag', 'SagittalAxes1'), 'Children');
+            newevent.Button = 1;
+            newevent.IntersectionPoint = [ddat.cor ddat.axi ddat.sag];
+            newevent.Source = cld(3);
+            newevent.EventName = 'Hit';
+            image_button_press( cld(3), newevent, 'sag')
+           
+        end
+        
+        % Remove the last red line from the trajectory plot
+        trajAxesHandle = findobj('Tag', 'TrajAxes');
+        %% check if this is a new voxel, if so, delete previous red line
+        % Delete the previously selected red line
+        for iline = 1:length(trajAxesHandle.Children)
+            if strcmp(trajAxesHandle.Children(iline).Tag, ddat.trajPreviousTag)
+                % check if red line
+                if all(trajAxesHandle.Children(iline).Color == [1 0 0])
+                    delete(trajAxesHandle.Children(iline));
+                    break
+                end
+            end
         end
         
     end
