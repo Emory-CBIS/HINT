@@ -640,13 +640,42 @@ end
             % Move the display window to this position
             redisplay;
             % Force set axis info
-            %src.Parent.Children
+            
+            % Move all images to the correct slices
+            moveptr( get(findobj('tag', 'SagittalAxes1')), ddat.cor, ddat.axi )
+            moveptr( get(findobj('tag', 'CoronalAxes1')), ddat.sag, ddat.axi )
+            moveptr( get(findobj('tag', 'AxialAxes1')), ddat.cor, ddat.sag )
+            
+            %% Saggital Axis
             cld = get(findobj('tag', 'SagittalAxes1'), 'Children');
             newevent.Button = 1;
-            newevent.IntersectionPoint = [ddat.cor ddat.axi ddat.sag];
+            %newevent.IntersectionPoint = [ddat.cor ddat.axi ddat.sag];
+            newevent.IntersectionPoint = [ddat.cor ddat.axi 0];
             newevent.Source = cld(3);
             newevent.EventName = 'Hit';
-            image_button_press( cld(3), newevent, 'sag')
+            set(gcf,'CurrentAxes', findobj('tag', 'SagittalAxes1'))
+            cp = [ddat.cor, ddat.axi, 20.0; ddat.cor, ddat.axi, 0.0];
+            %set(findobj('tag', 'SagittalAxes1'), 'CurrentPoint', cp);
+            image_button_press( cld(3), newevent, 'sag', cp)
+            
+%             %% Coronal Axis
+            cld = get(findobj('tag', 'CoronalAxes1'), 'Children');
+            newevent.Button = 1;
+            newevent.IntersectionPoint = [ddat.sag ddat.axi ddat.cor ];
+            newevent.Source = cld(3);
+            newevent.EventName = 'Hit';
+            set(gcf,'CurrentAxes', findobj('tag', 'CoronalAxes1'))
+            cp = [ddat.sag, ddat.axi, 20.0; ddat.sag, ddat.axi, 0.0];
+            image_button_press( cld(3), newevent, 'cor', cp)
+%             
+%             %% Axi Axis
+%             cld = get(findobj('tag', 'AxialAxes1'), 'Children');
+%             newevent.Button = 1;
+%             %newevent.IntersectionPoint = [ddat.cor ddat.axi ddat.sag];
+%             newevent.IntersectionPoint = [ddat.cor ddat.axi 0];
+%             newevent.Source = cld(3);
+%             newevent.EventName = 'Hit';
+%             image_button_press( cld(3), newevent, 'axi')
            
         end
         
@@ -894,8 +923,12 @@ end
     end
 
 %% Shared button press function
-    function image_button_press(src, event, type)
-        get_pos_dispexp(type);
+    function image_button_press(src, event, type, varargin)
+        if ~isempty(varargin)
+            get_pos_dispexp(type, varargin{1});
+        else
+            get_pos_dispexp(type);
+        end
         plot_voxel_trajectory([ddat.sag, ddat.cor, ddat.axi]);
     end
 

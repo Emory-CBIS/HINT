@@ -1,4 +1,4 @@
-function ddat = get_pos_dispexp(command)
+function ddat = get_pos_dispexp(command, varargin)
 
 % command is the current axis being clicked on
 
@@ -18,7 +18,15 @@ function ddat = get_pos_dispexp(command)
 % Modified by Joshua Lukemire to extend to multiple populations
 
 global ddat;
+disp(get(gcf,'CurrentAxes'))
 cp = get(get(gcf,'CurrentAxes'),'CurrentPoint');
+%disp(cp)
+
+% If doing this programatically, have to change the point here
+if ~isempty(varargin)
+    cp = varargin{1}
+end
+
 mri = ddat.mri_struct;
 [sagDim, corDim, axiDim] = size(mri.img);
 coordindex = 1;
