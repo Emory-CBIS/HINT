@@ -55,13 +55,17 @@ ddat.subPopExists = 0;
 ddat.contrastExists = 0;
 ddat.viewingContrast = 0;
 
-% Keeping Track of the currently active visits in viewing window
-ddat.activeVisits = 1;
+% Keeping Track of the number of currently active maps (visits, sub pops, 
+%  contrasts, etc) in the viewer window.
+ddat.nActiveMaps = 1;
 
 % Keeping Track of open Augmenting Panels
 ddat.prevDisplaySize = [];
 ddat.trajectoryActive = 0;
 ddat.trajPreviousTag = ''; % string value of previously added line. used to clear plot
+
+% Keep track of what pops / visits are being viewed
+ddat.viewTracker = zeros(1, ddat.nVisit);
 
 % Check if an instance of displayResults already running
 hs = findall(0,'tag','displayResults');
@@ -108,6 +112,8 @@ end
         % other primary panels are placed on it, so that it can be
         % shrunk/expanded as needed
         
+        %% Primary Panels (layout)
+        
         DefaultPanel = uipanel('BackgroundColor','white',...
             'Tag', 'DefaultPanel',...
             'units', 'normalized',...
@@ -119,13 +125,24 @@ end
             'Position',[0.0, 8.0 0.0 0.0], ...;
             'BackgroundColor',get(hs.fig,'color'))
         
-        % Panel
+        %% Sub Panels (layout)
         displayPanel = uipanel('BackgroundColor','white',...
             'units', 'normalized',...
             'Parent', DefaultPanel,...
             'Tag', 'viewingPanelNormal',...
             'Position',[0, 0.5 1 0.5], ...;
             'BackgroundColor',get(hs.fig,'color'));
+        
+        ControlPanel = uipanel('BackgroundColor','white',...
+            'units', 'normalized',...
+            'Parent', DefaultPanel,...
+            'Tag', 'ControlPanel',...
+            'Position',[0, 0 1 0.5], ...;
+            'BackgroundColor',get(hs.fig,'color'));
+        
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        %% Brain Viewers
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         % Windows
         SagAxes = axes('Parent', displayPanel, ...
             'Units', 'Normalized', ...
@@ -137,6 +154,7 @@ end
         AxiAxes = axes('Parent', displayPanel, ...
             'Position',[.59 .18 .27 .8],...
             'Tag', 'AxialAxes1' );
+        
         % Sliders
         SagSlider = uicontrol('Parent', displayPanel, ...
             'Style', 'Slider', ...
@@ -158,16 +176,19 @@ end
             'units', 'Normalized',...
             'Position', [0.90, 0.18, 0.05, 0.8], ...
             'Tag', 'colorMap');
+        
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %% Location and Crosshair Control
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        
         locPanel = uipanel('Title','Location and Crosshair Information',...
-            'Parent', DefaultPanel,...
+            'Parent', ControlPanel,...
             'FontSize',12,...
             'BackgroundColor','white',...
             'BackgroundColor',[224/256,224/256,224/256], ...
             'Tag', 'locPanel', ...
-            'Position',[.01, 0.01 .32 .45]);
+            'units', 'normalized',...
+            'Position',[0.01, 0.01 .32 .98]);
         curInfo = uicontrol('Parent', locPanel, ...
             'Style', 'Text', ...
             'Units', 'Normalized', ...
@@ -209,13 +230,14 @@ end
             'Units', 'Normalized', ...
             'Position', [0.50, 0.20, 0.49, 0.1], ...
             'Tag', 'dimension');
+        
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %% Component Selection & Masking
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         icPanel = uipanel('FontSize',12,...
-            'Parent', DefaultPanel,...
+            'Parent', ControlPanel,...
             'BackgroundColor','white',...
-            'Position',[.35, 0.21 .32 .25], ...
+            'Position',[.35, 0.21 .32 .50], ...
             'Tag', 'icPanel', ...
             'BackgroundColor',[224/256,224/256,224/256]);
         ICselect = uicontrol('Parent', icPanel,...
@@ -267,7 +289,7 @@ end
         %% Thresholding and Mask Creation
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         thresholdPanel = uipanel('FontSize',12,...
-            'Parent', DefaultPanel,...
+            'Parent', ControlPanel,...
             'BackgroundColor','white',...
             'Position',[.35, 0.01 .32 .19], ...
             'BackgroundColor',[224/256,224/256,224/256], ...
@@ -310,10 +332,34 @@ end
             'Visible', 'Off');
         
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        %% Viewer Select Options
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        
+        % This is a new box that handles visit information
+        % as well as sub-population information
+        
+        % Background Panel
+        ViewSelectionPanel = uipanel('FontSize',12,...
+            'Parent', ControlPanel,...
+            'BackgroundColor','white',...
+            'Title', 'Viewer Selection', ...
+            'Tag', 'ViewSelectionPanel', ...
+            'Visible', 'On', ...
+            'BackgroundColor',[224/256,224/256,224/256], ...
+            'Position',[.75, 0.01 .30 .98]);
+        
+        % Box containing subpopulations, contrasts, or visits
+        ViewSelectTable = uitable('Parent', ViewSelectionPanel, ...
+            'Units', 'Normalized', ...
+            'Position', [0.1, 0.3, 0.8, 0.5], ...
+            'Tag', 'ViewSelectTable', ...
+            'CellSelectionCallback', @ViewSelectTable_cell_select);
+        
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %% Subpopulation Information
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         subPopPanel = uipanel('FontSize',12,...
-            'Parent', DefaultPanel,...
+            'Parent', ControlPanel,...
             'BackgroundColor','white',...
             'Title', 'Subpopulation Control', ...
             'Tag', 'SubpopulationControl', ...
@@ -346,7 +392,7 @@ end
         %% Beta Contrast Information
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         betaContrastPanel = uipanel('FontSize',12,...
-            'Parent', DefaultPanel,...
+            'Parent', ControlPanel,...
             'BackgroundColor','white',...
             'Title', 'Covariate Contrast', ...
             'Tag', 'covariateContrastControl', ...
@@ -379,7 +425,7 @@ end
         %% IC Selection
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         icSelPanel = uipanel('FontSize',12,...
-            'Parent', DefaultPanel,...
+            'Parent', ControlPanel,...
             'BackgroundColor','white',...
             'Title', 'IC Selection', ...
             'Tag', 'icSelectionPanel', ...
@@ -440,6 +486,20 @@ end
             'visible', 'on', ...
             'Callback', @traj_add_voxel_to_list);
         
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        %%     Map Property Panel
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        
+        % This panel handles keeping track of what visits/contrasts/subpops
+        %  are currently being viewed
+        
+%         MapPropertyPanel = uipanel('FontSize',12,...
+%             'Parent', AugmentingPanel,...
+%             'Title', 'Brain Map Viewer Selection', ...
+%             'Tag', 'MapPropertyPanel', ...
+%             'Visible', 'Off', ...
+%             'units', 'normalized',...
+%             'Position',[0.0, 0.0 1.0 1.0]);
         
         
         movegui(hs.fig, 'center')
@@ -461,6 +521,210 @@ end
 %             shift_to_trajectory_view;
 %         end
     end
+
+
+
+
+%% Function to calculate the required amount of the screen used up by
+% each panel in the viewer window.
+% Should be used anytime the number of maps being viewed changes or when
+% the user changes the viewer type
+
+%TODO see if checking if property different is faster than just forcing a
+%resize.
+
+    function set_viewing_properties(varargin)
+        
+       %% No longer going to manually set screen space. This way if user
+       % changes size of screen they no longer have to repeat every time
+       % they change something
+        
+        
+        %% Second, determine what control panels should be in view based on
+        % the type of viewer currently being used
+        if strcmp(ddat.type, 'grp')
+            % Set visible/invisible
+            set(findobj('Tag', 'useEmpiricalVar'), 'Visible', 'Off');
+            set(findobj('Tag', 'selectSubject'), 'Visible', 'Off');
+            set(findobj('Tag', 'selectCovariate'), 'Visible', 'Off');
+            set(findobj('Tag', 'SubpopulationControl'), 'Visible', 'Off');
+            set(findobj('Tag', 'covariateContrastControl'), 'Visible', 'Off');
+            set( findobj('Tag', 'createMask'), 'Visible', 'On' );
+            % Resize the info panels
+            set( findobj('Tag', 'thresholdPanel'), 'Position',[.56, 0.01 .32 .38]);
+            set( findobj('Tag', 'icPanel'), 'Position',[.56, 0.21 .32 .50]);
+            set( findobj('Tag', 'locPanel'), 'Position',[.12, 0.01 .32 .98]);
+        end
+        
+        %% Third, based on the number of brain maps being viewed, determine
+        % the relative amount to real estate to give the brain maps over
+        % the controls panel.
+        % Cases: 1  maps - 50/50
+        %        2  maps - 60/40
+        %        3+ maps - 70/30
+        switch ddat.nActiveMaps
+            case 1
+                y_use = 0.5;
+            case 2
+                y_use = 0.6;
+            otherwise
+                y_use = 0.7;
+        end
+        % Get the current sizes
+        curr_setting_viewer = get(findobj('tag', 'viewingPanelNormal'), 'position');
+        curr_setting_ctrl   = get(findobj('tag', 'ControlPanel'), 'position');
+        % Edit the height the two boxes get
+        curr_setting_viewer(3) = y_use;
+        curr_setting_ctrl(3)   = 1.0 - y_use;
+        % Set to the new proportion
+        set(findobj('tag', 'viewingPanelNormal'), 'position', curr_setting_viewer);
+        set(findobj('tag', 'ControlPanel')      , 'position', curr_setting_ctrl);
+        
+        
+        %% Fourth, scale the brain maps to fit in the space allocated to
+        % them
+        
+                
+        
+    end
+
+%% Function to set the properties of the ViewSelectTable box
+
+    function setup_ViewSelectTable(varargin)
+        
+        % Determine whether the ViewSelectTable should appear in the
+        % first place (Cross-Sectional hc-ICA aggregate - should not appear)
+                
+        % Determine whether the table should be editable
+        if strcmp(ddat.type, 'grp')
+            set(findobj('tag', 'ViewSelectTable'), 'ColumnEditable', false);
+        else
+            set(findobj('tag', 'ViewSelectTable'), 'ColumnEditable', true);
+        end
+        
+        % If aggregate maps and longitudinal, then items in the box are
+        % fixed. Will just be a list of visits and whether or not they
+        % are being viewed.
+        
+        if strcmp(ddat.type, 'grp')
+            for k=1:ddat.nVisit; table_data{k} = 'no'; end 
+            table_data{1} = 'yes';
+            set(findobj('tag', 'ViewSelectTable'), 'Data', table_data');
+            % Set the visit names
+            for k=1:ddat.nVisit; visit_names{k} = ['Visit ' num2str(k)]; end 
+            set(findobj('tag', 'ViewSelectTable'), 'RowName', visit_names');
+            set(findobj('tag', 'ViewSelectTable'), 'ColumnName', {'Viewing'});
+        end
+                
+    end
+
+%% Function to add/remove a visit/subpop/contrast from the view window
+
+function ViewSelectTable_cell_select(hObject, eventdata, handles)
+        
+        % Verify input is valid
+        if ~isempty(eventdata.Indices)
+            
+            % Get the selected row
+            selected_row = eventdata.Indices(1);
+            
+            % Get the corresponding population
+            selected_pop = ceil(selected_row / ddat.nVisit);
+            
+            % Find the visit this corresponds to, this will be the column
+            % of the img object we load in
+            visit_number = str2double(eventdata.Source.RowName{selected_row}(end-1:end));
+            
+            % If not viewed, add to viewer, else remove
+            if strcmp(eventdata.Source.Data{selected_row, 1}, 'no')
+                
+                % Set to yes
+                eventdata.Source.Data{selected_row, 1} = 'yes';
+                
+                % Add to tracker
+                ddat.viewTracker(selected_pop, visit_number) = 1;
+                ddat.viewTracker( ddat.viewTracker > 0 ) = cumsum( ddat.viewTracker(ddat.viewTracker > 0)); % renumber
+                
+                % Refresh the display window with the new row
+                
+            else
+                
+                % Set to no
+                eventdata.Source.Data{selected_row, 1} = 'no';
+                
+                % Remove from tracker
+                ddat.viewTracker(selected_pop, visit_number) = 0;
+                ddat.viewTracker( ddat.viewTracker > 0 ) = cumsum( ddat.viewTracker(ddat.viewTracker > 0)); % renumber
+                
+                % Refresh the display window - remove the row from img,
+                % oimg, scaled image
+                
+            end
+            
+           
+        end
+        
+        
+        
+    end
+
+%% Function to setup the correct number of Axes for the viewer window.
+% This is based on nActiveMaps. The function handles create of new
+% settings and deletion of old settings. Note that this function is not the
+% one that handles figuring out which order the brain maps are input. 
+    function set_number_of_brain_axes(varargin)
+        
+        %% Get current number of displayed axes
+        % To find number of axes, loop until object is not found
+        i = 0; axes_exists = true;
+        while axes_exists
+            i = i + 1;
+            % check for existance
+            if isempty(findobj('tag', ['CoronalAxes' num2str(i)]))
+                axes_exists = false;
+            end
+        end
+        current_n_maps = i-1;
+        
+        if current_n_maps == 0
+            warndlg('Something has gone horribly wrong, there are no maps to display')
+        end
+        
+        
+        %% Delete axes
+        if current_n_maps > ddat.nActiveMaps
+            
+            for iaxes = (ddat.nActiveMaps+1):current_n_maps
+                delete(findobj('tag', ['CoronalAxes' num2str(iaxes)]));
+                delete(findobj('tag', ['SagittalAxes' num2str(iaxes)]));
+                delete(findobj('tag', ['AxialAxes' num2str(iaxes)]));
+            end
+            
+        end
+        
+        %% Add axes
+        if current_n_maps < ddat.nActiveMaps
+            
+            for iaxes = (current_n_maps+1):ddat.nActiveMaps
+                SagAxes = axes('Parent', displayPanel, ...
+                    'Units', 'Normalized', ...
+                    'Tag', ['SagittalAxes' num2str(iaxes)] );
+                CorAxes = axes('Parent', displayPanel, ...
+                    'Units', 'Normalized',...
+                    'Tag', ['CoronalAxes' num2str(iaxes)] );
+                AxiAxes = axes('Parent', displayPanel, ...
+                    'Units', 'Normalized', ...
+                    'Tag', ['AxialAxes' num2str(iaxes)] );
+                
+            end
+            
+        end
+        
+        
+    end
+
+
+
 
 %% Function to shift view structure to include the trajectory viewer on the right
     function shift_to_trajectory_view(varargin)
@@ -937,6 +1201,7 @@ end
     function initialDisp(hObject,callbackdata)
         set(findobj('Tag', 'thresholdSlider'), 'Value', 0);
         set(findobj('Tag', 'manualThreshold'), 'String', '0');
+        setup_ViewSelectTable;
         % Number of comparisons is fixed to 1, but this can be modified
         % without issue
         ddat.nCompare = 1;
@@ -963,8 +1228,8 @@ end
             set( findobj('Tag', 'createMask'), 'Visible', 'On' );
             % move the info panels to the middle of the screen
             set( findobj('Tag', 'thresholdPanel'), 'Position',[.56, 0.01 .32 .19]);
-            set( findobj('Tag', 'icPanel'), 'Position',[.56, 0.21 .32 .25]);
-            set( findobj('Tag', 'locPanel'), 'Position',[.12, 0.01 .32 .45]);
+            set( findobj('Tag', 'icPanel'), 'Position',[.56, 0.21 .32 .50]);
+            set( findobj('Tag', 'locPanel'), 'Position',[.12, 0.01 .32 .98]);
             
             % load the aggregate map for each visit
             for iVisit = 1:ddat.nVisit
@@ -1174,7 +1439,7 @@ end
         createCombinedImage;
         
         % Get the number of visits actively being viewed
-        nVisitViewed = numel(ddat.activeVisits);
+        nVisitViewed = numel(ddat.nActiveMaps);
         
         % Loop over sub-populations filling out the images.
         for subPop=1:ddat.nCompare
@@ -1182,7 +1447,7 @@ end
             % Loop over the active visits, note this might not be in
             % numerical order
             for iVisit = 1:nVisitViewed
-                currentVisitIndex = ddat.activeVisits(iVisit);
+                currentVisitIndex = ddat.nActiveMaps(iVisit);
                 
                 % Fill out the images data.
                 for cl = 1:3
@@ -1345,7 +1610,7 @@ end
     function redisplay(hObject,callbackdata)
         
         % Get the number of visits actively being viewed
-        nVisitViewed = numel(ddat.activeVisits);
+        nVisitViewed = numel(ddat.nActiveMaps);
         
         % Loop over the number of subgroups currently being viewed.
         for iInd = 1:ddat.nCompare
@@ -1353,7 +1618,7 @@ end
             % Loop over the active visits, note this might not be in
             % numerical order
             for iVisit = 1:nVisitViewed
-                currentVisitIndex = ddat.activeVisits(iVisit);
+                currentVisitIndex = ddat.nActiveMaps(iVisit);
                 
                 % Grab the data for the selected slices and update axes obj.
                 for cl = 1:3
