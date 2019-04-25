@@ -55,7 +55,7 @@ ddat.subPopExists = 0;
 ddat.contrastExists = 0;
 ddat.viewingContrast = 0;
 
-% Keeping Track of the number of currently active maps (visits, sub pops, 
+% Keeping Track of the number of currently active maps (visits, sub pops,
 %  contrasts, etc) in the viewer window.
 ddat.nActiveMaps = 1;
 
@@ -77,7 +77,7 @@ else
     figure(hs);
 end
 
-%% Function that defines all the pieces of the GUI
+%% GUI Main Component Definition and KeyPress Functions
     function hs = addcomponents
         % Add components, save ddat in a struct
         hs.fig = figure('Units', 'normalized', ...,...
@@ -105,14 +105,14 @@ end
         uimenu(licaMenu, 'Label', 'View Voxel Trajectories', 'Callback', @shift_to_trajectory_view);
         
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        %% Brain Display Windows
+        % Brain Display Windows
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         
-        %% Default Panel - this panel contains the main display windows and options
+        % Default Panel - this panel contains the main display windows and options
         % other primary panels are placed on it, so that it can be
         % shrunk/expanded as needed
         
-        %% Primary Panels (layout)
+        % Primary Panels (layout)
         
         DefaultPanel = uipanel('BackgroundColor','white',...
             'Tag', 'DefaultPanel',...
@@ -125,7 +125,7 @@ end
             'Position',[0.0, 8.0 0.0 0.0], ...;
             'BackgroundColor',get(hs.fig,'color'))
         
-        %% Sub Panels (layout)
+        % Sub Panels (layout)
         displayPanel = uipanel('BackgroundColor','white',...
             'units', 'normalized',...
             'Parent', DefaultPanel,...
@@ -141,19 +141,23 @@ end
             'BackgroundColor',get(hs.fig,'color'));
         
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        %% Brain Viewers
+        % Brain Viewers
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         % Windows
-        SagAxes = axes('Parent', displayPanel, ...
-            'Units', 'Normalized', ...
-            'Position',[0.01 0.18 0.27 .8],...
-            'Tag', 'SagittalAxes1' );
-        CorAxes = axes('Parent', displayPanel, ...
-            'Position',[.30 .18 .27 .8],...
-            'Tag', 'CoronalAxes1' );
-        AxiAxes = axes('Parent', displayPanel, ...
-            'Position',[.59 .18 .27 .8],...
-            'Tag', 'AxialAxes1' );
+        
+        for i = 1:ddat.nVisit
+            SagAxes = axes('Parent', displayPanel, ...
+                'Units', 'Normalized', ...
+                'Position',[0.01 0.18 0.27 .8],...
+                'Tag', ['SagittalAxes1_' num2str(i)] );
+            CorAxes = axes('Parent', displayPanel, ...
+                'Position',[.30 .18 .27 .8],...
+                'Tag', ['CoronalAxes1_'  num2str(i)] );
+            AxiAxes = axes('Parent', displayPanel, ...
+                'Position',[.59 .18 .27 .8],...
+                'Tag', ['AxialAxes1_'  num2str(i)] );
+        end
+        
         
         % Sliders
         SagSlider = uicontrol('Parent', displayPanel, ...
@@ -178,7 +182,7 @@ end
             'Tag', 'colorMap');
         
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        %% Location and Crosshair Control
+        % Location and Crosshair Control
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         
         locPanel = uipanel('Title','Location and Crosshair Information',...
@@ -232,7 +236,7 @@ end
             'Tag', 'dimension');
         
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        %% Component Selection & Masking
+        % Component Selection & Masking
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         icPanel = uipanel('FontSize',12,...
             'Parent', ControlPanel,...
@@ -286,7 +290,7 @@ end
             'Value', 1, 'Callback', @updateICSelMenu);
         
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        %% Thresholding and Mask Creation
+        % Thresholding and Mask Creation
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         thresholdPanel = uipanel('FontSize',12,...
             'Parent', ControlPanel,...
@@ -332,7 +336,7 @@ end
             'Visible', 'Off');
         
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        %% Viewer Select Options
+        % Viewer Select Options
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         
         % This is a new box that handles visit information
@@ -356,7 +360,7 @@ end
             'CellSelectionCallback', @ViewSelectTable_cell_select);
         
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        %% Subpopulation Information
+        % Subpopulation Information
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         subPopPanel = uipanel('FontSize',12,...
             'Parent', ControlPanel,...
@@ -389,7 +393,7 @@ end
             'Tag', 'compareSubPops', 'Callback', @compareSubPopulations);
         
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        %% Beta Contrast Information
+        % Beta Contrast Information
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         betaContrastPanel = uipanel('FontSize',12,...
             'Parent', ControlPanel,...
@@ -422,7 +426,7 @@ end
             'Tag', 'newContrast', 'Callback', @removeContrast);
         
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        %% IC Selection
+        % IC Selection
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         icSelPanel = uipanel('FontSize',12,...
             'Parent', ControlPanel,...
@@ -445,7 +449,7 @@ end
         
         
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        %%     Trajectory Plotting Panel
+        %     Trajectory Plotting Panel
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         
         % Pieces:
@@ -487,19 +491,19 @@ end
             'Callback', @traj_add_voxel_to_list);
         
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        %%     Map Property Panel
+        %     Map Property Panel
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         
         % This panel handles keeping track of what visits/contrasts/subpops
         %  are currently being viewed
         
-%         MapPropertyPanel = uipanel('FontSize',12,...
-%             'Parent', AugmentingPanel,...
-%             'Title', 'Brain Map Viewer Selection', ...
-%             'Tag', 'MapPropertyPanel', ...
-%             'Visible', 'Off', ...
-%             'units', 'normalized',...
-%             'Position',[0.0, 0.0 1.0 1.0]);
+        %         MapPropertyPanel = uipanel('FontSize',12,...
+        %             'Parent', AugmentingPanel,...
+        %             'Title', 'Brain Map Viewer Selection', ...
+        %             'Tag', 'MapPropertyPanel', ...
+        %             'Visible', 'Off', ...
+        %             'units', 'normalized',...
+        %             'Position',[0.0, 0.0 1.0 1.0]);
         
         
         movegui(hs.fig, 'center')
@@ -509,23 +513,20 @@ end
     function KeyPress(varargin)
         keypress = varargin{2};
         %         %% Modifier commands
-                if ~isempty(keypress.Modifier) && ~isempty(keypress.Character)
-                    %disp(keypress.Character == 't')
-                    %disp(strcmp(keypress.Modifier{1}, 'command'))
-                    if (keypress.Character == 't') && strcmp(keypress.Modifier{1}, 'command')
-                        shift_to_trajectory_view;
-                    end
-        
-                end
-%         if (keypress.Character == 't')
-%             shift_to_trajectory_view;
-%         end
+        if ~isempty(keypress.Modifier) && ~isempty(keypress.Character)
+            %disp(keypress.Character == 't')
+            %disp(strcmp(keypress.Modifier{1}, 'command'))
+            if (keypress.Character == 't') && strcmp(keypress.Modifier{1}, 'command')
+                shift_to_trajectory_view;
+            end
+            
+        end
+        %         if (keypress.Character == 't')
+        %             shift_to_trajectory_view;
+        %         end
     end
 
-
-
-
-%% Function to calculate the required amount of the screen used up by
+% Function to calculate the required amount of the screen used up by
 % each panel in the viewer window.
 % Should be used anytime the number of maps being viewed changes or when
 % the user changes the viewer type
@@ -535,12 +536,12 @@ end
 
     function set_viewing_properties(varargin)
         
-       %% No longer going to manually set screen space. This way if user
-       % changes size of screen they no longer have to repeat every time
-       % they change something
+        % No longer going to manually set screen space. This way if user
+        % changes size of screen they no longer have to repeat every time
+        % they change something
         
         
-        %% Second, determine what control panels should be in view based on
+        % Second, determine what control panels should be in view based on
         % the type of viewer currently being used
         if strcmp(ddat.type, 'grp')
             % Set visible/invisible
@@ -556,13 +557,14 @@ end
             set( findobj('Tag', 'locPanel'), 'Position',[.12, 0.01 .32 .98]);
         end
         
-        %% Third, based on the number of brain maps being viewed, determine
+        % Third, based on the number of brain maps being viewed, determine
         % the relative amount to real estate to give the brain maps over
         % the controls panel.
         % Cases: 1  maps - 50/50
         %        2  maps - 60/40
         %        3+ maps - 70/30
-        switch ddat.nActiveMaps
+        nMapsViewed = sum(ddat.viewTracker > 0)
+        switch sum(ddat.viewTracker > 0)
             case 1
                 y_use = 0.5;
             case 2
@@ -574,27 +576,90 @@ end
         curr_setting_viewer = get(findobj('tag', 'viewingPanelNormal'), 'position');
         curr_setting_ctrl   = get(findobj('tag', 'ControlPanel'), 'position');
         % Edit the height the two boxes get
-        curr_setting_viewer(3) = y_use;
-        curr_setting_ctrl(3)   = 1.0 - y_use;
+        curr_setting_viewer(4) = y_use;
+        curr_setting_ctrl(4)   = 1.0 - y_use;
         % Set to the new proportion
         set(findobj('tag', 'viewingPanelNormal'), 'position', curr_setting_viewer);
         set(findobj('tag', 'ControlPanel')      , 'position', curr_setting_ctrl);
         
         
-        %% Fourth, scale the brain maps to fit in the space allocated to
+        % Fourth, scale the brain maps to fit in the space allocated to
         % them
+        y_avail = y_use / nMapsViewed;
+        for i = 1:nMapsViewed
+            
+            % Figure out which map to plot
+            [selected_pop, visit_number] = find(ddat.viewTracker == i);
+            
+            % Calculate the map position
+%             spos = [0.01 0.18 0.27 .8];
+%             cpos = [.30 .18 .27 .8];
+%             apos = [.59 .18 .27 .8];
+            spos = [0.01 (0.18 + (i-1)/nMapsViewed) 0.27 1/nMapsViewed];
+            cpos = [.30 (.18 +(i-1)/nMapsViewed) .27 1/nMapsViewed];
+            apos = [.59 (.18+(i-1)/nMapsViewed) .27 1/nMapsViewed];
+
+            % Move the maps to their positions
+            set(findobj('Tag', ['CoronalAxes'  num2str(selected_pop) '_'...
+                    num2str(visit_number)] ) , 'position', cpos);
+            set(findobj('Tag', ['AxialAxes'    num2str(selected_pop) '_'...
+                num2str(visit_number)] ) , 'position', apos);
+            set(findobj('Tag', ['SagittalAxes' num2str(selected_pop) '_'...
+                num2str(visit_number)] ) , 'position', spos);
+        end
         
-                
+        
         
     end
 
-%% Function to set the properties of the ViewSelectTable box
+%% GUI - Dropdown Menu Functions
+
+% Function to setup the covariate menu when viewing sub-populations.
+    function setupCovMenu(hObject, callbackdata)
+        newstring = cell(ddat.p, 1);
+        for covariate=1:ddat.p
+            newstring{covariate} = strcat(ddat.varNamesX{covariate});
+        end
+        set(findobj('Tag', 'selectCovariate'), 'String', newstring);
+    end
+
+% Function to setup the subject menu when viewing individual subjects.
+    function setupSubMenu(hObject, callbackdata)
+        newstring = cell(ddat.nsub, 1);
+        for subject=1:ddat.nsub
+            newstring{subject} = ['Subject ' num2str(subject)];
+        end
+        set(findobj('Tag', 'selectSubject'), 'String', newstring);
+    end
+
+% Function to setup the IC menu.
+    function setupICMenu(hObject, callbackdata)
+        newstring = cell(ddat.q, 2);
+        for ic = 1:ddat.q
+            newstring{ic, 1} = ['IC ' num2str(ic)];
+            newstring{ic, 2} = 'x';
+        end
+        set(findobj('Tag', 'icSelRef'), 'Data', newstring);
+    end
+
+% Function to fill out the visits in the visit menu
+    function setupVisitMenu(hObject, callbackdata)
+        newstring = cell(ddat.nVisit, 1);
+        for iVisit=1:ddat.nVisit
+            newstring{iVisit} = ['Visit ' num2str(subject)];
+        end
+        set(findobj('Tag', 'selectVisit'), 'String', newstring);
+    end
+
+%% ViewTable Functions
+
+% Function to set the properties of the ViewSelectTable box
 
     function setup_ViewSelectTable(varargin)
         
         % Determine whether the ViewSelectTable should appear in the
         % first place (Cross-Sectional hc-ICA aggregate - should not appear)
-                
+        
         % Determine whether the table should be editable
         if strcmp(ddat.type, 'grp')
             set(findobj('tag', 'ViewSelectTable'), 'ColumnEditable', false);
@@ -607,20 +672,20 @@ end
         % are being viewed.
         
         if strcmp(ddat.type, 'grp')
-            for k=1:ddat.nVisit; table_data{k} = 'no'; end 
+            for k=1:ddat.nVisit; table_data{k} = 'no'; end
             table_data{1} = 'yes';
             set(findobj('tag', 'ViewSelectTable'), 'Data', table_data');
             % Set the visit names
-            for k=1:ddat.nVisit; visit_names{k} = ['Visit ' num2str(k)]; end 
+            for k=1:ddat.nVisit; visit_names{k} = ['Visit ' num2str(k)]; end
             set(findobj('tag', 'ViewSelectTable'), 'RowName', visit_names');
             set(findobj('tag', 'ViewSelectTable'), 'ColumnName', {'Viewing'});
         end
-                
+        
     end
 
-%% Function to add/remove a visit/subpop/contrast from the view window
+% Function to add/remove a visit/subpop/contrast from the view window
 
-function ViewSelectTable_cell_select(hObject, eventdata, handles)
+    function ViewSelectTable_cell_select(hObject, eventdata, handles)
         
         % Verify input is valid
         if ~isempty(eventdata.Indices)
@@ -645,42 +710,64 @@ function ViewSelectTable_cell_select(hObject, eventdata, handles)
                 ddat.viewTracker(selected_pop, visit_number) = 1;
                 ddat.viewTracker( ddat.viewTracker > 0 ) = cumsum( ddat.viewTracker(ddat.viewTracker > 0)); % renumber
                 
+                % Update axes visibility
+                set(findobj('Tag', ['CoronalAxes'  num2str(selected_pop) '_'...
+                    num2str(visit_number)] ) , 'visible', 'on');
+                set(findobj('Tag', ['AxialAxes'    num2str(selected_pop) '_'...
+                    num2str(visit_number)] ) , 'visible', 'on');
+                set(findobj('Tag', ['SagittalAxes' num2str(selected_pop) '_'...
+                    num2str(visit_number)] ) , 'visible', 'on');
+                
                 % Refresh the display window with the new row
+                update_brain_maps('updateCombinedImage', [selected_pop, visit_number]);
                 
             else
                 
                 % Set to no
                 eventdata.Source.Data{selected_row, 1} = 'no';
-                
+                                
                 % Remove from tracker
                 ddat.viewTracker(selected_pop, visit_number) = 0;
                 ddat.viewTracker( ddat.viewTracker > 0 ) = cumsum( ddat.viewTracker(ddat.viewTracker > 0)); % renumber
                 
+                % Update axes visibility
+                set(findobj('Tag', ['CoronalAxes'  num2str(selected_pop) '_'...
+                    num2str(visit_number)] ) , 'visible', 'off');
+                set(findobj('Tag', ['AxialAxes'    num2str(selected_pop) '_'...
+                    num2str(visit_number)] ) , 'visible', 'off');
+                set(findobj('Tag', ['SagittalAxes' num2str(selected_pop) '_'...
+                    num2str(visit_number)] ) , 'visible', 'off');
+                
                 % Refresh the display window - remove the row from img,
                 % oimg, scaled image
+                update_brain_maps('updateCombinedImage', [selected_pop, visit_number]);
                 
             end
             
-           
+            % Update the size of the viewer window
+            set_viewing_properties
+            
         end
         
         
         
     end
 
-%% Function to setup the correct number of Axes for the viewer window.
+%% Axes Control
+
+% Function to setup the correct number of Axes for the viewer window.
 % This is based on nActiveMaps. The function handles create of new
 % settings and deletion of old settings. Note that this function is not the
-% one that handles figuring out which order the brain maps are input. 
+% one that handles figuring out which order the brain maps are input.
     function set_number_of_brain_axes(varargin)
         
-        %% Get current number of displayed axes
+        % Get current number of displayed axes
         % To find number of axes, loop until object is not found
         i = 0; axes_exists = true;
         while axes_exists
             i = i + 1;
             % check for existance
-            if isempty(findobj('tag', ['CoronalAxes' num2str(i)]))
+            if isempty(findobj('tag', ['CoronalAxes' num2str(i) '_1']))
                 axes_exists = false;
             end
         end
@@ -691,8 +778,12 @@ function ViewSelectTable_cell_select(hObject, eventdata, handles)
         end
         
         
-        %% Delete axes
-        if current_n_maps > ddat.nActiveMaps
+        %%% Delete axes
+        % thsi uses viewTrackers size because this is axes
+        % creation/deletion NOT placement of maps
+        if current_n_maps > size(ddat.viewTracker, 1)
+            
+            warndlg('proper deletion has not yet been coded')
             
             for iaxes = (ddat.nActiveMaps+1):current_n_maps
                 delete(findobj('tag', ['CoronalAxes' num2str(iaxes)]));
@@ -702,20 +793,24 @@ function ViewSelectTable_cell_select(hObject, eventdata, handles)
             
         end
         
-        %% Add axes
-        if current_n_maps < ddat.nActiveMaps
+        %%% Add axes
+        if current_n_maps < size(ddat.viewTracker, 1)
             
-            for iaxes = (current_n_maps+1):ddat.nActiveMaps
-                SagAxes = axes('Parent', displayPanel, ...
-                    'Units', 'Normalized', ...
-                    'Tag', ['SagittalAxes' num2str(iaxes)] );
-                CorAxes = axes('Parent', displayPanel, ...
-                    'Units', 'Normalized',...
-                    'Tag', ['CoronalAxes' num2str(iaxes)] );
-                AxiAxes = axes('Parent', displayPanel, ...
-                    'Units', 'Normalized', ...
-                    'Tag', ['AxialAxes' num2str(iaxes)] );
-                
+            for iaxes = (current_n_maps+1):size(ddat.viewTracker, 1)
+                for ivisit = 1:ddat.nVisit
+                    SagAxes = axes('Parent', displayPanel, ...
+                        'Units', 'Normalized', ...
+                        'Tag', ['SagittalAxes' num2str(iaxes) '_' num2str(ivisit)],...
+                        'visible', 'off' );
+                    CorAxes = axes('Parent', displayPanel, ...
+                        'Units', 'Normalized',...
+                        'Tag', ['CoronalAxes' num2str(iaxes) '_' num2str(ivisit)],...
+                        'visible', 'off' );
+                    AxiAxes = axes('Parent', displayPanel, ...
+                        'Units', 'Normalized', ...
+                        'Tag', ['AxialAxes' num2str(iaxes) '_' num2str(ivisit)],...
+                        'visible', 'off');
+                end
             end
             
         end
@@ -725,11 +820,11 @@ function ViewSelectTable_cell_select(hObject, eventdata, handles)
 
 
 
-
-%% Function to shift view structure to include the trajectory viewer on the right
+%% Augmenting Windows - Trajectory Control
+% Function to shift view structure to include the trajectory viewer on the right
     function shift_to_trajectory_view(varargin)
         
-        %% Turn on Trajectory View
+        % Turn on Trajectory View
         
         if (ddat.trajectoryActive == 0)
             
@@ -758,7 +853,7 @@ function ViewSelectTable_cell_select(hObject, eventdata, handles)
             % Add the currently selected voxel to the trajectory plot
             plot_voxel_trajectory([ddat.sag, ddat.cor, ddat.axi])
             
-            %% Turn off trajectory view
+            % Turn off trajectory view
         else
             
             % Remove any red lines
@@ -791,7 +886,7 @@ function ViewSelectTable_cell_select(hObject, eventdata, handles)
         
     end
 
-%% Function to add the currently selected voxel to the stored list
+% Function to add the currently selected voxel to the stored list
     function traj_add_voxel_to_list(varargin)
         
         newCoordinates = [ddat.sag, ddat.cor, ddat.axi];
@@ -820,7 +915,7 @@ function ViewSelectTable_cell_select(hObject, eventdata, handles)
         
     end
 
-%% Function to plot the trajectory of the currently selected voxel
+% Function to plot the trajectory of the currently selected voxel
     function plot_voxel_trajectory(voxelIndex)
         
         % verify that trajectories are being plotted
@@ -829,7 +924,7 @@ function ViewSelectTable_cell_select(hObject, eventdata, handles)
             % Get the axes to plot to
             trajAxesHandle = findobj('Tag', 'TrajAxes');
             
-            %% check if this is a new voxel, if so, delete previous red line
+            % check if this is a new voxel, if so, delete previous red line
             if ~strcmp(num2str(voxelIndex), ddat.trajPreviousTag)
                 % Delete the previously selected red line
                 for iline = 1:length(trajAxesHandle.Children)
@@ -887,7 +982,7 @@ function ViewSelectTable_cell_select(hObject, eventdata, handles)
         
     end
 
-    %% Function to move the viewer window to a selected voxel
+% Function to move the viewer window to a selected voxel
     function traj_box_cell_select(hObject, eventdata, handles)
         
         % Verify input is valid
@@ -895,7 +990,7 @@ function ViewSelectTable_cell_select(hObject, eventdata, handles)
             
             % Get the selected row
             selected_row = eventdata.Indices(1);
-
+            
             % Get the corresponding coordinates
             ddat.sag = eventdata.Source.Data{selected_row, 1};
             ddat.cor = eventdata.Source.Data{selected_row, 2};
@@ -910,7 +1005,7 @@ function ViewSelectTable_cell_select(hObject, eventdata, handles)
             moveptr( get(findobj('tag', 'CoronalAxes1')), ddat.sag, ddat.axi )
             moveptr( get(findobj('tag', 'AxialAxes1')), ddat.cor, ddat.sag )
             
-            %% Saggital Axis
+            % Saggital Axis
             cld = get(findobj('tag', 'SagittalAxes1'), 'Children');
             newevent.Button = 1;
             %newevent.IntersectionPoint = [ddat.cor ddat.axi ddat.sag];
@@ -922,7 +1017,7 @@ function ViewSelectTable_cell_select(hObject, eventdata, handles)
             %set(findobj('tag', 'SagittalAxes1'), 'CurrentPoint', cp);
             image_button_press( cld(3), newevent, 'sag', cp)
             
-%             %% Coronal Axis
+            %             %% Coronal Axis
             cld = get(findobj('tag', 'CoronalAxes1'), 'Children');
             newevent.Button = 1;
             newevent.IntersectionPoint = [ddat.sag ddat.axi ddat.cor ];
@@ -931,21 +1026,21 @@ function ViewSelectTable_cell_select(hObject, eventdata, handles)
             set(gcf,'CurrentAxes', findobj('tag', 'CoronalAxes1'))
             cp = [ddat.sag, ddat.axi, 20.0; ddat.sag, ddat.axi, 0.0];
             image_button_press( cld(3), newevent, 'cor', cp)
-%             
-%             %% Axi Axis
-%             cld = get(findobj('tag', 'AxialAxes1'), 'Children');
-%             newevent.Button = 1;
-%             %newevent.IntersectionPoint = [ddat.cor ddat.axi ddat.sag];
-%             newevent.IntersectionPoint = [ddat.cor ddat.axi 0];
-%             newevent.Source = cld(3);
-%             newevent.EventName = 'Hit';
-%             image_button_press( cld(3), newevent, 'axi')
-           
+            %
+            %             %% Axi Axis
+            %             cld = get(findobj('tag', 'AxialAxes1'), 'Children');
+            %             newevent.Button = 1;
+            %             %newevent.IntersectionPoint = [ddat.cor ddat.axi ddat.sag];
+            %             newevent.IntersectionPoint = [ddat.cor ddat.axi 0];
+            %             newevent.Source = cld(3);
+            %             newevent.EventName = 'Hit';
+            %             image_button_press( cld(3), newevent, 'axi')
+            
         end
         
         % Remove the last red line from the trajectory plot
         trajAxesHandle = findobj('Tag', 'TrajAxes');
-        %% check if this is a new voxel, if so, delete previous red line
+        % check if this is a new voxel, if so, delete previous red line
         % Delete the previously selected red line
         for iline = 1:length(trajAxesHandle.Children)
             if strcmp(trajAxesHandle.Children(iline).Tag, ddat.trajPreviousTag)
@@ -959,233 +1054,6 @@ function ViewSelectTable_cell_select(hObject, eventdata, handles)
         
     end
 
-%%
-% This function is called when the user decides to compare two
-% subpopulations. It heavily changes the display window.
-    function expandSubPopulationPanel(selectedPops)
-        
-        % Setup cell arrays for all sub population info.
-        ddat.type = 'subPopCompare';
-        ddat.axial_image = cell(ddat.nCompare, ddat.nVisit);
-        ddat.sagittal_image = cell(ddat.nCompare, ddat.nVisit);
-        ddat.coronal_image = cell(ddat.nCompare, ddat.nVisit);
-        ddat.axial_xline = cell(ddat.nCompare, ddat.nVisit);
-        ddat.axial_yline = cell(ddat.nCompare, ddat.nVisit);
-        ddat.coronal_xline = cell(ddat.nCompare, ddat.nVisit);
-        ddat.coronal_yline = cell(ddat.nCompare, ddat.nVisit);
-        ddat.sagittal_xline = cell(ddat.nCompare, ddat.nVisit);
-        ddat.sagittal_yline = cell(ddat.nCompare, ddat.nVisit);
-        
-        % Loop through and edit the properties of the original viewer
-        % (change sizes, delete items, etc)
-        % Expand the size of the viewer
-        hs.fig.Position = [0.1 0.1 0.8 0.8];
-        for iChild = 1:numel(hs.fig.Children)
-            if (isprop(hs.fig.Children(iChild),'Tag'))
-                if strcmp(hs.fig.Children(iChild).Tag, 'thresholdPanel')
-                    hs.fig.Children(iChild).Position = [0.72 0.53 0.27 0.15];
-                    hs.fig.Children(iChild).BackgroundColor = 'white';
-                end
-                if strcmp(hs.fig.Children(iChild).Tag, 'icPanel')
-                    hs.fig.Children(iChild).Position = [0.72 0.34 0.27 0.15];
-                    hs.fig.Children(iChild).BackgroundColor = 'white';
-                end
-                % Move the location panel
-                if strcmp(hs.fig.Children(iChild).Tag, 'locPanel')
-                    hs.fig.Children(iChild).Position = [0.72 0.08 0.27 0.25];
-                    hs.fig.Children(iChild).BackgroundColor = 'white';
-                end
-                if strcmp(hs.fig.Children(iChild).Tag, 'viewingPanelNormal')
-                    indToDelete = iChild;
-                end
-            end
-        end
-        % Do this outside because we dont want numel in hs to change during
-        % the loop
-        delete(hs.fig.Children(indToDelete));
-        
-        % Create a new viewing panel
-        displayPanel = uipanel('BackgroundColor','white',...
-            'tag', 'subPopDisplayPanel',...
-            'units', 'Normalized',...
-            'Position',[0.01, 0.01 0.7 0.98], ...
-            'BackgroundColor','black');
-        colorMap = axes('Parent', displayPanel, ...
-            'units', 'Normalized',...
-            'Position', [0.01, 0.1, 0.04, 0.8], ...
-            'Tag', 'colorMap');
-        
-        % Calculate figure widths by number of sub populations.
-        % the GUI restricts this to two, but the code allows for
-        % more
-        xint = 0.9 / ddat.nCompare;
-        % load data to get dimension
-        newFile = strcat(ddat.outdir,'/',ddat.outpre,'_S0_IC_',num2str(1),'.nii');
-        newDat = load_nii(newFile); newFunc = newDat.img;
-        
-        % load the covariate information
-        covariateSettings = get(findobj('Tag', 'subPopDisplay'),'Data');
-        
-        for subGroup = 1:ddat.nCompare
-            % Create all the axis information to go with the panel
-            SagAxes = axes('Parent', displayPanel, ...
-                'Units', 'Normalized', ...
-                'Position',[0.05+xint * (subGroup-1) 0.65 xint 0.25],...
-                'Tag', ['SagittalAxes' num2str(subGroup)] );
-            CorAxes = axes('Parent', displayPanel, ...
-                'Units', 'Normalized',...
-                'Position',[0.05+xint * (subGroup-1) .35 xint 0.25],...
-                'Tag', ['CoronalAxes' num2str(subGroup)] );
-            AxiAxes = axes('Parent', displayPanel, ...
-                'Units', 'Normalized', ...
-                'Position',[0.05+xint * (subGroup-1) 0.05 xint .25],...
-                'Tag', ['AxialAxes' num2str(subGroup)] );
-            % Add in information about voxel value, this is assigned to
-            %   a new panel
-            infoPanel = uipanel('Parent', displayPanel,...
-                'Position',[0.05+ xint/4 + xint * (subGroup-1), 0.93, xint/2, 0.06]);
-            crosshairVal = uicontrol('Parent', infoPanel, ...
-                'Style', 'Text', ...
-                'Units', 'Normalized', ...
-                'Position', [0.01, 0.01, 0.98, 0.48], ...
-                'Tag', ['crosshairVal' num2str(subGroup)]);
-            subPopSelect = uicontrol('Parent', infoPanel,...
-                'Style', 'popupmenu', ...
-                'Units', 'Normalized', ...
-                'Position', [0.01, 0.52, 0.98, 0.48], ...
-                'Tag', ['subPopSelect' num2str(subGroup)],...
-                'Callback', @updateSubPopulation, ...
-                'String', 'No Sub-Population Created', ...
-                'Visible', 'Off');
-            subPopListing = uicontrol('Parent', infoPanel,...
-                'Style', 'Text', ...
-                'Units', 'Normalized', ...
-                'Position', [0.01, 0.52, 0.98, 0.48], ...
-                'String', ['SubPop' num2str(subGroup)]);
-            newDisplay = displayPanel;
-            
-            % data for the sub population in this panel
-            newFunc = load_nii([ddat.outdir '/' ddat.outpre '_' 'S0_' 'IC_1.nii']);
-            newFunc = newFunc.img;
-            for xi = 1:ddat.p
-                beta = load_nii([ddat.outdir '/' ddat.outpre '_beta_cov' num2str(xi) '_IC' num2str(1) '.nii']);
-                xb = beta.img * str2double(covariateSettings( selectedPops(subGroup) , xi));
-                newFunc = newFunc + xb;
-            end
-            ddat.img{subGroup} = newFunc; ddat.oimg{subGroup} = newFunc;
-            
-        end
-        
-        % Add a panel to the new display for the sliders
-        sliderPanel = uipanel('Parent', displayPanel,...
-            'Position',[0.95, 0.01 0.025 0.98],...
-            'Tag', 'sliderPanel',...
-            'BackgroundColor', 'black');
-        SagSlider = uicontrol('Parent', sliderPanel, ...
-            'Style', 'Slider', ...
-            'Units', 'Normalized', ...
-            'Position', [0.5, 0.65, 0.8, 0.25], ...
-            'Tag', 'SagSlider', 'Callback', @sagSliderMove);
-        CorSlider = uicontrol('Parent', sliderPanel, ...
-            'Style', 'Slider', ...
-            'Units', 'Normalized', ...
-            'Position', [0.5, 0.35, 0.8, 0.25], ...
-            'Tag', 'CorSlider', 'Callback', @corSliderMove);
-        AxiSlider = uicontrol('Parent', sliderPanel, ...
-            'Style', 'Slider', ...
-            'Units', 'Normalized', ...
-            'Position', [0.5, 0.05, 0.8, 0.25], ...
-            'Tag', 'AxiSlider', 'Callback', @axiSliderMove);
-        
-        % add a close button to the bottom right for compare window
-        closePanel = uipanel('FontSize',12,...
-            'Units', 'Normalized',...
-            'Visible', 'On', ...
-            'Tag', 'closePanel', ...
-            'BackgroundColor','white',...
-            'Position', [0.79, 0.01, 0.135, 0.05])
-        closeCompare = uicontrol('Parent', closePanel,...
-            'Units', 'Normalized', ...
-            'String', 'Close Window', ...
-            'Position', [0.0, 0.0, 1, 1], ...
-            'Tag', 'closeCompare', 'Callback', @stSubPop);
-        
-        hs.fig.Children = [hs.fig.Children(:,1); (newDisplay')];
-        
-        createCombinedImage;
-        
-        % Loop through and update all sub populations
-        for subPop=1:ddat.nCompare
-            
-            for cl = 1:3
-                Saxial(:, :, cl) = squeeze(ddat.combinedImg{subPop}(cl).combound(:, :, ddat.axi))';
-                Scor(:, :, cl) = squeeze(ddat.combinedImg{subPop}(cl).combound(:,ddat.cor,:))';
-                Ssag(:, :, cl) = squeeze(ddat.combinedImg{subPop}(cl).combound(ddat.sag,:,:))';
-            end
-            
-            aspect = 1./ddat.daspect;
-            % Setup Axial Image
-            axes(findobj('Tag', ['AxialAxes' num2str(subPop)]));
-            ddat.axial_image{subPop} = image(Saxial);
-            set(gca,'YDir','normal','XLimMode','manual','YLimMode','manual',...
-                'ClimMode','manual','YColor',[0 0 0],'XColor',[0 0 0],'xtick',[],'ytick',[],'Tag',['AxialAxes' num2str(subPop)])
-            daspect(gca,aspect([1 3 2]));
-            %set(ddat.axial_image{subPop},'ButtonDownFcn','get_pos_dispexp(''axi''); plot_voxel_trajectory([''ddat.sag'', ''ddat.cor'', ''ddat.axi'']);');
-            set(ddat.axial_image{subPop},'ButtonDownFcn',{@image_button_press, 'axi'});
-            pos_axi = [ddat.sag, ddat.cor];
-            crosshair = plot_crosshair(pos_axi, [], gca);
-            ddat.axial_xline{subPop} = crosshair.lx;
-            ddat.axial_yline{subPop} = crosshair.ly;
-            
-            % Setup Coronal Image
-            axes(findobj('Tag', ['CoronalAxes' num2str(subPop)] ));
-            ddat.coronal_image{subPop} = image(Scor);
-            set(gca,'YDir','normal','XLimMode','manual','YLimMode','manual',...
-                'ClimMode','manual','YColor',[0 0 0],'XColor',[0 0 0],'xtick',[],'ytick',[],'Tag',['CoronalAxes' num2str(subPop)])
-            daspect(gca,aspect([1 3 2]));
-            set(ddat.coronal_image{subPop},'ButtonDownFcn',{@image_button_press, 'cor'});
-            pos_cor = [ddat.sag, ddat.axi];
-            crosshair = plot_crosshair(pos_cor, [], gca);
-            ddat.coronal_xline{subPop} = crosshair.lx;
-            ddat.coronal_yline{subPop} = crosshair.ly;
-            
-            % Setup Sagital image
-            %test = findobj('Tag', ['SagittalAxes' num2str(subPop)] );
-            axes(findobj('Tag', ['SagittalAxes' num2str(subPop)] ));
-            ddat.sagittal_image{subPop} = image(Ssag);
-            set(gca,'YDir','normal','XLimMode','manual','YLimMode','manual',...
-                'ClimMode','manual','YColor',[0 0 0],'XColor',[0 0 0],'xtick',[],'ytick',[],'Tag',['SagittalAxes' num2str(subPop)])
-            daspect(gca,aspect([2 3 1]));
-            set(ddat.sagittal_image{subPop},'ButtonDownFcn',{@image_button_press, 'sag'});
-            pos_sag = [ddat.cor, ddat.axi];
-            crosshair = plot_crosshair(pos_sag, [], gca);
-            ddat.sagittal_xline{subPop} = crosshair.lx;
-            ddat.sagittal_yline{subPop} = crosshair.ly;
-            
-        end % end of sub population loop
-        
-        %%%%% Setup the Sliders %%%%
-        % Sagittal Slider
-        xslider_step(1) = 1/(ddat.xdim);
-        xslider_step(2) = 1.00001/(ddat.xdim);
-        set(findobj('Tag', 'SagSlider'), 'Min', 1, 'Max',ddat.xdim, ...
-            'SliderStep',xslider_step,'Value',ddat.sag); %%Sagittal Y-Z, adjust x direction
-        % Coronal Slider
-        yslider_step(1) = 1/(ddat.ydim);
-        yslider_step(2) = 1.00001/(ddat.ydim);
-        set(findobj('Tag', 'CorSlider'), 'Min', 1, 'Max',ddat.ydim, ...
-            'SliderStep',yslider_step,'Value',ddat.cor); %%Coronal X-Z, adjust y direction
-        % Axial Slider
-        zslider_step(1) = 1/(ddat.zdim);
-        zslider_step(2) = 1.00001/(ddat.zdim);
-        set(findobj('Tag', 'AxiSlider'), 'Min', 1, 'Max',ddat.zdim, ...
-            'SliderStep',zslider_step,'Value',ddat.axi);
-        
-        updateCrosshairValue;
-        redisplay;
-        updateInfoText;
-    end
-
 %% Shared button press function
     function image_button_press(src, event, type, varargin)
         if ~isempty(varargin)
@@ -1196,7 +1064,9 @@ function ViewSelectTable_cell_select(hObject, eventdata, handles)
         plot_voxel_trajectory([ddat.sag, ddat.cor, ddat.axi]);
     end
 
-%% initialDisp - sets up the initial state of the display window based
+%% Initial Display
+
+%%% initialDisp - sets up the initial state of the display window based
 % on the user selection (aggregate viewer, covariate effect viewer, etc)
     function initialDisp(hObject,callbackdata)
         set(findobj('Tag', 'thresholdSlider'), 'Value', 0);
@@ -1533,7 +1403,9 @@ function ViewSelectTable_cell_select(hObject, eventdata, handles)
         updateInfoText;
     end
 
-%% Function to generate the single subject maps. This is preferable to
+%% Single Subject Viewer Specific Functions
+
+% Function to generate the single subject maps. This is preferable to
 % storing all of the maps in case there are many subjects
     function generateSingleSubjMap(hObject, callbackdata)
         
@@ -1553,7 +1425,7 @@ function ViewSelectTable_cell_select(hObject, eventdata, handles)
         ddat.img{1} = nmat; ddat.oimg{1} = nmat;
     end
 
-%% Function to setup anatomical image.
+%% Anatomical Image and Mask Functions
     function setupAnatomical(hObject, callbackdata)
         
         % 2mm voxel case
@@ -1576,10 +1448,164 @@ function ViewSelectTable_cell_select(hObject, eventdata, handles)
         
     end
 
+    function maskSearch(hObject,  callbackdata)
+        % Get the the current IC
+        currentIC = get(findobj('Tag', 'ICselect'), 'val');
+        % Check: does a mask file exist?
+        fls = dir([ddat.outdir '/' ddat.outpre '*maskIC_' num2str(currentIC) '_' '*.nii']);
+        nfile = size(fls); nfile = nfile(1);
+        if nfile > 0
+            handles.maskExist = 1;
+            newstring = cell(nfile+1, 1);
+            newstring{1} = 'No Mask';
+            for m = 2:(nfile+1)
+                newstring{m} = fls(m-1).name;
+            end
+            set( findobj('Tag', 'maskSelect'), 'String', newstring);
+            % handle the case where no masks were found
+        else
+            ddat.maskExist = 0;
+            set( findobj('Tag', 'maskSelect'), 'Value', 1);
+            set( findobj('Tag', 'maskSelect'), 'String', 'No Mask');
+        end
+    end
+
+
+%% Brain Map Plotting
+
+% update_brain_maps - primary function that updates the brain maps
+%   being viewed
+%
+% Arguments:
+%   'viewTrackerStatus' - Pass a new npop x nvisit matrix containing which
+%                         population maps are being viewed.
+%   'updateCombinedImage' - Pass a matrix with 2 colums, each row is the
+%                           indices of the map that needs to regenerate the
+%                           combined image
+
+    function update_brain_maps(varargin)
+        
+        % Log for what steps are required
+        updateCombinedImage = 0; updateCombinedImageElements = 0;
+        
+        % Determine which steps are required based on user input
+        narg = length(varargin)/2;
+        for iarg = 1:narg
+            
+            index = 2*(iarg-1) + 1;
+            
+            switch varargin{index}
+                case 'viewTrackerStatus'
+                    editTrackerRows = 1;
+                    ViewTrackerNew  = varargin{index+1};
+                case 'updateCombinedImage'
+                    updateCombinedImage = 1;
+                    updateCombinedImageElements = varargin{index+1};
+                otherwise
+                    disp(['Invalid Argument: ', varargin{index}])
+            end
+            
+        end
+        
+        %%% Convert the image to Z-scores / back to Raw Values
+        
+        %%% Re-create the combined images
+        if updateCombinedImage == 1
+            create_combined_image(updateCombinedImageElements);
+        end
+        
+        %%% Update the images on the axes
+        % TODO argument for specific axes? not sure if this case arises
+        update_axes_image;
+        
+        
+        
+        
+    end
+
+% New version of the create combined image function
+    function create_combined_image(indices)
+        
+        nUpdate = size(indices, 1);
+        
+        % Find the min and max value of each image.
+        minVal1 = min(min(min(cat(1,ddat.img{:}))));
+        maxVal1 = max(max(max(cat(1,ddat.img{:}))));
+        
+        for iUpdate = 1:nUpdate
+            
+            % Cell to update
+            iRow = indices(iUpdate, 1); iCol = indices(iUpdate, 2);
+            
+            % Scale the functional image
+            tempImage = ddat.img{iRow, iCol};
+            tempImage(isnan(ddat.img{iRow, iCol})) = minVal1 - 1;
+            minVal2 = minVal1 - 1;
+            
+            ddat.scaledFunc{iRow, iCol} = scale_in(tempImage, minVal2, maxVal1, 63);
+            
+            newColormap = [(gray(191));zeros(1, 3); ddat.highcolor];%%index 192 is not used, just for seperate the base and top colormap;
+            %ddat.color_map = newColormap;
+            
+            ddat.combinedImg{iRow, iCol} = overlay_w_transparency(uint16(ddat.scaledImg),...
+                uint16(ddat.scaledFunc{iRow, iCol}),1, 0.6, newColormap, ddat.highcolor);
+            
+        end
+        
+    end
+
+% New version to replot on axes (former redisplay) - this needs to account
+% for which axes corresponds to which element of cell array!, use
+% ViewTracker for this! - gives which axes each belongs to
+    function update_axes_image(varargin)
+        
+        [nRow, nCol] = size(ddat.img);
+        
+        for iRow = 1:nRow
+            for iCol = 1:nCol
+                
+                % Check that this is in view before redisplaying
+                if ddat.viewTracker(iRow, iCol) > 0
+                    
+                    % Get the corresponding axes. This SHOULD be in
+                    % numerical order, but we include extra step here just
+                    % to be safe
+                    axes_index = ddat.viewTracker(iRow, iCol);
+                    
+                    % Grab the data for the selected slices and update axes obj.
+                    for cl = 1:3
+                        Saxi(:, :, cl) = squeeze(ddat.combinedImg{iRow, iCol}(cl).combound(:, :, ddat.axi))';
+                        Scor(:, :, cl) = squeeze(ddat.combinedImg{iRow, iCol}(cl).combound(:,ddat.cor,:))';
+                        Ssag(:, :, cl) = squeeze(ddat.combinedImg{iRow, iCol}(cl).combound(ddat.sag,:,:))';
+                    end
+                    ddat.cor_mm = (ddat.cor-ddat.origin(2))*ddat.pixdim(2);
+                    
+                    axesC = (findobj('Tag', ['CoronalAxes' num2str(axes_index)] ));
+                    set(ddat.coronal_image{iRow, iCol},'CData', Scor);
+                    axesC = (findobj('Tag', ['AxialAxes' num2str(axes_index)] ));
+                    set(ddat.axial_image{iRow, iCol},'CData',Saxi);
+                    axesC = (findobj('Tag', ['SagittalAxes' num2str(axes_index)] ));
+                    set(ddat.sagittal_image{iRow, iCol},'CData',Ssag);
+                    
+                end
+                
+            end
+        end
+        
+        % this is leftover from old version
+%         % Update the colormap (here as a safety precaution).
+%         axesC = findobj('Tag', 'colorMap');
+%         updateColorbar;
+        
+    end
+
+
+%% Old Viewing Functions
+
 % Function to combine the anatomical image and the functional image.
 % Taken from bs-mac viewer.
     function createCombinedImage(hObject,callbackdata)
-        ddat.scaledFunc = cell(ddat.nCompare, ddat.nVisit);
+        ddat.scaledFunc  = cell(ddat.nCompare, ddat.nVisit);
         ddat.combinedImg = cell(ddat.nCompare, ddat.nVisit);
         
         % Find the min and max value of each image.
@@ -1627,11 +1653,11 @@ function ViewSelectTable_cell_select(hObject, eventdata, handles)
                     Ssag(:, :, cl) = squeeze(ddat.combinedImg{iInd, currentVisitIndex}(cl).combound(ddat.sag,:,:))';
                 end
                 ddat.cor_mm = (ddat.cor-ddat.origin(2))*ddat.pixdim(2);
-                axesC = (findobj('Tag', ['CoronalAxes' num2str(iInd)] ));
+                axesC = (findobj('Tag', ['CoronalAxes' num2str(iInd) '_' num2str(iVisit)] ));
                 set(ddat.coronal_image{iInd, currentVisitIndex},'CData',Scor);
-                axesC = (findobj('Tag', ['AxialAxes' num2str(iInd)] ));
+                axesC = (findobj('Tag', ['AxialAxes' num2str(iInd) '_' num2str(iVisit)] ));
                 set(ddat.axial_image{iInd, currentVisitIndex},'CData',Saxi);
-                axesC = (findobj('Tag', ['SagittalAxes' num2str(iInd)] ));
+                axesC = (findobj('Tag', ['SagittalAxes' num2str(iInd) '_' num2str(iVisit)] ));
                 set(ddat.sagittal_image{iInd, currentVisitIndex},'CData',Ssag);
             end % end of loop over viewed visits
             
@@ -1643,65 +1669,10 @@ function ViewSelectTable_cell_select(hObject, eventdata, handles)
         
     end
 
-% Function to setup the covariate menu when viewing sub-populations.
-    function setupCovMenu(hObject, callbackdata)
-        newstring = cell(ddat.p, 1);
-        for covariate=1:ddat.p
-            newstring{covariate} = strcat(ddat.varNamesX{covariate});
-        end
-        set(findobj('Tag', 'selectCovariate'), 'String', newstring);
-    end
 
-% Function to setup the subject menu when viewing individual subjects.
-    function setupSubMenu(hObject, callbackdata)
-        newstring = cell(ddat.nsub, 1);
-        for subject=1:ddat.nsub
-            newstring{subject} = ['Subject ' num2str(subject)];
-        end
-        set(findobj('Tag', 'selectSubject'), 'String', newstring);
-    end
+%% Currently Here
 
-% Function to setup the IC menu.
-    function setupICMenu(hObject, callbackdata)
-        newstring = cell(ddat.q, 2);
-        for ic = 1:ddat.q
-            newstring{ic, 1} = ['IC ' num2str(ic)];
-            newstring{ic, 2} = 'x';
-        end
-        set(findobj('Tag', 'icSelRef'), 'Data', newstring);
-    end
 
-%% Function to fill out the visits in the visit menu
-    function setupVisitMenu(hObject, callbackdata)
-        newstring = cell(ddat.nVisit, 1);
-        for iVisit=1:ddat.nVisit
-            newstring{iVisit} = ['Visit ' num2str(subject)];
-        end
-        set(findobj('Tag', 'selectVisit'), 'String', newstring);
-    end
-
-%% Function to look for a mask object created by the user for this IC
-    function maskSearch(hObject,  callbackdata)
-        % Get the the current IC
-        currentIC = get(findobj('Tag', 'ICselect'), 'val');
-        % Check: does a mask file exist?
-        fls = dir([ddat.outdir '/' ddat.outpre '*maskIC_' num2str(currentIC) '_' '*.nii']);
-        nfile = size(fls); nfile = nfile(1);
-        if nfile > 0
-            handles.maskExist = 1;
-            newstring = cell(nfile+1, 1);
-            newstring{1} = 'No Mask';
-            for m = 2:(nfile+1)
-                newstring{m} = fls(m-1).name;
-            end
-            set( findobj('Tag', 'maskSelect'), 'String', newstring);
-            % handle the case where no masks were found
-        else
-            ddat.maskExist = 0;
-            set( findobj('Tag', 'maskSelect'), 'Value', 1);
-            set( findobj('Tag', 'maskSelect'), 'String', 'No Mask');
-        end
-    end
 
 %% Function to update the colorbar
     function updateColorbar(hObject, callbackdata)
@@ -1732,7 +1703,9 @@ function ViewSelectTable_cell_select(hObject, eventdata, handles)
         colorbar_plot( findobj('Tag', 'colorMap'), ddat.colorbar_labels, ddat.scaled_pp_labels);
     end
 
-%% Function to load a new IC - called when the user changes ICs.
+%% Data Loading Functions
+
+% Function to load a new IC - called when the user changes ICs.
     function updateIC(hObject, callbackdata)
         % Turn off contrast
         ddat.viewingContrast = 0;
@@ -1805,6 +1778,8 @@ function ViewSelectTable_cell_select(hObject, eventdata, handles)
             applyMask;
         end
     end
+
+%% Crosshair and Information
 
 % Function to update the value at crosshair when user clicks on a slice
     function updateCrosshairValue(hObject, callbackdata)
@@ -1965,6 +1940,8 @@ function ViewSelectTable_cell_select(hObject, eventdata, handles)
         newString = ['Viewing ' endText vOrZ ' for IC ' num2str(cIC)];
         set(findobj('Tag', 'viewerInfo'), 'String', newString);
     end
+
+%% Slider Movement
 
 % Update sagittal slider.
     function sagSliderMove(hObject, callbackdata)
@@ -2139,6 +2116,8 @@ function ViewSelectTable_cell_select(hObject, eventdata, handles)
         
     end
 
+%% Thresholding
+
 % Function to edit the z-threshold required to view on brain image.
     function editThreshold(hObject, callbackdata)
         
@@ -2196,6 +2175,627 @@ function ViewSelectTable_cell_select(hObject, eventdata, handles)
         save_nii(make_nii(double(newMask)), newfile);
         maskSearch;
     end
+
+
+% Function to allow user to select sub populations to compare. Opens a
+% new window.
+    function compareSubPopulations(hObject, callbackdata)
+        newfig = figure('Units', 'normalized', ...,...
+            'position', [0.3 0.3 0.3 0.3],...
+            'MenuBar', 'none',...
+            'Tag','pickSubPops',...
+            'NumberTitle','off',...
+            'Name','Sub-Population Selection',...
+            'Resize','on',...
+            'Visible','on');%,...
+        subPopSelectDisplay = uitable('Parent', newfig, ...
+            'Units', 'Normalized', ...
+            'Position', [0.55, 0.3, 0.35, 0.5], ...
+            'Tag', 'subPopSelectDisplay'); %#ok<NASGU>
+        set(findobj('Tag', 'subPopSelectDisplay'), 'Data', get(findobj('Tag', 'subPopDisplay'), 'Data'));
+        set(findobj('Tag', 'subPopSelectDisplay'), 'RowName', get(findobj('Tag', 'subPopDisplay'), 'RowName'));
+        set(findobj('Tag', 'subPopSelectDisplay'), 'ColumnName', get(findobj('Tag', 'subPopDisplay'), 'ColumnName'));
+        subPopListBox = uicontrol('Style', 'listbox',...
+            'Parent', newfig, ...
+            'Units', 'Normalized', ...
+            'Position', [0.1, 0.3, 0.35, 0.5],...
+            'Tag', 'subPopListBox', 'Callback', @subPopSelectCall); %#ok<NASGU>
+        % set the list box to have the correct number of sub populations
+        set(findobj('Tag', 'subPopListBox'), 'String', get(findobj('Tag', 'subPopDisplay'), 'RowName') );
+        set(findobj('Tag', 'subPopListBox'), 'Max', 3);
+        numSelectedText = uicontrol('Parent', newfig, ...
+            'Style', 'Text', 'String', 'Number of selected sub-populations: ', ...
+            'Units', 'Normalized', ...
+            'Position', [0.10, 0.18, 0.4, 0.1]); %#ok<NASGU>
+        numSelected = uicontrol('Parent', newfig, ...
+            'Style', 'Text', ...
+            'Units', 'Normalized', ...
+            'Position', [0.50, 0.225, 0.05, 0.05], ...
+            'Tag', 'numSelected', 'BackgroundColor', 'white'); %#ok<NASGU>
+        runSubjCompare = uicontrol('Parent', newfig, ...
+            'Units', 'Normalized', ...
+            'String', 'Compare Selected Sub-Populations', ...
+            'Position', [0.3, 0.01, 0.4, 0.13], ...
+            'Tag', 'newSubPop', 'Callback', @launchCompareWindow); %#ok<NASGU>
+        movegui(newfig, 'center')
+    end
+
+% Function to launch a comparison window
+    function launchCompareWindow(hObject, callbackdata)
+        selectedSubPops = get(findobj('Tag', 'subPopListBox'), 'Value');
+        %close;
+        set(0,'CurrentFigure',hs.fig);
+        [~, ddat.nCompare] = size(selectedSubPops);
+        set(findobj('Tag', 'SubpopulationControl'), 'Visible', 'On');
+        set(findobj('Tag', 'SubpopulationControl'), 'BackgroundColor', 'White');
+        set(findobj('Tag', 'SubpopulationControl'), 'Position', [0.72, 0.70, 0.27, 0.29]);
+        set(findobj('Tag', 'subPopDisplay'), 'ColumnEditable', false);
+        set(findobj('Tag', 'newSubPop'), 'Visible', 'Off');
+        set(findobj('Tag', 'subPopSelect1'), 'Visible', 'Off');
+        set(findobj('Tag', 'compareSubPops'), 'Visible', 'Off');
+        expandSubPopulationPanel(selectedSubPops);
+        delete(hObject.Parent);
+    end
+
+% Counts the number of sub-populations selected.
+    function subPopSelectCall(hObject, callbackdata)
+        selectedPops = hObject.Value;
+        [nothing, numPop] = size(selectedPops);
+        set(findobj('Tag', 'numSelected'), 'String', num2str(numPop));
+    end
+
+% Function for the IC selection process. Creates the menu with all of
+% the ICs and whether or not they have been selected for the EM
+% algorithm.
+    function updateICSelMenu(hObject, callbackdata)
+        %global keeplist;
+        isSelected = callbackdata.Source.Value;
+        currentTable = get(findobj('Tag', 'icSelRef'), 'Data');
+        if isSelected
+            currentTable{get(findobj('Tag', 'ICselect'), 'Value'),2} = 'x';
+            keeplist(get(findobj('Tag', 'ICselect'), 'Value')) = 1;
+        else
+            currentTable{get(findobj('Tag', 'ICselect'), 'Value'),2} = '';
+            keeplist(get(findobj('Tag', 'ICselect'), 'Value')) = 0;
+        end
+        set(findobj('Tag', 'icSelRef'), 'Data', currentTable);
+    end
+
+% Functions from the task bar for display viewer switching
+% Function to switch to the sub population viewer.
+    function stSubPop(hObject, callbackdata)
+        if strcmp(ddat.type, 'subPopCompare')
+            revertToDisp;
+        end
+        ddat.type = 'subpop';
+        initialDisp;
+    end
+
+% Function to switch to the group level viewer.
+    function stGrp(hObject, callbackdata)
+        if strcmp(ddat.type, 'subPopCompare')
+            revertToDisp;
+        end
+        ddat.type = 'grp';
+        initialDisp;
+    end
+
+% Function to switch to the subject level viewer.
+    function stSubj(~, ~)
+        if strcmp(ddat.type, 'subPopCompare')
+            revertToDisp;
+        end
+        ddat.type = 'subj';
+        initialDisp;
+    end
+
+% Function to switch to the beta map viewer.
+    function stBeta(~, ~)
+        if strcmp(ddat.type, 'subPopCompare')
+            revertToDisp;
+        end
+        ddat.type = 'beta';
+        initialDisp;
+    end
+
+% Function to undo the changes made by the sub population compare
+% window
+    function revertToDisp(~, ~)
+        
+        set(findobj('Tag', 'closePanel'), 'Visible', 'Off')
+        
+        % Resize the viewer window to the correct size
+        hs.fig.Position = [0.3 0.3 0.5 0.5];
+        % Delete figure children added by the sub population display window
+        for iChild = 1:numel(hs.fig.Children)
+            if (isprop(hs.fig.Children(iChild),'Tag'))
+                if strcmp(hs.fig.Children(iChild).Tag, 'subPopDisplayPanel')
+                    delete(hs.fig.Children(iChild));
+                end
+            end
+        end
+        
+        displayPanel = uipanel('BackgroundColor','white',...
+            'Tag', 'viewingPanelNormal',...
+            'Position',[0, 0.5 1 0.5], ...;
+            'BackgroundColor',get(hs.fig,'color'));
+        % Windows
+        SagAxes = axes('Parent', displayPanel, ...
+            'Units', 'Normalized', ...
+            'Position',[0.01 0.18 0.27 .8],...
+            'Tag', 'SagittalAxes1' ); %#ok<NASGU>
+        CorAxes = axes('Parent', displayPanel, ...
+            'Position',[.30 .18 .27 .8],...
+            'Tag', 'CoronalAxes1' ); %#ok<NASGU>
+        AxiAxes = axes('Parent', displayPanel, ...
+            'Position',[.59 .18 .27 .8],...
+            'Tag', 'AxialAxes1' ); %#ok<NASGU>
+        % Sliders
+        SagSlider = uicontrol('Parent', displayPanel, ...
+            'Style', 'Slider', ...
+            'Units', 'Normalized', ...
+            'Position', [0.01, -0.3, 0.27, 0.4], ...
+            'Tag', 'SagSlider', 'Callback', @sagSliderMove); %#ok<NASGU>
+        CorSlider = uicontrol('Parent', displayPanel, ...
+            'Style', 'Slider', ...
+            'Units', 'Normalized', ...
+            'Position', [0.30, -0.3, 0.27, 0.4], ...
+            'Tag', 'CorSlider', 'Callback', @corSliderMove); %#ok<NASGU>
+        AxiSlider = uicontrol('Parent', displayPanel, ...
+            'Style', 'Slider', ...
+            'Units', 'Normalized', ...
+            'Position', [0.59, -0.3, 0.27, 0.4], ...
+            'Tag', 'AxiSlider', 'Callback', @axiSliderMove); %#ok<NASGU>
+        % Colorbar
+        colorMap = axes('Parent', displayPanel, ...
+            'units', 'Normalized',...
+            'Position', [0.90, 0.18, 0.05, 0.8], ...
+            'Tag', 'colorMap'); %#ok<NASGU>
+        
+        % Recolor the sub population display and put it in the correct
+        % place
+        set(findobj('Tag', 'SubpopulationControl'), 'Position', [.69, 0.01 .30 .45]);
+        set(findobj('Tag', 'SubpopulationControl'), 'BackgroundColor', [224/256,224/256,224/256]);
+        set(findobj('Tag', 'locPanel'), 'BackgroundColor', [224/256,224/256,224/256]);
+        set(findobj('Tag', 'icPanel'), 'BackgroundColor', [224/256,224/256,224/256]);
+        set(findobj('Tag', 'thresholdPanel'), 'BackgroundColor', [224/256,224/256,224/256]);
+        set(findobj('Tag', 'compareSubPops'), 'Visible', 'On');
+        set(findobj('Tag', 'newSubPop'), 'Visible', 'On');
+        set(findobj('Tag', 'subPopSelect1'), 'Visible', 'On');
+        set(findobj('Tag', 'subPopDisplay'), 'ColumnEditable', true);
+        
+    end
+
+% Close button for the IC selection window.
+    function closeICSelect(hObject, ~)
+        delete(hObject.Parent);
+    end
+
+%% Old Contrast Stuff
+
+% Beta Panel Functions
+% Function to allow the user to add another contrast to the list
+    function addNewContrast(hObject, callbackdata)
+        olddata = findobj('Tag', 'contrastDisplay'); olddim = size(olddata.Data);
+        oldrownames = olddata.RowName;
+        newTable = cell(olddim(1) + 1, ddat.p);
+        % Fill in all the old information
+        for column=1:olddim(2)
+            for row=1:olddim(1)
+                newTable(row, column) = olddata.Data(row,column);
+            end
+        end
+        % reassign the row names for the table
+        if olddim(1) == 0
+            newRowNames = ['C' num2str(olddim(1)+1)];
+        else
+            newRowNames = [oldrownames; ['C' num2str(olddim(1)+1)]];
+            newRowNames = cellstr(newRowNames);
+        end
+        
+        set(findobj('Tag', 'contrastDisplay'), 'Data', newTable);
+        set(findobj('Tag', 'contrastDisplay'), 'RowName', newRowNames);
+        % Make it so that only the main effects can be edited
+        ceditable = false(1, ddat.p);
+        ceditable(1:size(ddat.interactions,2)) = 1;
+        set(findobj('Tag', 'contrastDisplay'), 'ColumnEditable', ceditable);
+        
+        % change the drop down menu
+        newString = cell(olddim(1)+1,1);
+        oldstring = get(findobj('Tag', 'contrastSelect1'), 'String');
+        for i=1:olddim(1)
+            if (olddim(1) > 0)
+                newString(i) = {oldstring{i}};
+            else
+                newString(i) = {oldstring(:)'};
+            end
+        end
+        newString(olddim(1) + 1) = {['C' num2str(olddim(1)+1)]};
+        % Update all sub population selection viewers
+        for iPop = 1:ddat.nCompare
+            set(findobj('Tag', ['contrastSelect' num2str(iPop)]),'String', newString);
+        end
+        ddat.contrastExists = 1;
+    end
+
+    function removeContrast(hObject, callbackdata)
+        % Check that a contrast exists
+        if ddat.contrastExists == 1
+            % Keep track of if a contrast should be removed (vs user enter
+            % cancel)
+            removeContrast = 0;
+            % open a window asking which contrast to remove
+            waitingForResponse = 1;
+            while waitingForResponse
+                answer = inputdlg('Please enter contrast name to remove (C1, C2,...)')
+                if isempty(answer)
+                    waitingForResponse = 0;
+                    % if user input something, check that it is valid
+                else
+                    validContrasts = get(findobj('Tag', 'contrastDisplay'), 'RowName');
+                    matchedIndex = strfind(validContrasts, answer);
+                    % Reduce to just first match to guard against C1 and
+                    % C11
+                    removeIndex = 0;
+                    for iContrast = 1:length(validContrasts)
+                        % handle more than one contrast
+                        if iscell(validContrasts)
+                            if matchedIndex{iContrast} == 1
+                                removeIndex = iContrast;
+                                break; % break out of the loop
+                            end
+                            % handle only one contrast
+                        else
+                            if matchedIndex == 1
+                                removeIndex = iContrast;
+                                break; % break out of the loop
+                            end
+                        end
+                    end
+                    % If a valid contrast was entered, then proceed
+                    if removeIndex > 0
+                        waitingForResponse = 0;
+                        
+                        olddata = findobj('Tag', 'contrastDisplay'); olddim = size(olddata.Data);
+                        oldrownames = olddata.RowName;
+                        newTable = cell(olddim(1) - 1, ddat.p);
+                        % Fill in all the old information
+                        for column=1:olddim(2)
+                            incRow = 0;
+                            for row=1:olddim(1)
+                                if row ~= removeIndex
+                                    incRow = incRow + 1;
+                                    newTable(incRow, column) = olddata.Data(row,column);
+                                end
+                            end
+                        end
+                        
+                        % reassign the row names for the table
+                        if olddim(1) == 2
+                            newRowNames = ['C' num2str(1)];
+                        else
+                            newRowNames = oldrownames(1:olddim(1) - 1);
+                            newRowNames = cellstr(newRowNames);
+                        end
+                        
+                        set(findobj('Tag', 'contrastDisplay'), 'Data', newTable);
+                        set(findobj('Tag', 'contrastDisplay'), 'RowName', newRowNames);
+                        % Make it so that only the main effects can be edited
+                        ceditable = false(1, ddat.p);
+                        ceditable(1:size(ddat.interactions,2)) = 1;
+                        set(findobj('Tag', 'contrastDisplay'), 'ColumnEditable', ceditable);
+                        
+                        % change the drop down menu
+                        newString = cell(olddim(1)-1, 1);
+                        oldstring = get(findobj('Tag', 'contrastSelect1'), 'String');
+                        for i=1:olddim(1)-1
+                            if (olddim(1) > 1)
+                                newString(i) = {oldstring{i}};
+                            else
+                                newString(i) = {oldstring(:)'};
+                            end
+                        end
+                        %newString(olddim(1) + 1) = {['C' num2str(olddim(1)+1)]};
+                        
+                        % Finally, update what is being viewed.
+                        % Only have to do this if currently viewing a
+                        % contrast
+                        if ddat.viewingContrast
+                            currentSelection = get(findobj('Tag', ['contrastSelect' num2str(1)]),'Value');
+                            % If removed something above the current
+                            % selection, do nothing.
+                            % If removed current selection, switch to
+                            % regular cov viewer and tell user
+                            if currentSelection == removeIndex
+                                % turn off viewing contrast
+                                ddat.viewingContrast = 0;
+                                % switch the the selected covariate instead
+                                updateIC;
+                                set(findobj('Tag', ['contrastSelect' num2str(1)]),'Value', 1);
+                            end
+                            % If removed above current selection, just
+                            % switch the dropdown menu to reflect this
+                            if currentSelection > removeIndex
+                                set(findobj('Tag', ['contrastSelect' num2str(1)]),'Value', currentSelection - 1);
+                                updateContrastDisp;
+                            end
+                        end
+                        
+                        if olddim(1) - 1 == 0
+                            newString = 'No Contrast Created';
+                            ddat.contrastExists = 0;
+                            ddat.viewingContrast = 0;
+                            set(findobj('Tag', 'contrastDisplay'), 'RowName', {});
+                        end
+                        
+                        % Update all sub population selection viewers
+                        for iPop = 1:ddat.nCompare
+                            set(findobj('Tag', ['contrastSelect' num2str(iPop)]),'String', newString);
+                        end
+                        
+                        
+                    end
+                end
+            end
+            % update "viewing contrast" as well
+            % check that whatever is on screen is valid BE CAREFUL HERE!!
+        else
+            warnbox = warndlg('No contrasts have been specified')
+        end
+    end
+
+
+    function save_jpg(hObject, callbackdata)
+        
+        %saveas()
+        startString = fullfile(ddat.outdir, [ddat.outpre, '_myfigure.jpg']);
+        definput = {startString};
+        answer = inputdlg('Please enter the filename for the image.',...
+            'Input filename',...
+            [1, 70], definput);
+        
+        %picfig = figure('pos',[10 10 900 300]);
+        picfig = figure('units', 'normalized', 'pos', [0.2, 0.2, 0.6, 0.3]);
+        copyobj(findobj('tag', 'viewingPanelNormal'), picfig)
+        picfig.Children(1).Position = [0 0 1 1];
+        picfig.Children(1).Children(1).Visible = 'off';
+        picfig.Children(1).Children(2).Visible = 'off';
+        picfig.Children(1).Children(3).Visible = 'off';
+        
+        saveas(picfig, answer{1})
+        delete(picfig)
+    end
+
+
+
+%% Functions to be removed
+% This function is called when the user decides to compare two
+% subpopulations. It heavily changes the display window.
+    function expandSubPopulationPanel(selectedPops)
+        
+        % Setup cell arrays for all sub population info.
+        ddat.type = 'subPopCompare';
+        ddat.axial_image = cell(ddat.nCompare, ddat.nVisit);
+        ddat.sagittal_image = cell(ddat.nCompare, ddat.nVisit);
+        ddat.coronal_image = cell(ddat.nCompare, ddat.nVisit);
+        ddat.axial_xline = cell(ddat.nCompare, ddat.nVisit);
+        ddat.axial_yline = cell(ddat.nCompare, ddat.nVisit);
+        ddat.coronal_xline = cell(ddat.nCompare, ddat.nVisit);
+        ddat.coronal_yline = cell(ddat.nCompare, ddat.nVisit);
+        ddat.sagittal_xline = cell(ddat.nCompare, ddat.nVisit);
+        ddat.sagittal_yline = cell(ddat.nCompare, ddat.nVisit);
+        
+        % Loop through and edit the properties of the original viewer
+        % (change sizes, delete items, etc)
+        % Expand the size of the viewer
+        hs.fig.Position = [0.1 0.1 0.8 0.8];
+        for iChild = 1:numel(hs.fig.Children)
+            if (isprop(hs.fig.Children(iChild),'Tag'))
+                if strcmp(hs.fig.Children(iChild).Tag, 'thresholdPanel')
+                    hs.fig.Children(iChild).Position = [0.72 0.53 0.27 0.15];
+                    hs.fig.Children(iChild).BackgroundColor = 'white';
+                end
+                if strcmp(hs.fig.Children(iChild).Tag, 'icPanel')
+                    hs.fig.Children(iChild).Position = [0.72 0.34 0.27 0.15];
+                    hs.fig.Children(iChild).BackgroundColor = 'white';
+                end
+                % Move the location panel
+                if strcmp(hs.fig.Children(iChild).Tag, 'locPanel')
+                    hs.fig.Children(iChild).Position = [0.72 0.08 0.27 0.25];
+                    hs.fig.Children(iChild).BackgroundColor = 'white';
+                end
+                if strcmp(hs.fig.Children(iChild).Tag, 'viewingPanelNormal')
+                    indToDelete = iChild;
+                end
+            end
+        end
+        % Do this outside because we dont want numel in hs to change during
+        % the loop
+        delete(hs.fig.Children(indToDelete));
+        
+        % Create a new viewing panel
+        displayPanel = uipanel('BackgroundColor','white',...
+            'tag', 'subPopDisplayPanel',...
+            'units', 'Normalized',...
+            'Position',[0.01, 0.01 0.7 0.98], ...
+            'BackgroundColor','black');
+        colorMap = axes('Parent', displayPanel, ...
+            'units', 'Normalized',...
+            'Position', [0.01, 0.1, 0.04, 0.8], ...
+            'Tag', 'colorMap');
+        
+        % Calculate figure widths by number of sub populations.
+        % the GUI restricts this to two, but the code allows for
+        % more
+        xint = 0.9 / ddat.nCompare;
+        % load data to get dimension
+        newFile = strcat(ddat.outdir,'/',ddat.outpre,'_S0_IC_',num2str(1),'.nii');
+        newDat = load_nii(newFile); newFunc = newDat.img;
+        
+        % load the covariate information
+        covariateSettings = get(findobj('Tag', 'subPopDisplay'),'Data');
+        
+        %% THIS IS WHERE I DO AXES CREATION
+        for subGroup = 1:ddat.nCompare
+            % Create all the axis information to go with the panel
+            SagAxes = axes('Parent', displayPanel, ...
+                'Units', 'Normalized', ...
+                'Position',[0.05+xint * (subGroup-1) 0.65 xint 0.25],...
+                'Tag', ['SagittalAxes' num2str(subGroup)] );
+            CorAxes = axes('Parent', displayPanel, ...
+                'Units', 'Normalized',...
+                'Position',[0.05+xint * (subGroup-1) .35 xint 0.25],...
+                'Tag', ['CoronalAxes' num2str(subGroup)] );
+            AxiAxes = axes('Parent', displayPanel, ...
+                'Units', 'Normalized', ...
+                'Position',[0.05+xint * (subGroup-1) 0.05 xint .25],...
+                'Tag', ['AxialAxes' num2str(subGroup)] );
+            % Add in information about voxel value, this is assigned to
+            %   a new panel
+            infoPanel = uipanel('Parent', displayPanel,...
+                'Position',[0.05+ xint/4 + xint * (subGroup-1), 0.93, xint/2, 0.06]);
+            crosshairVal = uicontrol('Parent', infoPanel, ...
+                'Style', 'Text', ...
+                'Units', 'Normalized', ...
+                'Position', [0.01, 0.01, 0.98, 0.48], ...
+                'Tag', ['crosshairVal' num2str(subGroup)]);
+            subPopSelect = uicontrol('Parent', infoPanel,...
+                'Style', 'popupmenu', ...
+                'Units', 'Normalized', ...
+                'Position', [0.01, 0.52, 0.98, 0.48], ...
+                'Tag', ['subPopSelect' num2str(subGroup)],...
+                'Callback', @updateSubPopulation, ...
+                'String', 'No Sub-Population Created', ...
+                'Visible', 'Off');
+            subPopListing = uicontrol('Parent', infoPanel,...
+                'Style', 'Text', ...
+                'Units', 'Normalized', ...
+                'Position', [0.01, 0.52, 0.98, 0.48], ...
+                'String', ['SubPop' num2str(subGroup)]);
+            newDisplay = displayPanel;
+            
+            % data for the sub population in this panel
+            newFunc = load_nii([ddat.outdir '/' ddat.outpre '_' 'S0_' 'IC_1.nii']);
+            newFunc = newFunc.img;
+            for xi = 1:ddat.p
+                beta = load_nii([ddat.outdir '/' ddat.outpre '_beta_cov' num2str(xi) '_IC' num2str(1) '.nii']);
+                xb = beta.img * str2double(covariateSettings( selectedPops(subGroup) , xi));
+                newFunc = newFunc + xb;
+            end
+            ddat.img{subGroup} = newFunc; ddat.oimg{subGroup} = newFunc;
+            
+        end
+        
+        % Add a panel to the new display for the sliders
+        sliderPanel = uipanel('Parent', displayPanel,...
+            'Position',[0.95, 0.01 0.025 0.98],...
+            'Tag', 'sliderPanel',...
+            'BackgroundColor', 'black');
+        SagSlider = uicontrol('Parent', sliderPanel, ...
+            'Style', 'Slider', ...
+            'Units', 'Normalized', ...
+            'Position', [0.5, 0.65, 0.8, 0.25], ...
+            'Tag', 'SagSlider', 'Callback', @sagSliderMove);
+        CorSlider = uicontrol('Parent', sliderPanel, ...
+            'Style', 'Slider', ...
+            'Units', 'Normalized', ...
+            'Position', [0.5, 0.35, 0.8, 0.25], ...
+            'Tag', 'CorSlider', 'Callback', @corSliderMove);
+        AxiSlider = uicontrol('Parent', sliderPanel, ...
+            'Style', 'Slider', ...
+            'Units', 'Normalized', ...
+            'Position', [0.5, 0.05, 0.8, 0.25], ...
+            'Tag', 'AxiSlider', 'Callback', @axiSliderMove);
+        
+        % add a close button to the bottom right for compare window
+        closePanel = uipanel('FontSize',12,...
+            'Units', 'Normalized',...
+            'Visible', 'On', ...
+            'Tag', 'closePanel', ...
+            'BackgroundColor','white',...
+            'Position', [0.79, 0.01, 0.135, 0.05])
+        closeCompare = uicontrol('Parent', closePanel,...
+            'Units', 'Normalized', ...
+            'String', 'Close Window', ...
+            'Position', [0.0, 0.0, 1, 1], ...
+            'Tag', 'closeCompare', 'Callback', @stSubPop);
+        
+        hs.fig.Children = [hs.fig.Children(:,1); (newDisplay')];
+        
+        createCombinedImage;
+        
+        % Loop through and update all sub populations
+        for subPop=1:ddat.nCompare
+            
+            for cl = 1:3
+                Saxial(:, :, cl) = squeeze(ddat.combinedImg{subPop}(cl).combound(:, :, ddat.axi))';
+                Scor(:, :, cl) = squeeze(ddat.combinedImg{subPop}(cl).combound(:,ddat.cor,:))';
+                Ssag(:, :, cl) = squeeze(ddat.combinedImg{subPop}(cl).combound(ddat.sag,:,:))';
+            end
+            
+            aspect = 1./ddat.daspect;
+            % Setup Axial Image
+            axes(findobj('Tag', ['AxialAxes' num2str(subPop)]));
+            ddat.axial_image{subPop} = image(Saxial);
+            set(gca,'YDir','normal','XLimMode','manual','YLimMode','manual',...
+                'ClimMode','manual','YColor',[0 0 0],'XColor',[0 0 0],'xtick',[],'ytick',[],'Tag',['AxialAxes' num2str(subPop)])
+            daspect(gca,aspect([1 3 2]));
+            %set(ddat.axial_image{subPop},'ButtonDownFcn','get_pos_dispexp(''axi''); plot_voxel_trajectory([''ddat.sag'', ''ddat.cor'', ''ddat.axi'']);');
+            set(ddat.axial_image{subPop},'ButtonDownFcn',{@image_button_press, 'axi'});
+            pos_axi = [ddat.sag, ddat.cor];
+            crosshair = plot_crosshair(pos_axi, [], gca);
+            ddat.axial_xline{subPop} = crosshair.lx;
+            ddat.axial_yline{subPop} = crosshair.ly;
+            
+            % Setup Coronal Image
+            axes(findobj('Tag', ['CoronalAxes' num2str(subPop)] ));
+            ddat.coronal_image{subPop} = image(Scor);
+            set(gca,'YDir','normal','XLimMode','manual','YLimMode','manual',...
+                'ClimMode','manual','YColor',[0 0 0],'XColor',[0 0 0],'xtick',[],'ytick',[],'Tag',['CoronalAxes' num2str(subPop)])
+            daspect(gca,aspect([1 3 2]));
+            set(ddat.coronal_image{subPop},'ButtonDownFcn',{@image_button_press, 'cor'});
+            pos_cor = [ddat.sag, ddat.axi];
+            crosshair = plot_crosshair(pos_cor, [], gca);
+            ddat.coronal_xline{subPop} = crosshair.lx;
+            ddat.coronal_yline{subPop} = crosshair.ly;
+            
+            % Setup Sagital image
+            %test = findobj('Tag', ['SagittalAxes' num2str(subPop)] );
+            axes(findobj('Tag', ['SagittalAxes' num2str(subPop)] ));
+            ddat.sagittal_image{subPop} = image(Ssag);
+            set(gca,'YDir','normal','XLimMode','manual','YLimMode','manual',...
+                'ClimMode','manual','YColor',[0 0 0],'XColor',[0 0 0],'xtick',[],'ytick',[],'Tag',['SagittalAxes' num2str(subPop)])
+            daspect(gca,aspect([2 3 1]));
+            set(ddat.sagittal_image{subPop},'ButtonDownFcn',{@image_button_press, 'sag'});
+            pos_sag = [ddat.cor, ddat.axi];
+            crosshair = plot_crosshair(pos_sag, [], gca);
+            ddat.sagittal_xline{subPop} = crosshair.lx;
+            ddat.sagittal_yline{subPop} = crosshair.ly;
+            
+        end % end of sub population loop
+        
+        %%%%% Setup the Sliders %%%%
+        % Sagittal Slider
+        xslider_step(1) = 1/(ddat.xdim);
+        xslider_step(2) = 1.00001/(ddat.xdim);
+        set(findobj('Tag', 'SagSlider'), 'Min', 1, 'Max',ddat.xdim, ...
+            'SliderStep',xslider_step,'Value',ddat.sag); %%Sagittal Y-Z, adjust x direction
+        % Coronal Slider
+        yslider_step(1) = 1/(ddat.ydim);
+        yslider_step(2) = 1.00001/(ddat.ydim);
+        set(findobj('Tag', 'CorSlider'), 'Min', 1, 'Max',ddat.ydim, ...
+            'SliderStep',yslider_step,'Value',ddat.cor); %%Coronal X-Z, adjust y direction
+        % Axial Slider
+        zslider_step(1) = 1/(ddat.zdim);
+        zslider_step(2) = 1.00001/(ddat.zdim);
+        set(findobj('Tag', 'AxiSlider'), 'Min', 1, 'Max',ddat.zdim, ...
+            'SliderStep',zslider_step,'Value',ddat.axi);
+        
+        updateCrosshairValue;
+        redisplay;
+        updateInfoText;
+    end
+
 
 % SubPopulation Panel Functions
 % Function to allow the user to add another sub population to the list
@@ -2432,393 +3032,6 @@ function ViewSelectTable_cell_select(hObject, eventdata, handles)
             set(findobj('Tag', 'viewerInfo'), 'String', newString);
             
         end
-    end
-
-% Function to allow user to select sub populations to compare. Opens a
-% new window.
-    function compareSubPopulations(hObject, callbackdata)
-        newfig = figure('Units', 'normalized', ...,...
-            'position', [0.3 0.3 0.3 0.3],...
-            'MenuBar', 'none',...
-            'Tag','pickSubPops',...
-            'NumberTitle','off',...
-            'Name','Sub-Population Selection',...
-            'Resize','on',...
-            'Visible','on');%,...
-        subPopSelectDisplay = uitable('Parent', newfig, ...
-            'Units', 'Normalized', ...
-            'Position', [0.55, 0.3, 0.35, 0.5], ...
-            'Tag', 'subPopSelectDisplay'); %#ok<NASGU>
-        set(findobj('Tag', 'subPopSelectDisplay'), 'Data', get(findobj('Tag', 'subPopDisplay'), 'Data'));
-        set(findobj('Tag', 'subPopSelectDisplay'), 'RowName', get(findobj('Tag', 'subPopDisplay'), 'RowName'));
-        set(findobj('Tag', 'subPopSelectDisplay'), 'ColumnName', get(findobj('Tag', 'subPopDisplay'), 'ColumnName'));
-        subPopListBox = uicontrol('Style', 'listbox',...
-            'Parent', newfig, ...
-            'Units', 'Normalized', ...
-            'Position', [0.1, 0.3, 0.35, 0.5],...
-            'Tag', 'subPopListBox', 'Callback', @subPopSelectCall); %#ok<NASGU>
-        % set the list box to have the correct number of sub populations
-        set(findobj('Tag', 'subPopListBox'), 'String', get(findobj('Tag', 'subPopDisplay'), 'RowName') );
-        set(findobj('Tag', 'subPopListBox'), 'Max', 3);
-        numSelectedText = uicontrol('Parent', newfig, ...
-            'Style', 'Text', 'String', 'Number of selected sub-populations: ', ...
-            'Units', 'Normalized', ...
-            'Position', [0.10, 0.18, 0.4, 0.1]); %#ok<NASGU>
-        numSelected = uicontrol('Parent', newfig, ...
-            'Style', 'Text', ...
-            'Units', 'Normalized', ...
-            'Position', [0.50, 0.225, 0.05, 0.05], ...
-            'Tag', 'numSelected', 'BackgroundColor', 'white'); %#ok<NASGU>
-        runSubjCompare = uicontrol('Parent', newfig, ...
-            'Units', 'Normalized', ...
-            'String', 'Compare Selected Sub-Populations', ...
-            'Position', [0.3, 0.01, 0.4, 0.13], ...
-            'Tag', 'newSubPop', 'Callback', @launchCompareWindow); %#ok<NASGU>
-        movegui(newfig, 'center')
-    end
-
-% Function to launch a comparison window
-    function launchCompareWindow(hObject, callbackdata)
-        selectedSubPops = get(findobj('Tag', 'subPopListBox'), 'Value');
-        %close;
-        set(0,'CurrentFigure',hs.fig);
-        [~, ddat.nCompare] = size(selectedSubPops);
-        set(findobj('Tag', 'SubpopulationControl'), 'Visible', 'On');
-        set(findobj('Tag', 'SubpopulationControl'), 'BackgroundColor', 'White');
-        set(findobj('Tag', 'SubpopulationControl'), 'Position', [0.72, 0.70, 0.27, 0.29]);
-        set(findobj('Tag', 'subPopDisplay'), 'ColumnEditable', false);
-        set(findobj('Tag', 'newSubPop'), 'Visible', 'Off');
-        set(findobj('Tag', 'subPopSelect1'), 'Visible', 'Off');
-        set(findobj('Tag', 'compareSubPops'), 'Visible', 'Off');
-        expandSubPopulationPanel(selectedSubPops);
-        delete(hObject.Parent);
-    end
-
-% Counts the number of sub-populations selected.
-    function subPopSelectCall(hObject, callbackdata)
-        selectedPops = hObject.Value;
-        [nothing, numPop] = size(selectedPops);
-        set(findobj('Tag', 'numSelected'), 'String', num2str(numPop));
-    end
-
-% Function for the IC selection process. Creates the menu with all of
-% the ICs and whether or not they have been selected for the EM
-% algorithm.
-    function updateICSelMenu(hObject, callbackdata)
-        %global keeplist;
-        isSelected = callbackdata.Source.Value;
-        currentTable = get(findobj('Tag', 'icSelRef'), 'Data');
-        if isSelected
-            currentTable{get(findobj('Tag', 'ICselect'), 'Value'),2} = 'x';
-            keeplist(get(findobj('Tag', 'ICselect'), 'Value')) = 1;
-        else
-            currentTable{get(findobj('Tag', 'ICselect'), 'Value'),2} = '';
-            keeplist(get(findobj('Tag', 'ICselect'), 'Value')) = 0;
-        end
-        set(findobj('Tag', 'icSelRef'), 'Data', currentTable);
-    end
-
-% Functions from the task bar for display viewer switching
-% Function to switch to the sub population viewer.
-    function stSubPop(hObject, callbackdata)
-        if strcmp(ddat.type, 'subPopCompare')
-            revertToDisp;
-        end
-        ddat.type = 'subpop';
-        initialDisp;
-    end
-
-% Function to switch to the group level viewer.
-    function stGrp(hObject, callbackdata)
-        if strcmp(ddat.type, 'subPopCompare')
-            revertToDisp;
-        end
-        ddat.type = 'grp';
-        initialDisp;
-    end
-
-% Function to switch to the subject level viewer.
-    function stSubj(~, ~)
-        if strcmp(ddat.type, 'subPopCompare')
-            revertToDisp;
-        end
-        ddat.type = 'subj';
-        initialDisp;
-    end
-
-% Function to switch to the beta map viewer.
-    function stBeta(~, ~)
-        if strcmp(ddat.type, 'subPopCompare')
-            revertToDisp;
-        end
-        ddat.type = 'beta';
-        initialDisp;
-    end
-
-% Function to undo the changes made by the sub population compare
-% window
-    function revertToDisp(~, ~)
-        
-        set(findobj('Tag', 'closePanel'), 'Visible', 'Off')
-        
-        % Resize the viewer window to the correct size
-        hs.fig.Position = [0.3 0.3 0.5 0.5];
-        % Delete figure children added by the sub population display window
-        for iChild = 1:numel(hs.fig.Children)
-            if (isprop(hs.fig.Children(iChild),'Tag'))
-                if strcmp(hs.fig.Children(iChild).Tag, 'subPopDisplayPanel')
-                    delete(hs.fig.Children(iChild));
-                end
-            end
-        end
-        
-        displayPanel = uipanel('BackgroundColor','white',...
-            'Tag', 'viewingPanelNormal',...
-            'Position',[0, 0.5 1 0.5], ...;
-            'BackgroundColor',get(hs.fig,'color'));
-        % Windows
-        SagAxes = axes('Parent', displayPanel, ...
-            'Units', 'Normalized', ...
-            'Position',[0.01 0.18 0.27 .8],...
-            'Tag', 'SagittalAxes1' ); %#ok<NASGU>
-        CorAxes = axes('Parent', displayPanel, ...
-            'Position',[.30 .18 .27 .8],...
-            'Tag', 'CoronalAxes1' ); %#ok<NASGU>
-        AxiAxes = axes('Parent', displayPanel, ...
-            'Position',[.59 .18 .27 .8],...
-            'Tag', 'AxialAxes1' ); %#ok<NASGU>
-        % Sliders
-        SagSlider = uicontrol('Parent', displayPanel, ...
-            'Style', 'Slider', ...
-            'Units', 'Normalized', ...
-            'Position', [0.01, -0.3, 0.27, 0.4], ...
-            'Tag', 'SagSlider', 'Callback', @sagSliderMove); %#ok<NASGU>
-        CorSlider = uicontrol('Parent', displayPanel, ...
-            'Style', 'Slider', ...
-            'Units', 'Normalized', ...
-            'Position', [0.30, -0.3, 0.27, 0.4], ...
-            'Tag', 'CorSlider', 'Callback', @corSliderMove); %#ok<NASGU>
-        AxiSlider = uicontrol('Parent', displayPanel, ...
-            'Style', 'Slider', ...
-            'Units', 'Normalized', ...
-            'Position', [0.59, -0.3, 0.27, 0.4], ...
-            'Tag', 'AxiSlider', 'Callback', @axiSliderMove); %#ok<NASGU>
-        % Colorbar
-        colorMap = axes('Parent', displayPanel, ...
-            'units', 'Normalized',...
-            'Position', [0.90, 0.18, 0.05, 0.8], ...
-            'Tag', 'colorMap'); %#ok<NASGU>
-        
-        % Recolor the sub population display and put it in the correct
-        % place
-        set(findobj('Tag', 'SubpopulationControl'), 'Position', [.69, 0.01 .30 .45]);
-        set(findobj('Tag', 'SubpopulationControl'), 'BackgroundColor', [224/256,224/256,224/256]);
-        set(findobj('Tag', 'locPanel'), 'BackgroundColor', [224/256,224/256,224/256]);
-        set(findobj('Tag', 'icPanel'), 'BackgroundColor', [224/256,224/256,224/256]);
-        set(findobj('Tag', 'thresholdPanel'), 'BackgroundColor', [224/256,224/256,224/256]);
-        set(findobj('Tag', 'compareSubPops'), 'Visible', 'On');
-        set(findobj('Tag', 'newSubPop'), 'Visible', 'On');
-        set(findobj('Tag', 'subPopSelect1'), 'Visible', 'On');
-        set(findobj('Tag', 'subPopDisplay'), 'ColumnEditable', true);
-        
-    end
-
-% Close button for the IC selection window.
-    function closeICSelect(hObject, ~)
-        delete(hObject.Parent);
-    end
-
-% Beta Panel Functions
-% Function to allow the user to add another contrast to the list
-    function addNewContrast(hObject, callbackdata)
-        olddata = findobj('Tag', 'contrastDisplay'); olddim = size(olddata.Data);
-        oldrownames = olddata.RowName;
-        newTable = cell(olddim(1) + 1, ddat.p);
-        % Fill in all the old information
-        for column=1:olddim(2)
-            for row=1:olddim(1)
-                newTable(row, column) = olddata.Data(row,column);
-            end
-        end
-        % reassign the row names for the table
-        if olddim(1) == 0
-            newRowNames = ['C' num2str(olddim(1)+1)];
-        else
-            newRowNames = [oldrownames; ['C' num2str(olddim(1)+1)]];
-            newRowNames = cellstr(newRowNames);
-        end
-        
-        set(findobj('Tag', 'contrastDisplay'), 'Data', newTable);
-        set(findobj('Tag', 'contrastDisplay'), 'RowName', newRowNames);
-        % Make it so that only the main effects can be edited
-        ceditable = false(1, ddat.p);
-        ceditable(1:size(ddat.interactions,2)) = 1;
-        set(findobj('Tag', 'contrastDisplay'), 'ColumnEditable', ceditable);
-        
-        % change the drop down menu
-        newString = cell(olddim(1)+1,1);
-        oldstring = get(findobj('Tag', 'contrastSelect1'), 'String');
-        for i=1:olddim(1)
-            if (olddim(1) > 0)
-                newString(i) = {oldstring{i}};
-            else
-                newString(i) = {oldstring(:)'};
-            end
-        end
-        newString(olddim(1) + 1) = {['C' num2str(olddim(1)+1)]};
-        % Update all sub population selection viewers
-        for iPop = 1:ddat.nCompare
-            set(findobj('Tag', ['contrastSelect' num2str(iPop)]),'String', newString);
-        end
-        ddat.contrastExists = 1;
-    end
-
-    function removeContrast(hObject, callbackdata)
-        % Check that a contrast exists
-        if ddat.contrastExists == 1
-            % Keep track of if a contrast should be removed (vs user enter
-            % cancel)
-            removeContrast = 0;
-            % open a window asking which contrast to remove
-            waitingForResponse = 1;
-            while waitingForResponse
-                answer = inputdlg('Please enter contrast name to remove (C1, C2,...)')
-                if isempty(answer)
-                    waitingForResponse = 0;
-                    % if user input something, check that it is valid
-                else
-                    validContrasts = get(findobj('Tag', 'contrastDisplay'), 'RowName');
-                    matchedIndex = strfind(validContrasts, answer);
-                    % Reduce to just first match to guard against C1 and
-                    % C11
-                    removeIndex = 0;
-                    for iContrast = 1:length(validContrasts)
-                        % handle more than one contrast
-                        if iscell(validContrasts)
-                            if matchedIndex{iContrast} == 1
-                                removeIndex = iContrast;
-                                break; % break out of the loop
-                            end
-                            % handle only one contrast
-                        else
-                            if matchedIndex == 1
-                                removeIndex = iContrast;
-                                break; % break out of the loop
-                            end
-                        end
-                    end
-                    % If a valid contrast was entered, then proceed
-                    if removeIndex > 0
-                        waitingForResponse = 0;
-                        
-                        olddata = findobj('Tag', 'contrastDisplay'); olddim = size(olddata.Data);
-                        oldrownames = olddata.RowName;
-                        newTable = cell(olddim(1) - 1, ddat.p);
-                        % Fill in all the old information
-                        for column=1:olddim(2)
-                            incRow = 0;
-                            for row=1:olddim(1)
-                                if row ~= removeIndex
-                                    incRow = incRow + 1;
-                                    newTable(incRow, column) = olddata.Data(row,column);
-                                end
-                            end
-                        end
-                        
-                        % reassign the row names for the table
-                        if olddim(1) == 2
-                            newRowNames = ['C' num2str(1)];
-                        else
-                            newRowNames = oldrownames(1:olddim(1) - 1);
-                            newRowNames = cellstr(newRowNames);
-                        end
-                        
-                        set(findobj('Tag', 'contrastDisplay'), 'Data', newTable);
-                        set(findobj('Tag', 'contrastDisplay'), 'RowName', newRowNames);
-                        % Make it so that only the main effects can be edited
-                        ceditable = false(1, ddat.p);
-                        ceditable(1:size(ddat.interactions,2)) = 1;
-                        set(findobj('Tag', 'contrastDisplay'), 'ColumnEditable', ceditable);
-                        
-                        % change the drop down menu
-                        newString = cell(olddim(1)-1, 1);
-                        oldstring = get(findobj('Tag', 'contrastSelect1'), 'String');
-                        for i=1:olddim(1)-1
-                            if (olddim(1) > 1)
-                                newString(i) = {oldstring{i}};
-                            else
-                                newString(i) = {oldstring(:)'};
-                            end
-                        end
-                        %newString(olddim(1) + 1) = {['C' num2str(olddim(1)+1)]};
-                        
-                        % Finally, update what is being viewed.
-                        % Only have to do this if currently viewing a
-                        % contrast
-                        if ddat.viewingContrast
-                            currentSelection = get(findobj('Tag', ['contrastSelect' num2str(1)]),'Value');
-                            % If removed something above the current
-                            % selection, do nothing.
-                            % If removed current selection, switch to
-                            % regular cov viewer and tell user
-                            if currentSelection == removeIndex
-                                % turn off viewing contrast
-                                ddat.viewingContrast = 0;
-                                % switch the the selected covariate instead
-                                updateIC;
-                                set(findobj('Tag', ['contrastSelect' num2str(1)]),'Value', 1);
-                            end
-                            % If removed above current selection, just
-                            % switch the dropdown menu to reflect this
-                            if currentSelection > removeIndex
-                                set(findobj('Tag', ['contrastSelect' num2str(1)]),'Value', currentSelection - 1);
-                                updateContrastDisp;
-                            end
-                        end
-                        
-                        if olddim(1) - 1 == 0
-                            newString = 'No Contrast Created';
-                            ddat.contrastExists = 0;
-                            ddat.viewingContrast = 0;
-                            set(findobj('Tag', 'contrastDisplay'), 'RowName', {});
-                        end
-                        
-                        % Update all sub population selection viewers
-                        for iPop = 1:ddat.nCompare
-                            set(findobj('Tag', ['contrastSelect' num2str(iPop)]),'String', newString);
-                        end
-                        
-                        
-                    end
-                end
-            end
-            % update "viewing contrast" as well
-            % check that whatever is on screen is valid BE CAREFUL HERE!!
-        else
-            warnbox = warndlg('No contrasts have been specified')
-        end
-    end
-
-
-    function save_jpg(hObject, callbackdata)
-        
-        %saveas()
-        startString = fullfile(ddat.outdir, [ddat.outpre, '_myfigure.jpg']);
-        definput = {startString};
-        answer = inputdlg('Please enter the filename for the image.',...
-            'Input filename',...
-            [1, 70], definput);
-        
-        %picfig = figure('pos',[10 10 900 300]);
-        picfig = figure('units', 'normalized', 'pos', [0.2, 0.2, 0.6, 0.3]);
-        copyobj(findobj('tag', 'viewingPanelNormal'), picfig)
-        picfig.Children(1).Position = [0 0 1 1];
-        picfig.Children(1).Children(1).Visible = 'off';
-        picfig.Children(1).Children(2).Visible = 'off';
-        picfig.Children(1).Children(3).Visible = 'off';
-        
-        saveas(picfig, answer{1})
-        delete(picfig)
     end
 
 
