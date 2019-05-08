@@ -66,6 +66,7 @@ ddat.trajPreviousTag = ''; % string value of previously added line. used to clea
 
 % Keep track of what pops / visits are being viewed
 ddat.viewTracker = zeros(1, ddat.nVisit);
+ddat.viewTracker(1, 1) = 1;
 
 % Check if an instance of displayResults already running
 hs = findall(0,'tag','displayResults');
@@ -149,13 +150,16 @@ end
             SagAxes = axes('Parent', displayPanel, ...
                 'Units', 'Normalized', ...
                 'Position',[0.01 0.18 0.27 .8],...
-                'Tag', ['SagittalAxes1_' num2str(i)] );
+                'Tag', ['SagittalAxes1_' num2str(i)],...
+                'visible', 'off');
             CorAxes = axes('Parent', displayPanel, ...
                 'Position',[.30 .18 .27 .8],...
-                'Tag', ['CoronalAxes1_'  num2str(i)] );
+                'Tag', ['CoronalAxes1_'  num2str(i)],...
+                'visible', 'off' );
             AxiAxes = axes('Parent', displayPanel, ...
                 'Position',[.59 .18 .27 .8],...
-                'Tag', ['AxialAxes1_'  num2str(i)] );
+                'Tag', ['AxialAxes1_'  num2str(i)],...
+                'visible', 'off' );
         end
         
         
@@ -563,7 +567,7 @@ end
         % Cases: 1  maps - 50/50
         %        2  maps - 60/40
         %        3+ maps - 70/30
-        nMapsViewed = sum(ddat.viewTracker > 0)
+        nMapsViewed = sum(ddat.viewTracker > 0);
         switch sum(ddat.viewTracker > 0)
             case 1
                 y_use = 0.5;
@@ -759,7 +763,7 @@ end
 % This is based on nActiveMaps. The function handles create of new
 % settings and deletion of old settings. Note that this function is not the
 % one that handles figuring out which order the brain maps are input.
-    function set_number_of_brain_axes(varargin)
+    function set_number_of_brain_axes(redoAllMaps)
         
         % Get current number of displayed axes
         % To find number of axes, loop until object is not found
@@ -777,6 +781,9 @@ end
             warndlg('Something has gone horribly wrong, there are no maps to display')
         end
         
+        if redoAllMaps == 1
+            current_n_maps = 0;
+        end
         
         %%% Delete axes
         % thsi uses viewTrackers size because this is axes
@@ -796,20 +803,56 @@ end
         %%% Add axes
         if current_n_maps < size(ddat.viewTracker, 1)
             
+            %hs.fig.Children(3).Children(2)
+            aspect = 1./ddat.daspect;
+            
             for iaxes = (current_n_maps+1):size(ddat.viewTracker, 1)
                 for ivisit = 1:ddat.nVisit
-                    SagAxes = axes('Parent', displayPanel, ...
+                    
+                    SagAxes = axes('Parent', hs.fig.Children(3).Children(2), ...
                         'Units', 'Normalized', ...
                         'Tag', ['SagittalAxes' num2str(iaxes) '_' num2str(ivisit)],...
                         'visible', 'off' );
-                    CorAxes = axes('Parent', displayPanel, ...
+                    
+                    % Coronal Image
+                    CorAxes = axes('Parent', hs.fig.Children(3).Children(2), ...
                         'Units', 'Normalized',...
                         'Tag', ['CoronalAxes' num2str(iaxes) '_' num2str(ivisit)],...
                         'visible', 'off' );
-                    AxiAxes = axes('Parent', displayPanel, ...
+                    set(gca,'YDir','normal','XLimMode','manual','YLimMode','manual',...
+                        'ClimMode','manual','YColor',[0 0 0],'XColor',[0 0 0],...
+                        'xtick',[],'ytick',[],...
+                        'Tag',['CoronalAxes' num2str(iaxes) '_' num2str(ivisit)])
+                    daspect(gca, aspect([1 3 2]));
+                    % this is just to put image in place at creation,
+                    % actual displayed image comes from display function
+                    ddat.coronal_image{iaxes, ivisit} = image(ddat.coronal_image(1, 1));
+                    set(ddat.coronal_image{iaxes, ivisit},'ButtonDownFcn',...
+                        {@image_button_press, 'cor'});
+                    pos_cor = [ddat.sag, ddat.axi];
+                    crosshair = plot_crosshair(pos_cor, [], gca);
+                    ddat.coronal_xline{iaxes, ivisit} = crosshair.lx;
+                    ddat.coronal_yline{iaxes, ivisit} = crosshair.ly;
+                    
+                    % Axial Image
+                    AxiAxes = axes('Parent', hs.fig.Children(3).Children(2), ...
                         'Units', 'Normalized', ...
                         'Tag', ['AxialAxes' num2str(iaxes) '_' num2str(ivisit)],...
                         'visible', 'off');
+                    set(gca,'YDir','normal','XLimMode','manual','YLimMode','manual',...
+                    'ClimMode','manual','YColor',[0 0 0],'XColor',[0 0 0],...
+                    'xtick',[],'ytick',[],'Tag',['AxialAxes' num2str(iaxes) '_' num2str(ivisit)])
+                    daspect(gca,aspect([1 3 2]));
+                    % this is just to put image in place at creation,
+                    % actual displayed image comes from display function
+                    ddat.axial_image{iaxes, ivisit} = image(ddat.axial_image(1, 1));
+                    set(ddat.axial_image{subPop, currentVisitIndex},'ButtonDownFcn',...
+                        {@image_button_press, 'axi'});
+                    pos_axi = [ddat.sag, ddat.cor];
+                    crosshair = plot_crosshair(pos_axi, [], gca);
+                    ddat.axial_xline{iaxes, ivisit} = crosshair.lx;
+                    ddat.axial_yline{iaxes, ivisit} = crosshair.ly;
+                    
                 end
             end
             
@@ -1068,6 +1111,7 @@ end
 
 %%% initialDisp - sets up the initial state of the display window based
 % on the user selection (aggregate viewer, covariate effect viewer, etc)
+
     function initialDisp(hObject,callbackdata)
         set(findobj('Tag', 'thresholdSlider'), 'Value', 0);
         set(findobj('Tag', 'manualThreshold'), 'String', '0');
@@ -1306,10 +1350,15 @@ end
         ddat.roi_voxel = 0.1;
         
         % create the combined images
-        createCombinedImage;
+        %createCombinedImage;
+        
+        %% Using the new function in INITIAL DISP
+        update_brain_maps('updateCombinedImage', [1, 1])
+        
+        set_number_of_brain_axes(1)
         
         % Get the number of visits actively being viewed
-        nVisitViewed = numel(ddat.nActiveMaps);
+        nVisitViewed = sum(ddat.viewTracker > 0);
         
         % Loop over sub-populations filling out the images.
         for subPop=1:ddat.nCompare
@@ -1329,7 +1378,7 @@ end
                 aspect = 1./ddat.daspect;
                 
                 % Setup Axial Image
-                axes(findobj('Tag', ['AxialAxes' num2str(subPop)]));
+                axes(findobj('Tag', ['AxialAxes1_' num2str(iVisit)]));
                 ddat.axial_image{subPop, currentVisitIndex} = image(Saxial);
                 set(gca,'YDir','normal','XLimMode','manual','YLimMode','manual',...
                     'ClimMode','manual','YColor',[0 0 0],'XColor',[0 0 0],'xtick',[],'ytick',[],'Tag',['AxialAxes' num2str(subPop)])
@@ -1342,7 +1391,7 @@ end
                 ddat.axial_yline{subPop, currentVisitIndex} = crosshair.ly;
                 
                 % Setup Coronal Image
-                axes(findobj('Tag', ['CoronalAxes' num2str(subPop)] ));
+                axes(findobj('Tag', ['CoronalAxes1_' num2str(iVisit)] ));
                 ddat.coronal_image{subPop, currentVisitIndex} = image(Scor);
                 set(gca,'YDir','normal','XLimMode','manual','YLimMode','manual',...
                     'ClimMode','manual','YColor',[0 0 0],'XColor',[0 0 0],'xtick',[],'ytick',[],'Tag',['CoronalAxes' num2str(subPop)])
@@ -1354,7 +1403,7 @@ end
                 ddat.coronal_yline{subPop, currentVisitIndex} = crosshair.ly;
                 
                 % Setup Sagital image
-                axes(findobj('Tag', ['SagittalAxes' num2str(subPop, currentVisitIndex)] ));
+                axes(findobj('Tag', ['SagittalAxes1_' num2str(iVisit)] ));
                 ddat.sagittal_image{subPop, currentVisitIndex} = image(Ssag);
                 set(gca,'YDir','normal','XLimMode','manual','YLimMode','manual',...
                     'ClimMode','manual','YColor',[0 0 0],'XColor',[0 0 0],'xtick',[],'ytick',[],'Tag',['SagittalAxes' num2str(subPop)])
@@ -1391,15 +1440,15 @@ end
         set(findobj('Tag', 'crosshairPos'),'String',sprintf('%7.0d %7.0d %7.0d',ddat.sag,ddat.cor, ddat.axi));
         set(findobj('Tag', 'dimension'),'String',sprintf('%7.0d %7.0d %7.0d',ddat.xdim,ddat.ydim,ddat.zdim));
         
-        updateZImg;
+        %updateZImg;
         maskSearch;
         
         if ~strcmp(ddat.type, 'subpop')
-            editThreshold;
+            %editThreshold;
         end
         
         updateCrosshairValue;
-        redisplay;
+        %redisplay;
         updateInfoText;
     end
 
@@ -1580,11 +1629,29 @@ end
                     end
                     ddat.cor_mm = (ddat.cor-ddat.origin(2))*ddat.pixdim(2);
                     
-                    axesC = (findobj('Tag', ['CoronalAxes' num2str(axes_index)] ));
+                    axesC = (findobj('Tag', ['CoronalAxes' num2str(iRow) '_' num2str(iCol)] ));
+                    ddat.coronal_image{iRow, iCol} = image(Scor); % TODO can I do this step somewhere else?
                     set(ddat.coronal_image{iRow, iCol},'CData', Scor);
-                    axesC = (findobj('Tag', ['AxialAxes' num2str(axes_index)] ));
+                    %ddat.axial_image{subPop, currentVisitIndex} = image(Scor);
+                    % stuff below this can all be done when the item is
+                    % created!!!!
+%                     set(gca,'YDir','normal','XLimMode','manual','YLimMode','manual',...
+%                         'ClimMode','manual','YColor',[0 0 0],'XColor',[0 0 0],...
+%                         'xtick',[],'ytick',[],...
+%                         'Tag',['CoronalAxes' num2str(iRow) '_' num2str(iCol)])
+%                     daspect(gca,aspect([1 3 2]));
+%                     set(ddat.coronal_image{iRow, iCol},'ButtonDownFcn', {@image_button_press, 'cor'});
+%                     pos_cor = [ddat.sag, ddat.cor];
+%                     crosshair = plot_crosshair(pos_axi, [], gca);
+%                     ddat.axial_xline{subPop, currentVisitIndex} = crosshair.lx;
+%                     ddat.axial_yline{subPop, currentVisitIndex} = crosshair.ly;
+%                     
+                    
+                    axesC = (findobj('Tag', ['AxialAxes' num2str(iRow) '_' num2str(iCol)] ));
+                    ddat.axial_image{iRow, iCol} = image(Saxi);
                     set(ddat.axial_image{iRow, iCol},'CData',Saxi);
-                    axesC = (findobj('Tag', ['SagittalAxes' num2str(axes_index)] ));
+                    axesC = (findobj('Tag', ['SagittalAxes' num2str(iRow) '_' num2str(iCol)] ));
+                    ddat.sagittal_image{iRow, iCol} = image(Saxi);
                     set(ddat.sagittal_image{iRow, iCol},'CData',Ssag);
                     
                 end
