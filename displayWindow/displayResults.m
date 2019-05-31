@@ -786,8 +786,8 @@ end
         jet2=jet(64); jet2(38:end, :)=[];
         hot2=hot(64); hot2(end-5:end, :)=[]; hot2(1:4, :)=[];
         hot2(1:2:38, :)=[]; hot2(2:2:16, :)=[]; hot2=flipud(hot2);
-        hot3=[jet2; hot2]; ddat.hot3 = hot3;
-        ddat.highcolor = hot3;
+        hot3=[jet2; hot2]; ddat.hot3 = parula;
+        ddat.highcolor = parula;
         ddat.basecolor = gray(191);
         ddat.colorlevel = 256;
         
@@ -1046,9 +1046,9 @@ end
     function updateColorbar(hObject, callbackdata)
         %Get the 0.95 quantile to use as the min and max of the colorbar
         max_functmap_value = max(max(prctile(cat(ddat.nCompare,ddat.img{:}),95 ))); 
-        min_functmap_value = min(min(prctile(cat(ddat.nCompare,ddat.img{:}),95 )));
+        min_functmap_value = min(min(prctile(cat(ddat.nCompare,ddat.img{:}),5 )));
         maxval = max(max_functmap_value, abs(min_functmap_value));
-        max_functmap_value = maxval; min_functmap_value = -maxval;
+       % max_functmap_value = maxval; min_functmap_value = -maxval;
         incr_val=max_functmap_value/5;
         int_part=floor(incr_val); frac_part=incr_val-int_part;
         incr = int_part + round(frac_part*10)/10;
