@@ -31,7 +31,8 @@ hot2=flipud(hot2);
 hot3=[flipud(hot2); flipud(jet2)];
 
 % Set the new colormap as the colormap
-colormap(hot3);
+%colormap(hot3);
+colormap(parula);
 
 % Generate colorbar labels, xlimmode manual
 set(f, 'YlimMode', 'manual',...
