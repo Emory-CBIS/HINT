@@ -809,10 +809,6 @@ end
             for iaxes = (current_n_maps+1):size(ddat.viewTracker, 1)
                 for ivisit = 1:ddat.nVisit
                     
-                    SagAxes = axes('Parent', hs.fig.Children(3).Children(2), ...
-                        'Units', 'Normalized', ...
-                        'Tag', ['SagittalAxes' num2str(iaxes) '_' num2str(ivisit)],...
-                        'visible', 'off' );
                     
                     % Coronal Image
                     CorAxes = axes('Parent', hs.fig.Children(3).Children(2), ...
@@ -826,7 +822,8 @@ end
                     daspect(gca, aspect([1 3 2]));
                     % this is just to put image in place at creation,
                     % actual displayed image comes from display function
-                    ddat.coronal_image{iaxes, ivisit} = image(ddat.coronal_image(1, 1));
+                    %ddat.coronal_image{iaxes, ivisit} = image(ddat.coronal_image(1, 1));
+                    %ddat.coronal_image{iaxes, ivisit} = ddat.coronal_image(1, 1));
                     set(ddat.coronal_image{iaxes, ivisit},'ButtonDownFcn',...
                         {@image_button_press, 'cor'});
                     pos_cor = [ddat.sag, ddat.axi];
@@ -845,11 +842,30 @@ end
                     daspect(gca,aspect([1 3 2]));
                     % this is just to put image in place at creation,
                     % actual displayed image comes from display function
-                    ddat.axial_image{iaxes, ivisit} = image(ddat.axial_image(1, 1));
-                    set(ddat.axial_image{subPop, currentVisitIndex},'ButtonDownFcn',...
+                    %ddat.axial_image{iaxes, ivisit} = image(ddat.axial_image(1, 1));
+                    set(ddat.axial_image{iaxes, ivisit},'ButtonDownFcn',...
                         {@image_button_press, 'axi'});
                     pos_axi = [ddat.sag, ddat.cor];
                     crosshair = plot_crosshair(pos_axi, [], gca);
+                    ddat.axial_xline{iaxes, ivisit} = crosshair.lx;
+                    ddat.axial_yline{iaxes, ivisit} = crosshair.ly;
+                    
+                    % Sagittal Image
+                   SagAxes = axes('Parent', hs.fig.Children(3).Children(2), ...
+                        'Units', 'Normalized', ...
+                        'Tag', ['SagittalAxes' num2str(iaxes) '_' num2str(ivisit)],...
+                        'visible', 'off' );
+                   set(SagAxes,'YDir','normal','XLimMode','manual','YLimMode','manual',...
+                    'ClimMode','manual','YColor',[0 0 0],'XColor',[0 0 0],...
+                    'xtick',[],'ytick',[],'Tag',['SagittalAxes' num2str(iaxes) '_' num2str(ivisit)])
+                    daspect(gca,aspect([2 3 1]));
+                    % this is just to put image in place at creation,
+                    % actual displayed image comes from display function
+                    %ddat.axial_image{iaxes, ivisit} = image(ddat.axial_image(1, 1));
+                    set(ddat.sagittal_image{iaxes, ivisit},'ButtonDownFcn',...
+                        {@image_button_press, 'axi'});
+                    pos_sag = [ddat.axi, ddat.cor];
+                    crosshair = plot_crosshair(pos_sag, [], SagAxes);
                     ddat.axial_xline{iaxes, ivisit} = crosshair.lx;
                     ddat.axial_yline{iaxes, ivisit} = crosshair.ly;
                     
@@ -1361,62 +1377,62 @@ end
         nVisitViewed = sum(ddat.viewTracker > 0);
         
         % Loop over sub-populations filling out the images.
-        for subPop=1:ddat.nCompare
-            
-            % Loop over the active visits, note this might not be in
-            % numerical order
-            for iVisit = 1:nVisitViewed
-                currentVisitIndex = ddat.nActiveMaps(iVisit);
-                
-                % Fill out the images data.
-                for cl = 1:3
-                    Saxial(:, :, cl) = squeeze(ddat.combinedImg{subPop, currentVisitIndex}(cl).combound(:, :, ddat.axi))';
-                    Scor(:, :, cl) = squeeze(ddat.combinedImg{subPop, currentVisitIndex}(cl).combound(:,ddat.cor,:))';
-                    Ssag(:, :, cl) = squeeze(ddat.combinedImg{subPop, currentVisitIndex}(cl).combound(ddat.sag,:,:))';
-                end
-                
-                aspect = 1./ddat.daspect;
-                
-                % Setup Axial Image
-                axes(findobj('Tag', ['AxialAxes1_' num2str(iVisit)]));
-                ddat.axial_image{subPop, currentVisitIndex} = image(Saxial);
-                set(gca,'YDir','normal','XLimMode','manual','YLimMode','manual',...
-                    'ClimMode','manual','YColor',[0 0 0],'XColor',[0 0 0],'xtick',[],'ytick',[],'Tag',['AxialAxes' num2str(subPop)])
-                daspect(gca,aspect([1 3 2]));
-                %set(ddat.axial_image{subPop, currentVisitIndex},'ButtonDownFcn','get_pos_dispexp(''axi'');');
-                set(ddat.axial_image{subPop, currentVisitIndex},'ButtonDownFcn', {@image_button_press, 'axi'});
-                pos_axi = [ddat.sag, ddat.cor];
-                crosshair = plot_crosshair(pos_axi, [], gca);
-                ddat.axial_xline{subPop, currentVisitIndex} = crosshair.lx;
-                ddat.axial_yline{subPop, currentVisitIndex} = crosshair.ly;
-                
-                % Setup Coronal Image
-                axes(findobj('Tag', ['CoronalAxes1_' num2str(iVisit)] ));
-                ddat.coronal_image{subPop, currentVisitIndex} = image(Scor);
-                set(gca,'YDir','normal','XLimMode','manual','YLimMode','manual',...
-                    'ClimMode','manual','YColor',[0 0 0],'XColor',[0 0 0],'xtick',[],'ytick',[],'Tag',['CoronalAxes' num2str(subPop)])
-                daspect(gca,aspect([1 3 2]));
-                set(ddat.coronal_image{subPop, currentVisitIndex},'ButtonDownFcn', {@image_button_press, 'cor'});
-                pos_cor = [ddat.sag, ddat.axi];
-                crosshair = plot_crosshair(pos_cor, [], gca);
-                ddat.coronal_xline{subPop, currentVisitIndex} = crosshair.lx;
-                ddat.coronal_yline{subPop, currentVisitIndex} = crosshair.ly;
-                
-                % Setup Sagital image
-                axes(findobj('Tag', ['SagittalAxes1_' num2str(iVisit)] ));
-                ddat.sagittal_image{subPop, currentVisitIndex} = image(Ssag);
-                set(gca,'YDir','normal','XLimMode','manual','YLimMode','manual',...
-                    'ClimMode','manual','YColor',[0 0 0],'XColor',[0 0 0],'xtick',[],'ytick',[],'Tag',['SagittalAxes' num2str(subPop)])
-                daspect(gca,aspect([2 3 1]));
-                set(ddat.sagittal_image{subPop, currentVisitIndex},'ButtonDownFcn', {@image_button_press, 'sag'});
-                pos_sag = [ddat.cor, ddat.axi];
-                crosshair = plot_crosshair(pos_sag, [], gca);
-                ddat.sagittal_xline{subPop, currentVisitIndex} = crosshair.lx;
-                ddat.sagittal_yline{subPop, currentVisitIndex} = crosshair.ly;
-                
-            end % end of visit loop
-            
-        end % end of sub population loop
+%         for subPop=1:ddat.nCompare
+%             
+%             % Loop over the active visits, note this might not be in
+%             % numerical order
+%             for iVisit = 1:nVisitViewed
+%                 currentVisitIndex = ddat.nActiveMaps(iVisit);
+%                 
+%                 % Fill out the images data.
+%                 for cl = 1:3
+%                     Saxial(:, :, cl) = squeeze(ddat.combinedImg{subPop, currentVisitIndex}(cl).combound(:, :, ddat.axi))';
+%                     Scor(:, :, cl) = squeeze(ddat.combinedImg{subPop, currentVisitIndex}(cl).combound(:,ddat.cor,:))';
+%                     Ssag(:, :, cl) = squeeze(ddat.combinedImg{subPop, currentVisitIndex}(cl).combound(ddat.sag,:,:))';
+%                 end
+%                 
+%                 aspect = 1./ddat.daspect;
+%                 
+%                 % Setup Axial Image
+%                 axes(findobj('Tag', ['AxialAxes1_' num2str(iVisit)]));
+%                 ddat.axial_image{subPop, currentVisitIndex} = image(Saxial);
+%                 set(gca,'YDir','normal','XLimMode','manual','YLimMode','manual',...
+%                     'ClimMode','manual','YColor',[0 0 0],'XColor',[0 0 0],'xtick',[],'ytick',[],'Tag',['AxialAxes' num2str(subPop)])
+%                 daspect(gca,aspect([1 3 2]));
+%                 %set(ddat.axial_image{subPop, currentVisitIndex},'ButtonDownFcn','get_pos_dispexp(''axi'');');
+%                 set(ddat.axial_image{subPop, currentVisitIndex},'ButtonDownFcn', {@image_button_press, 'axi'});
+%                 pos_axi = [ddat.sag, ddat.cor];
+%                 crosshair = plot_crosshair(pos_axi, [], gca);
+%                 ddat.axial_xline{subPop, currentVisitIndex} = crosshair.lx;
+%                 ddat.axial_yline{subPop, currentVisitIndex} = crosshair.ly;
+%                 
+%                 % Setup Coronal Image
+%                 axes(findobj('Tag', ['CoronalAxes1_' num2str(iVisit)] ));
+%                 ddat.coronal_image{subPop, currentVisitIndex} = image(Scor);
+%                 set(gca,'YDir','normal','XLimMode','manual','YLimMode','manual',...
+%                     'ClimMode','manual','YColor',[0 0 0],'XColor',[0 0 0],'xtick',[],'ytick',[],'Tag',['CoronalAxes' num2str(subPop)])
+%                 daspect(gca,aspect([1 3 2]));
+%                 set(ddat.coronal_image{subPop, currentVisitIndex},'ButtonDownFcn', {@image_button_press, 'cor'});
+%                 pos_cor = [ddat.sag, ddat.axi];
+%                 crosshair = plot_crosshair(pos_cor, [], gca);
+%                 ddat.coronal_xline{subPop, currentVisitIndex} = crosshair.lx;
+%                 ddat.coronal_yline{subPop, currentVisitIndex} = crosshair.ly;
+%                 
+%                 % Setup Sagital image
+%                 axes(findobj('Tag', ['SagittalAxes1_' num2str(iVisit)] ));
+%                 ddat.sagittal_image{subPop, currentVisitIndex} = image(Ssag);
+%                 set(gca,'YDir','normal','XLimMode','manual','YLimMode','manual',...
+%                     'ClimMode','manual','YColor',[0 0 0],'XColor',[0 0 0],'xtick',[],'ytick',[],'Tag',['SagittalAxes' num2str(subPop)])
+%                 daspect(gca,aspect([2 3 1]));
+%                 set(ddat.sagittal_image{subPop, currentVisitIndex},'ButtonDownFcn', {@image_button_press, 'sag'});
+%                 pos_sag = [ddat.cor, ddat.axi];
+%                 crosshair = plot_crosshair(pos_sag, [], gca);
+%                 ddat.sagittal_xline{subPop, currentVisitIndex} = crosshair.lx;
+%                 ddat.sagittal_yline{subPop, currentVisitIndex} = crosshair.ly;
+%                 
+%             end % end of visit loop
+%             
+%         end % end of sub population loop
         
         %%%%% Set up each of the sliders %%%%%
         % Sagittal Slider
@@ -1569,7 +1585,6 @@ end
         
         
         
-        
     end
 
 % New version of the create combined image function
@@ -1610,6 +1625,8 @@ end
         
         [nRow, nCol] = size(ddat.img);
         
+        aspect = 1./ddat.daspect;
+        
         for iRow = 1:nRow
             for iCol = 1:nCol
                 
@@ -1630,7 +1647,10 @@ end
                     ddat.cor_mm = (ddat.cor-ddat.origin(2))*ddat.pixdim(2);
                     
                     axesC = (findobj('Tag', ['CoronalAxes' num2str(iRow) '_' num2str(iCol)] ));
-                    ddat.coronal_image{iRow, iCol} = image(Scor); % TODO can I do this step somewhere else?
+                    %daspect(axesC, aspect([1 3 2]));
+                    ddat.coronal_image{iRow, iCol} = image(axesC, Scor); % TODO can I do this step somewhere else?
+                    % re-add the tag b/c matlab deletes it for some reason
+                    set(axesC, 'tag', ['CoronalAxes' num2str(iRow) '_' num2str(iCol)]);
                     set(ddat.coronal_image{iRow, iCol},'CData', Scor);
                     %ddat.axial_image{subPop, currentVisitIndex} = image(Scor);
                     % stuff below this can all be done when the item is
@@ -1648,10 +1668,16 @@ end
 %                     
                     
                     axesC = (findobj('Tag', ['AxialAxes' num2str(iRow) '_' num2str(iCol)] ));
-                    ddat.axial_image{iRow, iCol} = image(Saxi);
+                    ddat.axial_image{iRow, iCol} = image(axesC, Saxi);
+                    % re-add the tag b/c matlab deletes it for some reason
+                    set(axesC, 'tag', ['AxialAxes' num2str(iRow) '_' num2str(iCol)]);
                     set(ddat.axial_image{iRow, iCol},'CData',Saxi);
+                    
+                    
                     axesC = (findobj('Tag', ['SagittalAxes' num2str(iRow) '_' num2str(iCol)] ));
-                    ddat.sagittal_image{iRow, iCol} = image(Saxi);
+                    ddat.sagittal_image{iRow, iCol} = image(axesC, Ssag);
+                    % re-add the tag b/c matlab deletes it for some reason
+                    set(axesC, 'tag', ['SagittalAxes' num2str(iRow) '_' num2str(iCol)]);
                     set(ddat.sagittal_image{iRow, iCol},'CData',Ssag);
                     
                 end
