@@ -846,7 +846,7 @@ end
                     set(ddat.axial_image{iaxes, ivisit},'ButtonDownFcn',...
                         {@image_button_press, 'axi'});
                     pos_axi = [ddat.sag, ddat.cor];
-                    crosshair = plot_crosshair(pos_axi, [], gca);
+                    crosshair = plot_crosshair(pos_axi, [], AxiAxes);
                     ddat.axial_xline{iaxes, ivisit} = crosshair.lx;
                     ddat.axial_yline{iaxes, ivisit} = crosshair.ly;
                     
@@ -866,6 +866,7 @@ end
                         {@image_button_press, 'sag'});
                     pos_sag = [ddat.cor, ddat.axi];
                     crosshair = plot_crosshair(pos_sag, [], SagAxes);
+                    %crosshair = plot_crosshair(pos_sag);
                     ddat.sagittal_xline{iaxes, ivisit} = crosshair.lx;
                     ddat.sagittal_yline{iaxes, ivisit} = crosshair.ly;
                     

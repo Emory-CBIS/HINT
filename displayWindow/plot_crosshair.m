@@ -85,13 +85,14 @@ else
  % Grab the parent object
  %figure(get(get(h_ax,'parent'), 'parent'));
  figure(get(get(get(h_ax,'parent'), 'parent'), 'parent'));
+ %figure(get(get(get(get(h_ax,'parent'), 'parent'), 'parent'), 'parent'));
  axes(h_ax);
 
  % add the crosshair line coordinates
   crosshair.lx = line('xdata', x_range, 'ydata', [p(2) p(2)], ...
-'zdata', [11 11], 'color', [1, 0, 0], 'hittest', 'off');
+    'zdata', [11 11], 'color', [1, 0, 0], 'hittest', 'off');
   crosshair.ly = line('xdata', [p(1) p(1)], 'ydata', y_range, ...
-'zdata', [11 11], 'color', [1, 0, 0], 'hittest', 'off');
+    'zdata', [11 11], 'color', [1, 0, 0], 'hittest', 'off');
 end
 
 set(h_ax,'xlim',x_range);
