@@ -781,23 +781,24 @@ end
             warndlg('Something has gone horribly wrong, there are no maps to display')
         end
         
-        if redoAllMaps == 1
-            current_n_maps = 0;
-        end
-        
         %%% Delete axes
         % thsi uses viewTrackers size because this is axes
         % creation/deletion NOT placement of maps
-        if current_n_maps > size(ddat.viewTracker, 1)
+        if current_n_maps > size(ddat.viewTracker, 1) || redoAllMaps == 1
             
-            warndlg('proper deletion has not yet been coded')
+            %warndlg('proper deletion has not yet been coded')
             
-            for iaxes = (ddat.nActiveMaps+1):current_n_maps
-                delete(findobj('tag', ['CoronalAxes' num2str(iaxes)]));
-                delete(findobj('tag', ['SagittalAxes' num2str(iaxes)]));
-                delete(findobj('tag', ['AxialAxes' num2str(iaxes)]));
+            %for iaxes = (ddat.nActiveMaps+1):current_n_maps
+            for iaxes = (ddat.nActiveMaps):current_n_maps
+                delete(findobj('tag', ['CoronalAxes' num2str(iaxes) '_' num2str(1)]));
+                delete(findobj('tag', ['SagittalAxes' num2str(iaxes) '_' num2str(1)]));
+                delete(findobj('tag', ['AxialAxes' num2str(iaxes) '_' num2str(1)]));
             end
             
+        end
+        
+        if redoAllMaps == 1
+            current_n_maps = 0;
         end
         
         %%% Add axes
@@ -824,12 +825,12 @@ end
                     % actual displayed image comes from display function
                     %ddat.coronal_image{iaxes, ivisit} = image(ddat.coronal_image(1, 1));
                     %ddat.coronal_image{iaxes, ivisit} = ddat.coronal_image(1, 1));
-                    set(ddat.coronal_image{iaxes, ivisit},'ButtonDownFcn',...
-                        {@image_button_press, 'cor'});
-                    pos_cor = [ddat.sag, ddat.axi];
-                    crosshair = plot_crosshair(pos_cor, [], CorAxes);
-                    ddat.coronal_xline{iaxes, ivisit} = crosshair.lx;
-                    ddat.coronal_yline{iaxes, ivisit} = crosshair.ly;
+%                     set(ddat.coronal_image{iaxes, ivisit},'ButtonDownFcn',...
+%                         {@image_button_press, 'cor'});
+%                     pos_cor = [ddat.sag, ddat.axi];
+%                     crosshair = plot_crosshair(pos_cor, [], CorAxes);
+%                     ddat.coronal_xline{iaxes, ivisit} = crosshair.lx;
+%                     ddat.coronal_yline{iaxes, ivisit} = crosshair.ly;
                     
                     % Axial Image
                     AxiAxes = axes('Parent', hs.fig.Children(3).Children(2), ...
@@ -862,19 +863,20 @@ end
                     % this is just to put image in place at creation,
                     % actual displayed image comes from display function
                     %ddat.axial_image{iaxes, ivisit} = image(ddat.axial_image(1, 1));
-                    set(ddat.sagittal_image{iaxes, ivisit},'ButtonDownFcn',...
-                        {@image_button_press, 'sag'});
-                    pos_sag = [ddat.cor, ddat.axi];
-                    crosshair = plot_crosshair(pos_sag, [], SagAxes);
-                    %crosshair = plot_crosshair(pos_sag);
-                    ddat.sagittal_xline{iaxes, ivisit} = crosshair.lx;
-                    ddat.sagittal_yline{iaxes, ivisit} = crosshair.ly;
+%                     set(ddat.sagittal_image{iaxes, ivisit},'ButtonDownFcn',...
+%                         {@image_button_press, 'sag'});
+%                     pos_sag = [ddat.cor, ddat.axi];
+%                     crosshair = plot_crosshair(pos_sag, [], SagAxes);
+%                     %crosshair = plot_crosshair(pos_sag);
+%                     ddat.sagittal_xline{iaxes, ivisit} = crosshair.lx;
+%                     ddat.sagittal_yline{iaxes, ivisit} = crosshair.ly;
                     
                 end
             end
             
         end
         
+        set_viewing_properties;
         
     end
 
@@ -1370,9 +1372,10 @@ end
         %createCombinedImage;
         
         %% Using the new function in INITIAL DISP
+        set_number_of_brain_axes(1)
         update_brain_maps('updateCombinedImage', [1, 1])
         
-        set_number_of_brain_axes(1)
+        %set_number_of_brain_axes(1)
         
         % Get the number of visits actively being viewed
         nVisitViewed = sum(ddat.viewTracker > 0);
@@ -1661,6 +1664,14 @@ end
                         'xtick',[],'ytick',[],...
                         'Tag',['CoronalAxes' num2str(iRow) '_' num2str(iCol)])
                     daspect(axesC,aspect([1 3 2]));
+                    
+                    set(ddat.coronal_image{iRow, iCol},'ButtonDownFcn',...
+                        {@image_button_press, 'cor'});
+                    pos_cor = [ddat.sag, ddat.axi];
+                    crosshair = plot_crosshair(pos_cor, [], axesC);
+                    ddat.coronal_xline{iRow, iCol} = crosshair.lx;
+                    ddat.coronal_yline{iRow, iCol} = crosshair.ly;
+                    
 %                     set(ddat.coronal_image{iRow, iCol},'ButtonDownFcn', {@image_button_press, 'cor'});
 %                     pos_cor = [ddat.sag, ddat.cor];
 %                     crosshair = plot_crosshair(pos_axi, [], axesC);
@@ -1678,6 +1689,12 @@ end
                         'xtick',[],'ytick',[],...
                         'Tag',['AxialAxes' num2str(iRow) '_' num2str(iCol)])
                     daspect(axesC,aspect([1 3 2]));
+                    set(ddat.axial_image{iRow, iCol},'ButtonDownFcn',...
+                        {@image_button_press, 'axi'});
+                    pos_axi = [ddat.sag, ddat.cor];
+                    crosshair = plot_crosshair(pos_axi, [], axesC);
+                    ddat.axial_xline{iRow, iCol} = crosshair.lx;
+                    ddat.axial_yline{iRow, iCol} = crosshair.ly;
                     
                     
                     axesC = (findobj('Tag', ['SagittalAxes' num2str(iRow) '_' num2str(iCol)] ));
@@ -1690,6 +1707,13 @@ end
                         'xtick',[],'ytick',[],...
                         'Tag',['SagittalAxes' num2str(iRow) '_' num2str(iCol)])
                     daspect(axesC,aspect([2 3 1]));
+                    set(ddat.sagittal_image{iRow, iCol},'ButtonDownFcn',...
+                        {@image_button_press, 'sag'});
+                    pos_sag = [ddat.cor, ddat.axi];
+                    crosshair = plot_crosshair(pos_sag, [], axesC);
+                    %crosshair = plot_crosshair(pos_sag);
+                    ddat.sagittal_xline{iRow, iCol} = crosshair.lx;
+                    ddat.sagittal_yline{iRow, iCol} = crosshair.ly;
                     
                 end
                 
