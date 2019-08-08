@@ -815,11 +815,11 @@ end
                         'Units', 'Normalized',...
                         'Tag', ['CoronalAxes' num2str(iaxes) '_' num2str(ivisit)],...
                         'visible', 'off' );
-                    set(gca,'YDir','normal','XLimMode','manual','YLimMode','manual',...
+                    set(CorAxes,'YDir','normal','XLimMode','manual','YLimMode','manual',...
                         'ClimMode','manual','YColor',[0 0 0],'XColor',[0 0 0],...
                         'xtick',[],'ytick',[],...
                         'Tag',['CoronalAxes' num2str(iaxes) '_' num2str(ivisit)])
-                    daspect(gca, aspect([1 3 2]));
+                    daspect(CorAxes, aspect([1 3 2]));
                     % this is just to put image in place at creation,
                     % actual displayed image comes from display function
                     %ddat.coronal_image{iaxes, ivisit} = image(ddat.coronal_image(1, 1));
@@ -827,7 +827,7 @@ end
                     set(ddat.coronal_image{iaxes, ivisit},'ButtonDownFcn',...
                         {@image_button_press, 'cor'});
                     pos_cor = [ddat.sag, ddat.axi];
-                    crosshair = plot_crosshair(pos_cor, [], gca);
+                    crosshair = plot_crosshair(pos_cor, [], CorAxes);
                     ddat.coronal_xline{iaxes, ivisit} = crosshair.lx;
                     ddat.coronal_yline{iaxes, ivisit} = crosshair.ly;
                     
@@ -836,10 +836,10 @@ end
                         'Units', 'Normalized', ...
                         'Tag', ['AxialAxes' num2str(iaxes) '_' num2str(ivisit)],...
                         'visible', 'off');
-                    set(gca,'YDir','normal','XLimMode','manual','YLimMode','manual',...
+                    set(AxiAxes,'YDir','normal','XLimMode','manual','YLimMode','manual',...
                     'ClimMode','manual','YColor',[0 0 0],'XColor',[0 0 0],...
                     'xtick',[],'ytick',[],'Tag',['AxialAxes' num2str(iaxes) '_' num2str(ivisit)])
-                    daspect(gca,aspect([1 3 2]));
+                    daspect(AxiAxes,aspect([1 3 2]));
                     % this is just to put image in place at creation,
                     % actual displayed image comes from display function
                     %ddat.axial_image{iaxes, ivisit} = image(ddat.axial_image(1, 1));
@@ -858,16 +858,16 @@ end
                    set(SagAxes,'YDir','normal','XLimMode','manual','YLimMode','manual',...
                     'ClimMode','manual','YColor',[0 0 0],'XColor',[0 0 0],...
                     'xtick',[],'ytick',[],'Tag',['SagittalAxes' num2str(iaxes) '_' num2str(ivisit)])
-                    daspect(gca,aspect([2 3 1]));
+                    daspect(SagAxes,aspect([2 3 1]));
                     % this is just to put image in place at creation,
                     % actual displayed image comes from display function
                     %ddat.axial_image{iaxes, ivisit} = image(ddat.axial_image(1, 1));
                     set(ddat.sagittal_image{iaxes, ivisit},'ButtonDownFcn',...
-                        {@image_button_press, 'axi'});
-                    pos_sag = [ddat.axi, ddat.cor];
+                        {@image_button_press, 'sag'});
+                    pos_sag = [ddat.cor, ddat.axi];
                     crosshair = plot_crosshair(pos_sag, [], SagAxes);
-                    ddat.axial_xline{iaxes, ivisit} = crosshair.lx;
-                    ddat.axial_yline{iaxes, ivisit} = crosshair.ly;
+                    ddat.sagittal_xline{iaxes, ivisit} = crosshair.lx;
+                    ddat.sagittal_yline{iaxes, ivisit} = crosshair.ly;
                     
                 end
             end
@@ -1655,14 +1655,14 @@ end
                     %ddat.axial_image{subPop, currentVisitIndex} = image(Scor);
                     % stuff below this can all be done when the item is
                     % created!!!!
-%                     set(gca,'YDir','normal','XLimMode','manual','YLimMode','manual',...
-%                         'ClimMode','manual','YColor',[0 0 0],'XColor',[0 0 0],...
-%                         'xtick',[],'ytick',[],...
-%                         'Tag',['CoronalAxes' num2str(iRow) '_' num2str(iCol)])
-%                     daspect(gca,aspect([1 3 2]));
+                    set(axesC,'YDir','normal','XLimMode','manual','YLimMode','manual',...
+                        'ClimMode','manual','YColor',[0 0 0],'XColor',[0 0 0],...
+                        'xtick',[],'ytick',[],...
+                        'Tag',['CoronalAxes' num2str(iRow) '_' num2str(iCol)])
+                    daspect(axesC,aspect([1 3 2]));
 %                     set(ddat.coronal_image{iRow, iCol},'ButtonDownFcn', {@image_button_press, 'cor'});
 %                     pos_cor = [ddat.sag, ddat.cor];
-%                     crosshair = plot_crosshair(pos_axi, [], gca);
+%                     crosshair = plot_crosshair(pos_axi, [], axesC);
 %                     ddat.axial_xline{subPop, currentVisitIndex} = crosshair.lx;
 %                     ddat.axial_yline{subPop, currentVisitIndex} = crosshair.ly;
 %                     
@@ -1672,6 +1672,11 @@ end
                     % re-add the tag b/c matlab deletes it for some reason
                     set(axesC, 'tag', ['AxialAxes' num2str(iRow) '_' num2str(iCol)]);
                     set(ddat.axial_image{iRow, iCol},'CData',Saxi);
+                    set(axesC,'YDir','normal','XLimMode','manual','YLimMode','manual',...
+                        'ClimMode','manual','YColor',[0 0 0],'XColor',[0 0 0],...
+                        'xtick',[],'ytick',[],...
+                        'Tag',['AxialAxes' num2str(iRow) '_' num2str(iCol)])
+                    daspect(axesC,aspect([1 3 2]));
                     
                     
                     axesC = (findobj('Tag', ['SagittalAxes' num2str(iRow) '_' num2str(iCol)] ));
@@ -1679,6 +1684,11 @@ end
                     % re-add the tag b/c matlab deletes it for some reason
                     set(axesC, 'tag', ['SagittalAxes' num2str(iRow) '_' num2str(iCol)]);
                     set(ddat.sagittal_image{iRow, iCol},'CData',Ssag);
+                    set(axesC,'YDir','normal','XLimMode','manual','YLimMode','manual',...
+                        'ClimMode','manual','YColor',[0 0 0],'XColor',[0 0 0],...
+                        'xtick',[],'ytick',[],...
+                        'Tag',['SagittalAxes' num2str(iRow) '_' num2str(iCol)])
+                    daspect(axesC,aspect([2 3 1]));
                     
                 end
                 
