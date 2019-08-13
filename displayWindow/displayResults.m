@@ -580,6 +580,7 @@ end
         curr_setting_viewer = get(findobj('tag', 'viewingPanelNormal'), 'position');
         curr_setting_ctrl   = get(findobj('tag', 'ControlPanel'), 'position');
         % Edit the height the two boxes get
+        curr_setting_viewer(2) = 1.0 - y_use + 0.01;
         curr_setting_viewer(4) = y_use;
         curr_setting_ctrl(4)   = 1.0 - y_use;
         % Set to the new proportion
@@ -599,9 +600,9 @@ end
 %             spos = [0.01 0.18 0.27 .8];
 %             cpos = [.30 .18 .27 .8];
 %             apos = [.59 .18 .27 .8];
-            spos = [0.01 (0.18 + (i-1)/nMapsViewed) 0.27 1/nMapsViewed];
-            cpos = [.30 (.18 +(i-1)/nMapsViewed) .27 1/nMapsViewed];
-            apos = [.59 (.18+(i-1)/nMapsViewed) .27 1/nMapsViewed];
+            spos = [0.01 (0.18 + (i-1)/nMapsViewed) 0.27 0.82/nMapsViewed];
+            cpos = [.30 (.18 +(i-1)/nMapsViewed) .27 0.82/nMapsViewed];
+            apos = [.59 (.18+(i-1)/nMapsViewed) .27 0.82/nMapsViewed];
 
             % Move the maps to their positions
             set(findobj('Tag', ['CoronalAxes'  num2str(selected_pop) '_'...
@@ -704,6 +705,7 @@ end
             % of the img object we load in
             visit_number = str2double(eventdata.Source.RowName{selected_row}(end-1:end));
             
+            
             % If not viewed, add to viewer, else remove
             if strcmp(eventdata.Source.Data{selected_row, 1}, 'no')
                 
@@ -715,12 +717,15 @@ end
                 ddat.viewTracker( ddat.viewTracker > 0 ) = cumsum( ddat.viewTracker(ddat.viewTracker > 0)); % renumber
                 
                 % Update axes visibility
-                set(findobj('Tag', ['CoronalAxes'  num2str(selected_pop) '_'...
-                    num2str(visit_number)] ) , 'visible', 'on');
-                set(findobj('Tag', ['AxialAxes'    num2str(selected_pop) '_'...
-                    num2str(visit_number)] ) , 'visible', 'on');
-                set(findobj('Tag', ['SagittalAxes' num2str(selected_pop) '_'...
-                    num2str(visit_number)] ) , 'visible', 'on');
+%                 set(findobj('Tag', ['CoronalAxes'  num2str(selected_pop) '_'...
+%                     num2str(visit_number)] ) , 'visible', 'on');
+%                 set(findobj('Tag', ['AxialAxes'    num2str(selected_pop) '_'...
+%                     num2str(visit_number)] ) , 'visible', 'on');
+%                 set(findobj('Tag', ['SagittalAxes' num2str(selected_pop) '_'...
+%                     num2str(visit_number)] ) , 'visible', 'on');
+
+                % Update axes existence
+                set_number_of_brain_axes(0);
                 
                 % Refresh the display window with the new row
                 update_brain_maps('updateCombinedImage', [selected_pop, visit_number]);
@@ -784,15 +789,23 @@ end
         %%% Delete axes
         % thsi uses viewTrackers size because this is axes
         % creation/deletion NOT placement of maps
-        if current_n_maps > size(ddat.viewTracker, 1) || redoAllMaps == 1
+        if current_n_maps > sum(ddat.viewTracker > 0) || redoAllMaps == 1
             
-            %warndlg('proper deletion has not yet been coded')
-            
-            %for iaxes = (ddat.nActiveMaps+1):current_n_maps
-            for iaxes = (ddat.nActiveMaps):current_n_maps
-                delete(findobj('tag', ['CoronalAxes' num2str(iaxes) '_' num2str(1)]));
-                delete(findobj('tag', ['SagittalAxes' num2str(iaxes) '_' num2str(1)]));
-                delete(findobj('tag', ['AxialAxes' num2str(iaxes) '_' num2str(1)]));
+            % Loop through possibilities and remove things that shouldnt be
+            % there
+            for iPop = 1:size(ddat.viewTracker, 1)
+                for iVisit = 1:size(ddat.viewTracker, 2)
+                    
+                    % Check removal criteria
+                    if redoAllMaps == 1 || ddat.viewTracker(iPop, iVisit) == 0
+                        if ~isempty(findobj('tag', ['CoronalAxes' num2str(iPop) '_' num2str(iVisit)]))
+                            delete(findobj('tag', ['CoronalAxes' num2str(iPop) '_' num2str(iVisit)]));
+                            delete(findobj('tag', ['SagittalAxes' num2str(iPop) '_' num2str(iVisit)]));
+                            delete(findobj('tag', ['AxialAxes' num2str(iPop) '_' num2str(iVisit)]));
+                        end
+                    end
+                                            
+                end
             end
             
         end
@@ -1379,64 +1392,6 @@ end
         
         % Get the number of visits actively being viewed
         nVisitViewed = sum(ddat.viewTracker > 0);
-        
-        % Loop over sub-populations filling out the images.
-%         for subPop=1:ddat.nCompare
-%             
-%             % Loop over the active visits, note this might not be in
-%             % numerical order
-%             for iVisit = 1:nVisitViewed
-%                 currentVisitIndex = ddat.nActiveMaps(iVisit);
-%                 
-%                 % Fill out the images data.
-%                 for cl = 1:3
-%                     Saxial(:, :, cl) = squeeze(ddat.combinedImg{subPop, currentVisitIndex}(cl).combound(:, :, ddat.axi))';
-%                     Scor(:, :, cl) = squeeze(ddat.combinedImg{subPop, currentVisitIndex}(cl).combound(:,ddat.cor,:))';
-%                     Ssag(:, :, cl) = squeeze(ddat.combinedImg{subPop, currentVisitIndex}(cl).combound(ddat.sag,:,:))';
-%                 end
-%                 
-%                 aspect = 1./ddat.daspect;
-%                 
-%                 % Setup Axial Image
-%                 axes(findobj('Tag', ['AxialAxes1_' num2str(iVisit)]));
-%                 ddat.axial_image{subPop, currentVisitIndex} = image(Saxial);
-%                 set(gca,'YDir','normal','XLimMode','manual','YLimMode','manual',...
-%                     'ClimMode','manual','YColor',[0 0 0],'XColor',[0 0 0],'xtick',[],'ytick',[],'Tag',['AxialAxes' num2str(subPop)])
-%                 daspect(gca,aspect([1 3 2]));
-%                 %set(ddat.axial_image{subPop, currentVisitIndex},'ButtonDownFcn','get_pos_dispexp(''axi'');');
-%                 set(ddat.axial_image{subPop, currentVisitIndex},'ButtonDownFcn', {@image_button_press, 'axi'});
-%                 pos_axi = [ddat.sag, ddat.cor];
-%                 crosshair = plot_crosshair(pos_axi, [], gca);
-%                 ddat.axial_xline{subPop, currentVisitIndex} = crosshair.lx;
-%                 ddat.axial_yline{subPop, currentVisitIndex} = crosshair.ly;
-%                 
-%                 % Setup Coronal Image
-%                 axes(findobj('Tag', ['CoronalAxes1_' num2str(iVisit)] ));
-%                 ddat.coronal_image{subPop, currentVisitIndex} = image(Scor);
-%                 set(gca,'YDir','normal','XLimMode','manual','YLimMode','manual',...
-%                     'ClimMode','manual','YColor',[0 0 0],'XColor',[0 0 0],'xtick',[],'ytick',[],'Tag',['CoronalAxes' num2str(subPop)])
-%                 daspect(gca,aspect([1 3 2]));
-%                 set(ddat.coronal_image{subPop, currentVisitIndex},'ButtonDownFcn', {@image_button_press, 'cor'});
-%                 pos_cor = [ddat.sag, ddat.axi];
-%                 crosshair = plot_crosshair(pos_cor, [], gca);
-%                 ddat.coronal_xline{subPop, currentVisitIndex} = crosshair.lx;
-%                 ddat.coronal_yline{subPop, currentVisitIndex} = crosshair.ly;
-%                 
-%                 % Setup Sagital image
-%                 axes(findobj('Tag', ['SagittalAxes1_' num2str(iVisit)] ));
-%                 ddat.sagittal_image{subPop, currentVisitIndex} = image(Ssag);
-%                 set(gca,'YDir','normal','XLimMode','manual','YLimMode','manual',...
-%                     'ClimMode','manual','YColor',[0 0 0],'XColor',[0 0 0],'xtick',[],'ytick',[],'Tag',['SagittalAxes' num2str(subPop)])
-%                 daspect(gca,aspect([2 3 1]));
-%                 set(ddat.sagittal_image{subPop, currentVisitIndex},'ButtonDownFcn', {@image_button_press, 'sag'});
-%                 pos_sag = [ddat.cor, ddat.axi];
-%                 crosshair = plot_crosshair(pos_sag, [], gca);
-%                 ddat.sagittal_xline{subPop, currentVisitIndex} = crosshair.lx;
-%                 ddat.sagittal_yline{subPop, currentVisitIndex} = crosshair.ly;
-%                 
-%             end % end of visit loop
-%             
-%         end % end of sub population loop
         
         %%%%% Set up each of the sliders %%%%%
         % Sagittal Slider
