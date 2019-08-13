@@ -600,9 +600,9 @@ end
 %             spos = [0.01 0.18 0.27 .8];
 %             cpos = [.30 .18 .27 .8];
 %             apos = [.59 .18 .27 .8];
-            spos = [0.01 (0.18 + (i-1)/nMapsViewed) 0.27 0.82/nMapsViewed];
-            cpos = [.30 (.18 +(i-1)/nMapsViewed) .27 0.82/nMapsViewed];
-            apos = [.59 (.18+(i-1)/nMapsViewed) .27 0.82/nMapsViewed];
+            spos = [0.01 (.18 + 0.82*(i-1)/nMapsViewed) .27 0.82/nMapsViewed];
+            cpos = [0.30 (.18 + 0.82*(i-1)/nMapsViewed) .27 0.82/nMapsViewed];
+            apos = [0.59 (.18 + 0.82*(i-1)/nMapsViewed) .27 0.82/nMapsViewed];
 
             % Move the maps to their positions
             set(findobj('Tag', ['CoronalAxes'  num2str(selected_pop) '_'...
