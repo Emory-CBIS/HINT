@@ -751,6 +751,9 @@ end
                 set(findobj('Tag', ['SagittalAxes' num2str(selected_pop) '_'...
                     num2str(visit_number)] ) , 'visible', 'off');
                 
+                % Update axes existence
+                set_number_of_brain_axes(0);
+                
                 % Refresh the display window - remove the row from img,
                 % oimg, scaled image
                 update_brain_maps('updateCombinedImage', [selected_pop, visit_number]);
