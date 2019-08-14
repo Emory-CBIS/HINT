@@ -1184,9 +1184,9 @@ end
 %% Shared button press function
     function image_button_press(src, event, type, varargin)
         if ~isempty(varargin)
-            get_pos_dispexp(type, varargin{1});
+            position_information_update(type, varargin{1});
         else
-            get_pos_dispexp(type);
+            position_information_update(type);
         end
         plot_voxel_trajectory([ddat.sag, ddat.cor, ddat.axi]);
     end
@@ -1735,6 +1735,200 @@ end
     end
 
 
+%% Slider Movement
+
+% Update sagittal slider.
+    function sagSliderMove(hObject, callbackdata)
+        
+        % Loop over populations and visits
+        for iPop = 1:ddat.nCompare
+            for iVisit = 1:ddat.nVisit
+                
+                if ddat.viewTracker(iPop, iVisit) > 0
+                
+                axes(findobj('Tag', ['SagittalAxes' num2str(iPop) '_' num2str(iVisit)]));
+                ddat.sag = round(get(hObject, 'Value'));
+                for cl = 1:3
+                    Ssag(:, :, cl) = squeeze(ddat.combinedImg{iPop, iVisit}(cl).combound(ddat.sag, :, :))';
+                end
+                set(ddat.sagittal_image{iPop, iVisit},'CData',Ssag);
+                set(ddat.axial_yline{iPop, iVisit},'Xdata',[ddat.sag ddat.sag]);
+                set(ddat.coronal_yline{iPop, iVisit},'Xdata',[ddat.sag ddat.sag]);
+                set(findobj('Tag','crosshairPos'),'String',...
+                    sprintf('%7.0d %7.0d %7.0d',ddat.sag,ddat.cor, ddat.axi));
+                updateInfoText;
+%                 if ddat.nCompare == 1
+%                     if get(findobj('Tag', 'viewZScores'), 'Value') == 0
+%                         set(findobj('Tag', 'crosshairVal1'),'String',...
+%                             sprintf('Value at Voxel: %4.2f', ddat.img{1}(ddat.sag, ddat.cor, ddat.axi)));
+%                     elseif get(findobj('Tag', 'viewZScores'), 'Value') == 1
+%                         set(findobj('Tag', 'crosshairVal1'),'String',...
+%                             sprintf('Z = %4.2f', ddat.img{1}(ddat.sag, ddat.cor, ddat.axi)));
+%                     end
+%                 else
+%                     if get(findobj('Tag', 'viewZScores'), 'Value') == 0
+%                         for iPop = 1:ddat.nCompare
+%                             set(findobj('Tag', ['crosshairVal' num2str(iPop)]),'String',...
+%                                 sprintf('Value at Voxel: %4.2f',...
+%                                 ddat.img{iPop}(ddat.sag, ddat.cor, ddat.axi)));
+%                         end
+%                     else
+%                         for iPop = 1:ddat.nCompare
+%                             set(findobj('Tag', ['crosshairVal' num2str(iPop)]),'String',...
+%                                 sprintf('Z = %4.2f',...
+%                                 ddat.img{iPop}(ddat.sag, ddat.cor, ddat.axi)));
+%                         end
+%                     end
+%                 end
+%                 valId = cell2mat(ddat.total_region_name(:, 1));
+%                 curIdVal = ddat.region_struct.img(ddat.sag, ddat.cor, ddat.axi);
+%                 curIdPos = find(ismember(valId, curIdVal));
+%                 if curIdPos
+%                     set(findobj('Tag', 'curInfo'), 'ForegroundColor','g',...
+%                         'FontSize', 10, 'HorizontalAlignment', 'left', 'String', ...
+%                         sprintf('Current crosshair is located in the region: %s', ...
+%                         ddat.total_region_name{curIdPos, 2}));
+%                 else
+%                     set(findobj('Tag', 'curInfo'), 'String', '');
+%                 end
+                end
+
+        
+            % Add the currently selected voxel to the trajectory plot
+            if ddat.trajectoryActive == 1
+                plot_voxel_trajectory([ddat.sag, ddat.cor, ddat.axi])
+            end
+            end
+        end
+        
+    end
+
+% Update coronal slider.
+    function corSliderMove(hObject, callbackdata)
+         % Loop over populations and visits
+        for iPop = 1:ddat.nCompare
+            for iVisit = 1:ddat.nVisit
+                if ddat.viewTracker(iPop, iVisit) > 0
+            axes(findobj('Tag', ['CoronalAxes' num2str(iPop) '_' num2str(iVisit)]));
+            ddat.cor = round(get(hObject, 'Value'));
+            for cl = 1:3
+                Scor(:, :, cl) = squeeze(ddat.combinedImg{iPop, iVisit}(cl).combound(:,ddat.cor,:))';
+            end
+            set(ddat.coronal_image{iPop, iVisit},'CData',Scor);
+            set(ddat.axial_xline{iPop, iVisit},'Ydata',[ddat.cor ddat.cor]);
+            set(ddat.sagittal_yline{iPop, iVisit},'Xdata',[ddat.cor ddat.cor]);
+            set(findobj('Tag','crosshairPos'),'String',...
+                sprintf('%7.0d %7.0d %7.0d',ddat.sag,ddat.cor, ddat.axi));
+            updateInfoText;
+%             if ddat.nCompare == 1
+%                 if get(findobj('Tag', 'viewZScores'), 'Value') == 0
+%                     set(findobj('Tag', 'crosshairVal1'),'String',...
+%                         sprintf('Value at Voxel: %4.2f', ddat.img{1}(ddat.sag, ddat.cor, ddat.axi)));
+%                 elseif get(findobj('Tag', 'viewZScores'), 'Value') == 1
+%                     set(findobj('Tag', 'crosshairVal1'),'String',...
+%                         sprintf('Z = %4.2f', ddat.img{1}(ddat.sag, ddat.cor, ddat.axi)));
+%                 end
+%             else
+%                 if get(findobj('Tag', 'viewZScores'), 'Value') == 0
+%                     for iPop = 1:ddat.nCompare
+%                         set(findobj('Tag', ['crosshairVal' num2str(iPop)]),'String',...
+%                             sprintf('Value at Voxel: %4.2f',...
+%                             ddat.img{iPop}(ddat.sag, ddat.cor, ddat.axi)));
+%                     end
+%                 else
+%                     for iPop = 1:ddat.nCompare
+%                         set(findobj('Tag', ['crosshairVal' num2str(iPop)]),'String',...
+%                             sprintf('Z = %4.2f',...
+%                             ddat.img{iPop}(ddat.sag, ddat.cor, ddat.axi)));
+%                     end
+%                 end
+%             end
+%             valId = cell2mat(ddat.total_region_name(:, 1));
+%             curIdVal = ddat.region_struct.img(ddat.sag, ddat.cor, ddat.axi);
+%             curIdPos = find(ismember(valId, curIdVal));
+%             if curIdPos
+%                 set(findobj('Tag', 'curInfo'), 'ForegroundColor','g',...
+%                     'FontSize', 10, 'HorizontalAlignment', 'left', 'String', ...
+%                     sprintf('Current crosshair is located in the region: %s', ...
+%                     ddat.total_region_name{curIdPos, 2}));
+%             else
+%                 set(findobj('Tag', 'curInfo'), 'String', '');
+%             end
+        
+        % Add the currently selected voxel to the trajectory plot
+        if ddat.trajectoryActive == 1
+            plot_voxel_trajectory([ddat.sag, ddat.cor, ddat.axi])
+        end
+            end
+            end
+        end
+        
+    end
+
+% Update axial slider.
+    function axiSliderMove(hObject, callbackdata)
+        % Loop over populations and visits
+        for iPop = 1:ddat.nCompare
+            for iVisit = 1:ddat.nVisit
+                if ddat.viewTracker(iPop, iVisit) > 0
+            axes(findobj('Tag', ['AxialAxes' num2str(iPop, iVisit)]));
+            ddat.axi = round(get(hObject, 'Value'));
+            for cl = 1:3
+                Saxi(:, :, cl) = squeeze(ddat.combinedImg{iPop, iVisit}(cl).combound(:, :, ddat.axi))';
+            end
+            set(ddat.axial_image{iPop, iVisit},'CData',Saxi);
+            set(ddat.coronal_xline{iPop, iVisit},'Ydata',[ddat.axi ddat.axi]);
+            set(ddat.sagittal_xline{iPop, iVisit},'Ydata',[ddat.axi ddat.axi]);
+            set(findobj('Tag','crosshairPos'),'String',...
+                sprintf('%7.0d %7.0d %7.0d',ddat.sag,ddat.cor, ddat.axi));
+            updateInfoText;
+            disp('move update info text for slider functions')
+%             if ddat.nCompare == 1
+%                 if get(findobj('Tag', 'viewZScores'), 'Value') == 0
+%                     set(findobj('Tag', 'crosshairVal1'),'String',...
+%                         sprintf('Value at Voxel: %4.2f', ddat.img{1}(ddat.sag, ddat.cor, ddat.axi)));
+%                 elseif get(findobj('Tag', 'viewZScores'), 'Value') == 1
+%                     set(findobj('Tag', 'crosshairVal1'),'String',...
+%                         sprintf('Z = %4.2f', ddat.img{1}(ddat.sag, ddat.cor, ddat.axi)));
+%                 end
+%             else
+%                 if get(findobj('Tag', 'viewZScores'), 'Value') == 0
+%                     for iPop = 1:ddat.nCompare
+%                         set(findobj('Tag', ['crosshairVal' num2str(iPop)]),'String',...
+%                             sprintf('Value at Voxel: %4.2f',...
+%                             ddat.img{iPop}(ddat.sag, ddat.cor, ddat.axi)));
+%                     end
+%                 else
+%                     for iPop = 1:ddat.nCompare
+%                         set(findobj('Tag', ['crosshairVal' num2str(iPop)]),'String',...
+%                             sprintf('Z = %4.2f',...
+%                             ddat.img{iPop}(ddat.sag, ddat.cor, ddat.axi)));
+%                     end
+%                 end
+%             end
+%             valId = cell2mat(ddat.total_region_name(:, 1));
+%             curIdVal = ddat.region_struct.img(ddat.sag, ddat.cor, ddat.axi);
+%             curIdPos = find(ismember(valId, curIdVal));
+%             if curIdPos
+%                 set(findobj('Tag', 'curInfo'), 'ForegroundColor','g',...
+%                     'FontSize', 10, 'HorizontalAlignment', 'left', 'String', ...
+%                     sprintf('Current crosshair is located in the region: %s', ...
+%                     ddat.total_region_name{curIdPos, 2}));
+%             else
+%                 set(findobj('Tag', 'curInfo'), 'String', '');
+%             end
+        
+        % Add the currently selected voxel to the trajectory plot
+        if ddat.trajectoryActive == 1
+            plot_voxel_trajectory([ddat.sag, ddat.cor, ddat.axi])
+        end
+                end
+            end
+        end
+        
+    end
+
+
 %% Old Viewing Functions
 
 % Function to combine the anatomical image and the functional image.
@@ -2076,197 +2270,6 @@ end
         set(findobj('Tag', 'viewerInfo'), 'String', newString);
     end
 
-%% Slider Movement
-
-% Update sagittal slider.
-    function sagSliderMove(hObject, callbackdata)
-        
-        % Loop over populations and visits
-        for iPop = 1:ddat.nCompare
-            for iVisit = 1:ddat.nVisit
-                
-                if ddat.viewTracker(iPop, iVisit) > 0
-                
-                axes(findobj('Tag', ['SagittalAxes' num2str(iPop) '_' num2str(iVisit)]));
-                ddat.sag = round(get(hObject, 'Value'));
-                for cl = 1:3
-                    Ssag(:, :, cl) = squeeze(ddat.combinedImg{iPop, iVisit}(cl).combound(ddat.sag, :, :))';
-                end
-                set(ddat.sagittal_image{iPop, iVisit},'CData',Ssag);
-                set(ddat.axial_yline{iPop, iVisit},'Xdata',[ddat.sag ddat.sag]);
-                set(ddat.coronal_yline{iPop, iVisit},'Xdata',[ddat.sag ddat.sag]);
-                set(findobj('Tag','crosshairPos'),'String',...
-                    sprintf('%7.0d %7.0d %7.0d',ddat.sag,ddat.cor, ddat.axi));
-                updateInfoText;
-%                 if ddat.nCompare == 1
-%                     if get(findobj('Tag', 'viewZScores'), 'Value') == 0
-%                         set(findobj('Tag', 'crosshairVal1'),'String',...
-%                             sprintf('Value at Voxel: %4.2f', ddat.img{1}(ddat.sag, ddat.cor, ddat.axi)));
-%                     elseif get(findobj('Tag', 'viewZScores'), 'Value') == 1
-%                         set(findobj('Tag', 'crosshairVal1'),'String',...
-%                             sprintf('Z = %4.2f', ddat.img{1}(ddat.sag, ddat.cor, ddat.axi)));
-%                     end
-%                 else
-%                     if get(findobj('Tag', 'viewZScores'), 'Value') == 0
-%                         for iPop = 1:ddat.nCompare
-%                             set(findobj('Tag', ['crosshairVal' num2str(iPop)]),'String',...
-%                                 sprintf('Value at Voxel: %4.2f',...
-%                                 ddat.img{iPop}(ddat.sag, ddat.cor, ddat.axi)));
-%                         end
-%                     else
-%                         for iPop = 1:ddat.nCompare
-%                             set(findobj('Tag', ['crosshairVal' num2str(iPop)]),'String',...
-%                                 sprintf('Z = %4.2f',...
-%                                 ddat.img{iPop}(ddat.sag, ddat.cor, ddat.axi)));
-%                         end
-%                     end
-%                 end
-%                 valId = cell2mat(ddat.total_region_name(:, 1));
-%                 curIdVal = ddat.region_struct.img(ddat.sag, ddat.cor, ddat.axi);
-%                 curIdPos = find(ismember(valId, curIdVal));
-%                 if curIdPos
-%                     set(findobj('Tag', 'curInfo'), 'ForegroundColor','g',...
-%                         'FontSize', 10, 'HorizontalAlignment', 'left', 'String', ...
-%                         sprintf('Current crosshair is located in the region: %s', ...
-%                         ddat.total_region_name{curIdPos, 2}));
-%                 else
-%                     set(findobj('Tag', 'curInfo'), 'String', '');
-%                 end
-                end
-
-        
-            % Add the currently selected voxel to the trajectory plot
-            if ddat.trajectoryActive == 1
-                plot_voxel_trajectory([ddat.sag, ddat.cor, ddat.axi])
-            end
-            end
-        end
-        
-    end
-
-% Update coronal slider.
-    function corSliderMove(hObject, callbackdata)
-         % Loop over populations and visits
-        for iPop = 1:ddat.nCompare
-            for iVisit = 1:ddat.nVisit
-                if ddat.viewTracker(iPop, iVisit) > 0
-            axes(findobj('Tag', ['CoronalAxes' num2str(iPop) '_' num2str(iVisit)]));
-            ddat.cor = round(get(hObject, 'Value'));
-            for cl = 1:3
-                Scor(:, :, cl) = squeeze(ddat.combinedImg{iPop, iVisit}(cl).combound(:,ddat.cor,:))';
-            end
-            set(ddat.coronal_image{iPop, iVisit},'CData',Scor);
-            set(ddat.axial_xline{iPop, iVisit},'Ydata',[ddat.cor ddat.cor]);
-            set(ddat.sagittal_yline{iPop, iVisit},'Xdata',[ddat.cor ddat.cor]);
-            set(findobj('Tag','crosshairPos'),'String',...
-                sprintf('%7.0d %7.0d %7.0d',ddat.sag,ddat.cor, ddat.axi));
-            updateInfoText;
-%             if ddat.nCompare == 1
-%                 if get(findobj('Tag', 'viewZScores'), 'Value') == 0
-%                     set(findobj('Tag', 'crosshairVal1'),'String',...
-%                         sprintf('Value at Voxel: %4.2f', ddat.img{1}(ddat.sag, ddat.cor, ddat.axi)));
-%                 elseif get(findobj('Tag', 'viewZScores'), 'Value') == 1
-%                     set(findobj('Tag', 'crosshairVal1'),'String',...
-%                         sprintf('Z = %4.2f', ddat.img{1}(ddat.sag, ddat.cor, ddat.axi)));
-%                 end
-%             else
-%                 if get(findobj('Tag', 'viewZScores'), 'Value') == 0
-%                     for iPop = 1:ddat.nCompare
-%                         set(findobj('Tag', ['crosshairVal' num2str(iPop)]),'String',...
-%                             sprintf('Value at Voxel: %4.2f',...
-%                             ddat.img{iPop}(ddat.sag, ddat.cor, ddat.axi)));
-%                     end
-%                 else
-%                     for iPop = 1:ddat.nCompare
-%                         set(findobj('Tag', ['crosshairVal' num2str(iPop)]),'String',...
-%                             sprintf('Z = %4.2f',...
-%                             ddat.img{iPop}(ddat.sag, ddat.cor, ddat.axi)));
-%                     end
-%                 end
-%             end
-%             valId = cell2mat(ddat.total_region_name(:, 1));
-%             curIdVal = ddat.region_struct.img(ddat.sag, ddat.cor, ddat.axi);
-%             curIdPos = find(ismember(valId, curIdVal));
-%             if curIdPos
-%                 set(findobj('Tag', 'curInfo'), 'ForegroundColor','g',...
-%                     'FontSize', 10, 'HorizontalAlignment', 'left', 'String', ...
-%                     sprintf('Current crosshair is located in the region: %s', ...
-%                     ddat.total_region_name{curIdPos, 2}));
-%             else
-%                 set(findobj('Tag', 'curInfo'), 'String', '');
-%             end
-        
-        % Add the currently selected voxel to the trajectory plot
-        if ddat.trajectoryActive == 1
-            plot_voxel_trajectory([ddat.sag, ddat.cor, ddat.axi])
-        end
-            end
-            end
-        end
-        
-    end
-
-% Update axial slider.
-    function axiSliderMove(hObject, callbackdata)
-        % Loop over populations and visits
-        for iPop = 1:ddat.nCompare
-            for iVisit = 1:ddat.nVisit
-                if ddat.viewTracker(iPop, iVisit) > 0
-            axes(findobj('Tag', ['AxialAxes' num2str(iPop, iVisit)]));
-            ddat.axi = round(get(hObject, 'Value'));
-            for cl = 1:3
-                Saxi(:, :, cl) = squeeze(ddat.combinedImg{iPop, iVisit}(cl).combound(:, :, ddat.axi))';
-            end
-            set(ddat.axial_image{iPop, iVisit},'CData',Saxi);
-            set(ddat.coronal_xline{iPop, iVisit},'Ydata',[ddat.axi ddat.axi]);
-            set(ddat.sagittal_xline{iPop, iVisit},'Ydata',[ddat.axi ddat.axi]);
-            set(findobj('Tag','crosshairPos'),'String',...
-                sprintf('%7.0d %7.0d %7.0d',ddat.sag,ddat.cor, ddat.axi));
-            updateInfoText;
-%             if ddat.nCompare == 1
-%                 if get(findobj('Tag', 'viewZScores'), 'Value') == 0
-%                     set(findobj('Tag', 'crosshairVal1'),'String',...
-%                         sprintf('Value at Voxel: %4.2f', ddat.img{1}(ddat.sag, ddat.cor, ddat.axi)));
-%                 elseif get(findobj('Tag', 'viewZScores'), 'Value') == 1
-%                     set(findobj('Tag', 'crosshairVal1'),'String',...
-%                         sprintf('Z = %4.2f', ddat.img{1}(ddat.sag, ddat.cor, ddat.axi)));
-%                 end
-%             else
-%                 if get(findobj('Tag', 'viewZScores'), 'Value') == 0
-%                     for iPop = 1:ddat.nCompare
-%                         set(findobj('Tag', ['crosshairVal' num2str(iPop)]),'String',...
-%                             sprintf('Value at Voxel: %4.2f',...
-%                             ddat.img{iPop}(ddat.sag, ddat.cor, ddat.axi)));
-%                     end
-%                 else
-%                     for iPop = 1:ddat.nCompare
-%                         set(findobj('Tag', ['crosshairVal' num2str(iPop)]),'String',...
-%                             sprintf('Z = %4.2f',...
-%                             ddat.img{iPop}(ddat.sag, ddat.cor, ddat.axi)));
-%                     end
-%                 end
-%             end
-%             valId = cell2mat(ddat.total_region_name(:, 1));
-%             curIdVal = ddat.region_struct.img(ddat.sag, ddat.cor, ddat.axi);
-%             curIdPos = find(ismember(valId, curIdVal));
-%             if curIdPos
-%                 set(findobj('Tag', 'curInfo'), 'ForegroundColor','g',...
-%                     'FontSize', 10, 'HorizontalAlignment', 'left', 'String', ...
-%                     sprintf('Current crosshair is located in the region: %s', ...
-%                     ddat.total_region_name{curIdPos, 2}));
-%             else
-%                 set(findobj('Tag', 'curInfo'), 'String', '');
-%             end
-        
-        % Add the currently selected voxel to the trajectory plot
-        if ddat.trajectoryActive == 1
-            plot_voxel_trajectory([ddat.sag, ddat.cor, ddat.axi])
-        end
-                end
-            end
-        end
-        
-    end
 
 %% Thresholding
 
