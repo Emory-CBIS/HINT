@@ -797,30 +797,24 @@ end
         %%% Delete axes
         % thsi uses viewTrackers size because this is axes
         % creation/deletion NOT placement of maps
-        if current_n_maps > sum(ddat.viewTracker > 0) || redoAllMaps == 1
             
-            % Loop through possibilities and remove things that shouldnt be
-            % there
-            for iPop = 1:size(ddat.viewTracker, 1)
-                for iVisit = 1:size(ddat.viewTracker, 2)
-                    
-                    % Check removal criteria
-                    if redoAllMaps == 1 || ddat.viewTracker(iPop, iVisit) == 0
-                        if ~isempty(findobj('tag', ['CoronalAxes' num2str(iPop) '_' num2str(iVisit)]))
-                            delete(findobj('tag', ['CoronalAxes' num2str(iPop) '_' num2str(iVisit)]));
-                            delete(findobj('tag', ['SagittalAxes' num2str(iPop) '_' num2str(iVisit)]));
-                            delete(findobj('tag', ['AxialAxes' num2str(iPop) '_' num2str(iVisit)]));
-                        end
+        % Loop through possibilities and remove things that shouldnt be
+        % there
+        for iPop = 1:size(ddat.viewTracker, 1)
+            for iVisit = 1:size(ddat.viewTracker, 2)
+
+                % Check removal criteria
+                if redoAllMaps == 1 || ddat.viewTracker(iPop, iVisit) == 0
+                    if ~isempty(findobj('tag', ['CoronalAxes' num2str(iPop) '_' num2str(iVisit)]))
+                        delete(findobj('tag', ['CoronalAxes' num2str(iPop) '_' num2str(iVisit)]));
+                        delete(findobj('tag', ['SagittalAxes' num2str(iPop) '_' num2str(iVisit)]));
+                        delete(findobj('tag', ['AxialAxes' num2str(iPop) '_' num2str(iVisit)]));
                     end
-                                            
                 end
+
             end
-            
         end
-        
-        if redoAllMaps == 1
-            current_n_maps = 0;
-        end
+
         
         %%% Add axes
         aspect = 1./ddat.daspect;
@@ -849,12 +843,12 @@ end
                     'ClimMode','manual','YColor',[0 0 0],'XColor',[0 0 0],...
                     'xtick',[],'ytick',[],'Tag',['AxialAxes' num2str(iPop) '_' num2str(iVisit)])
                     daspect(AxiAxes,aspect([1 3 2]));
-                    set(ddat.axial_image{iPop, iVisit},'ButtonDownFcn',...
-                        {@image_button_press, 'axi'});
-                    pos_axi = [ddat.sag, ddat.cor];
-                    crosshair = plot_crosshair(pos_axi, [], AxiAxes);
-                    ddat.axial_xline{iPop, iVisit} = crosshair.lx;
-                    ddat.axial_yline{iPop, iVisit} = crosshair.ly;
+%                     set(ddat.axial_image{iPop, iVisit},'ButtonDownFcn',...
+%                         {@image_button_press, 'axi'});
+%                     pos_axi = [ddat.sag, ddat.cor];
+%                     crosshair = plot_crosshair(pos_axi, [], AxiAxes);
+%                     ddat.axial_xline{iPop, iVisit} = crosshair.lx;
+%                     ddat.axial_yline{iPop, iVisit} = crosshair.ly;
                     
                     % Sagittal Image
                    SagAxes = axes('Parent', hs.fig.Children(3).Children(2), ...
