@@ -615,6 +615,12 @@ end
                 num2str(visit_number)] ) , 'position', apos);
             set(findobj('Tag', ['SagittalAxes' num2str(selected_pop) '_'...
                 num2str(visit_number)] ) , 'position', spos);
+            
+            % Move the info panel to its position
+            axesInfoPanelPos = [0.87 (.18 + 0.82*(i-1)/nMapsViewed) .13 0.82/nMapsViewed];
+            set(findobj('Tag', ['axesPanel' num2str(selected_pop), '_' num2str(visit_number)]),...
+                'position', axesInfoPanelPos);
+            
         end
         
         
@@ -790,10 +796,6 @@ end
             end
         end
         
-        if current_n_maps == 0
-            warndlg('Something has gone horribly wrong, there are no maps to display')
-        end
-        
         %%% Delete axes
         % thsi uses viewTrackers size because this is axes
         % creation/deletion NOT placement of maps
@@ -805,16 +807,23 @@ end
 
                 % Check removal criteria
                 if redoAllMaps == 1 || ddat.viewTracker(iPop, iVisit) == 0
+                    
                     if ~isempty(findobj('tag', ['CoronalAxes' num2str(iPop) '_' num2str(iVisit)]))
+                        
                         delete(findobj('tag', ['CoronalAxes' num2str(iPop) '_' num2str(iVisit)]));
                         delete(findobj('tag', ['SagittalAxes' num2str(iPop) '_' num2str(iVisit)]));
                         delete(findobj('tag', ['AxialAxes' num2str(iPop) '_' num2str(iVisit)]));
-                    end
+                        delete(findobj('tag', ['axesPanel' num2str(iPop), '_' num2str(iVisit)]));
+                        
+                    end % end of check and delete
+                    
                 end
 
             end
         end
-
+        
+        
+        [map_fields, visit_fields] = generate_info_box_fields(ddat.type, ddat.viewTracker);
         
         %%% Add axes
         aspect = 1./ddat.daspect;
@@ -859,6 +868,46 @@ end
                     'ClimMode','manual','YColor',[0 0 0],'XColor',[0 0 0],...
                     'xtick',[],'ytick',[],'Tag',['SagittalAxes' num2str(iPop) '_' num2str(iVisit)])
                     daspect(SagAxes,aspect([2 3 1]));
+                    
+                    %% Information Panel
+                    InfoPanel = uipanel('FontSize',12,...
+                        'Title', '', ...
+                        'Tag', ['axesPanel' num2str(iPop), '_' num2str(iVisit)], ...
+                        'Parent', hs.fig.Children(3).Children(2), ...
+                        'units', 'normalized', 'visible', 'on');
+                    % Label strings for the information panel
+%                     MapString = uicontrol('Parent', InfoPanel, ...
+%                         'Style', 'Text', 'String', 'Map: ', ...
+%                         'Units', 'Normalized', ...
+%                         'HorizontalAlignment', 'left',...
+%                         'Position', [0.01, 0.81, 0.98, 0.16]);
+%                     VisitString = uicontrol('Parent', InfoPanel, ...
+%                         'Style', 'Text', 'String', 'Visit: ', ...
+%                         'Units', 'Normalized', ...
+%                         'HorizontalAlignment', 'left',...
+%                         'Position', [0.01, 0.49, 0.98, 0.16]);
+%                     VoxelValueString  = uicontrol('Parent', InfoPanel, ...
+%                         'Style', 'Text', 'String', 'Value: ', ...
+%                         'Units', 'Normalized', ...
+%                         'HorizontalAlignment', 'left',...
+%                         'Position', [0.01, 0.17, 0.98, 0.16]);
+                    % The actual labels
+                    MapValue = uicontrol('Parent', InfoPanel, ...
+                        'Style', 'Text', 'String', map_fields{iPop, iVisit}, ...
+                        'Units', 'Normalized', ...
+                        'Position', [0.01, 0.66, 0.98, 0.33]);
+                    VisitValue = uicontrol('Parent', InfoPanel, ...
+                        'Style', 'Text', 'String', visit_fields{iPop, iVisit}, ...
+                        'Units', 'Normalized', ...
+                        'Position', [0.01, 0.35, 0.98, 0.30]);
+                    VoxelValue = uicontrol('Parent', InfoPanel, ...
+                        'Style', 'Text', 'String', '', ...
+                        'Units', 'Normalized', ...
+                        'tag', ['VoxelValueBox' num2str(iPop) '_' num2str(iVisit)],...
+                        'Position', [0.01, 0.01, 0.98, 0.4]);
+                    % Fill out the panel name
+                    %iPop iVisit
+                    %obtain
                     
                 end
             end
@@ -1590,8 +1639,6 @@ end
         %%% Update the images on the axes
         % TODO argument for specific axes? not sure if this case arises
         update_axes_image;
-        
-        
         
     end
 

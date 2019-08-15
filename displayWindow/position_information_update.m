@@ -208,29 +208,45 @@ for iPop = 1:size(ddat.viewTracker, 1)
     
 end
 
-
-if ddat.nCompare == 1
-    if get(findobj('Tag', 'viewZScores'), 'Value') == 0
-        set(findobj('Tag', 'crosshairVal1'),'String',...
-            sprintf('Value at Voxel: %4.2f', ddat.img{1}(ddat.sag, ddat.cor, ddat.axi)));
-    elseif get(findobj('Tag', 'viewZScores'), 'Value') == 1
-        set(findobj('Tag', 'crosshairVal1'),'String',...
-            sprintf('Z = %4.2f', ddat.img{1}(ddat.sag, ddat.cor, ddat.axi)));
-    end
-    
-else
-    disp('NEED TO DO THIS FOR TRAJECTORY VIEW')
-    if get(findobj('Tag', 'viewZScores'), 'Value') == 0
-        for iPop = 1:ddat.nCompare
-            set(findobj('Tag', ['crosshairVal' num2str(iPop)]),'String',...
-                sprintf('Value at Voxel: %4.2f',...
-                ddat.img{iPop}(ddat.sag, ddat.cor, ddat.axi)));
-        end
-    else
-        for iPop = 1:ddat.nCompare
-            set(findobj('Tag', ['crosshairVal' num2str(iPop)]),'String',...
-                sprintf('Z = %4.2f',...
-                ddat.img{iPop}(ddat.sag, ddat.cor, ddat.axi)));
+%% Update crosshair value, last edited 8/15 to add the new view boxes
+% if ddat.nCompare == 1
+%     if get(findobj('Tag', 'viewZScores'), 'Value') == 0
+%         set(findobj('Tag', 'crosshairVal1'),'String',...
+%             sprintf('Value at Voxel: %4.2f', ddat.img{1}(ddat.sag, ddat.cor, ddat.axi)));
+%     elseif get(findobj('Tag', 'viewZScores'), 'Value') == 1
+%         set(findobj('Tag', 'crosshairVal1'),'String',...
+%             sprintf('Z = %4.2f', ddat.img{1}(ddat.sag, ddat.cor, ddat.axi)));
+%     end
+%
+% else
+%     disp('NEED TO DO THIS FOR TRAJECTORY VIEW')
+%     if get(findobj('Tag', 'viewZScores'), 'Value') == 0
+%         for iPop = 1:ddat.nCompare
+%             set(findobj('Tag', ['crosshairVal' num2str(iPop)]),'String',...
+%                 sprintf('Value at Voxel: %4.2f',...
+%                 ddat.img{iPop}(ddat.sag, ddat.cor, ddat.axi)));
+%         end
+%     else
+%         for iPop = 1:ddat.nCompare
+%             set(findobj('Tag', ['crosshairVal' num2str(iPop)]),'String',...
+%                 sprintf('Z = %4.2f',...
+%                 ddat.img{iPop}(ddat.sag, ddat.cor, ddat.axi)));
+%         end
+%     end
+% end
+for iPop = 1:size(ddat.viewTracker, 1)
+    for iVisit = 1:size(ddat.viewTracker, 2)
+        % Check if axes exists, if not, create it
+        if ddat.viewTracker(iPop, iVisit) > 0
+            if get(findobj('Tag', 'viewZScores'), 'Value') == 0
+                    set(findobj('Tag', ['VoxelValueBox' num2str(iPop) '_' num2str(iVisit)]),'String',...
+                        sprintf('Value at Voxel: %4.2f',...
+                        ddat.img{iPop, iVisit}(ddat.sag, ddat.cor, ddat.axi)));
+            else
+                    set(findobj('Tag', ['VoxelValueBox' num2str(iPop) '_' num2str(iVisit)]),'String',...
+                        sprintf('Z = %4.2f',...
+                        ddat.img{iPop, iVisit}(ddat.sag, ddat.cor, ddat.axi)));
+            end
         end
     end
 end
