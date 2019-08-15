@@ -604,9 +604,9 @@ end
             visit_number = visit_numbers(i);
             
             % Calculate the map position
-            spos = [0.01 (.18 + 0.82*(i-1)/nMapsViewed) .27 0.82/nMapsViewed];
-            cpos = [0.30 (.18 + 0.82*(i-1)/nMapsViewed) .27 0.82/nMapsViewed];
-            apos = [0.59 (.18 + 0.82*(i-1)/nMapsViewed) .27 0.82/nMapsViewed];
+            spos = [0.01 (.18 + 0.82*(nMapsViewed-i)/nMapsViewed) .27 0.82/nMapsViewed];
+            cpos = [0.30 (.18 + 0.82*(nMapsViewed-i)/nMapsViewed) .27 0.82/nMapsViewed];
+            apos = [0.59 (.18 + 0.82*(nMapsViewed-i)/nMapsViewed) .27 0.82/nMapsViewed];
 
             % Move the maps to their positions
             set(findobj('Tag', ['CoronalAxes'  num2str(selected_pop) '_'...
@@ -617,7 +617,7 @@ end
                 num2str(visit_number)] ) , 'position', spos);
             
             % Move the info panel to its position
-            axesInfoPanelPos = [0.87 (.18 + 0.82*(i-1)/nMapsViewed) .13 0.82/nMapsViewed];
+            axesInfoPanelPos = [0.87 (.18 + 0.82*(nMapsViewed-i)/nMapsViewed) .13 0.82/nMapsViewed];
             set(findobj('Tag', ['axesPanel' num2str(selected_pop), '_' num2str(visit_number)]),...
                 'position', axesInfoPanelPos);
             
