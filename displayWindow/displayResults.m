@@ -144,7 +144,8 @@ end
             'Parent', DefaultPanel,...
             'Tag', 'viewingPanelNormal',...
             'Position',[0, 0.5 0.949 0.5], ...;
-            'BackgroundColor',get(hs.fig,'color'));
+            'BackgroundColor','black');
+            %'BackgroundColor',get(hs.fig,'color'));
         
         ControlPanel = uipanel('BackgroundColor','white',...
             'units', 'normalized',...
@@ -2990,6 +2991,7 @@ end
             axes(findobj('Tag', ['AxialAxes' num2str(subPop)]));
             ddat.axial_image{subPop} = image(Saxial);
             set(gca,'YDir','normal','XLimMode','manual','YLimMode','manual',...
+                'color', 'black',...
                 'ClimMode','manual','YColor',[0 0 0],'XColor',[0 0 0],'xtick',[],'ytick',[],'Tag',['AxialAxes' num2str(subPop)])
             daspect(gca,aspect([1 3 2]));
             %set(ddat.axial_image{subPop},'ButtonDownFcn','get_pos_dispexp(''axi''); plot_voxel_trajectory([''ddat.sag'', ''ddat.cor'', ''ddat.axi'']);');
@@ -3003,6 +3005,7 @@ end
             axes(findobj('Tag', ['CoronalAxes' num2str(subPop)] ));
             ddat.coronal_image{subPop} = image(Scor);
             set(gca,'YDir','normal','XLimMode','manual','YLimMode','manual',...
+                'color', 'black',...
                 'ClimMode','manual','YColor',[0 0 0],'XColor',[0 0 0],'xtick',[],'ytick',[],'Tag',['CoronalAxes' num2str(subPop)])
             daspect(gca,aspect([1 3 2]));
             set(ddat.coronal_image{subPop},'ButtonDownFcn',{@image_button_press, 'cor'});
@@ -3016,6 +3019,7 @@ end
             axes(findobj('Tag', ['SagittalAxes' num2str(subPop)] ));
             ddat.sagittal_image{subPop} = image(Ssag);
             set(gca,'YDir','normal','XLimMode','manual','YLimMode','manual',...
+                'color', 'black',...
                 'ClimMode','manual','YColor',[0 0 0],'XColor',[0 0 0],'xtick',[],'ytick',[],'Tag',['SagittalAxes' num2str(subPop)])
             daspect(gca,aspect([2 3 1]));
             set(ddat.sagittal_image{subPop},'ButtonDownFcn',{@image_button_press, 'sag'});
