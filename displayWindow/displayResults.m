@@ -132,11 +132,18 @@ end
             'BackgroundColor',get(hs.fig,'color'))
         
         % Sub Panels (layout)
-        displayPanel = uipanel('BackgroundColor','white',...
+        colorbarPanel = uipanel('BackgroundColor','white',...
+            'units', 'normalized',...
+            'Parent', DefaultPanel,...
+            'Tag', 'colorbarPanel',...
+            'Position',[0.95, 0.5 0.05 0.5], ...;
+            'BackgroundColor',get(hs.fig,'color'));
+        
+        displayPanel = uipanel('BackgroundColor','black',...
             'units', 'normalized',...
             'Parent', DefaultPanel,...
             'Tag', 'viewingPanelNormal',...
-            'Position',[0, 0.5 1 0.5], ...;
+            'Position',[0, 0.5 0.949 0.5], ...;
             'BackgroundColor',get(hs.fig,'color'));
         
         ControlPanel = uipanel('BackgroundColor','white',...
@@ -185,9 +192,9 @@ end
             'Position', [0.59, -0.3, 0.27, 0.4], ...
             'Tag', 'AxiSlider', 'Callback', @axiSliderMove);
         % Colorbar
-        colorMap = axes('Parent', displayPanel, ...
+        colorMap = axes('Parent', colorbarPanel, ...
             'units', 'Normalized',...
-            'Position', [0.90, 0.18, 0.05, 0.8], ...
+            'Position', [0.05, 0.05, 0.4, 0.9], ...
             'Tag', 'colorMap');
         
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -523,8 +530,7 @@ end
         keypress = varargin{2};
         %         %% Modifier commands
         if ~isempty(keypress.Modifier) && ~isempty(keypress.Character)
-            %disp(keypress.Character == 't')
-            %disp(strcmp(keypress.Modifier{1}, 'command'))
+            
             if (keypress.Character == 't') && strcmp(keypress.Modifier{1}, 'command')
                 shift_to_trajectory_view;
             end
@@ -538,9 +544,6 @@ end
             end
             
         end
-        %         if (keypress.Character == 't')
-        %             shift_to_trajectory_view;
-        %         end
     end
 
 % Menu functions
@@ -1511,10 +1514,10 @@ end
         set_number_of_brain_axes(1)
         update_brain_maps('updateCombinedImage', [1, 1])
         
-        %set_number_of_brain_axes(1)
+        updateColorbar;
         
-        % Get the number of visits actively being viewed
-        nVisitViewed = sum(ddat.viewTracker > 0);
+        %set_number_of_brain_axes(1)
+       
         
         %%%%% Set up each of the sliders %%%%%
         % Sagittal Slider
@@ -1741,6 +1744,9 @@ end
         %%% Update the images on the axes
         % TODO argument for specific axes? not sure if this case arises
         update_axes_image;
+        
+        % Update the colorbar
+        updateColorbar;
         
     end
 
@@ -2151,14 +2157,32 @@ end
 
 %% Function to update the colorbar
     function updateColorbar(hObject, callbackdata)
-        %Get the 0.95 quantile to use as the min and max of the colorbar
-        max_functmap_value = max(max(prctile(cat(ddat.nCompare,ddat.img{:}),95 )));
-        min_functmap_value = min(min(prctile(cat(ddat.nCompare,ddat.img{:}),95 )));
-        % Redo so that they match true image
-        maxval1 = max(max(max(cat(ddat.nCompare,ddat.img{:}))));
-        minval1 = min(min(min(cat(ddat.nCompare,ddat.img{:})))) - 1;
-        %maxval = max(max_functmap_value, abs(min_functmap_value));
-        %max_functmap_value = maxval; min_functmap_value = -maxval;
+        
+        maxval1 = -Inf; minval1 = Inf;
+        
+        if sum(ddat.viewTracker(:) > 0) > 0
+        
+        % Get range of all included images
+        for iPop = 1:size(ddat.viewTracker, 1)
+            for iVisit = 1:size(ddat.viewTracker, 2)
+                if ddat.viewTracker(iPop, iVisit) > 0
+                    max_val = max(ddat.img{iPop, iVisit}(:));
+                    min_val = min(ddat.img{iPop, iVisit}(:));
+                    if max_val > maxval1
+                        maxval1 = max_val;
+                    end
+                    if min_val < minval1
+                        minval1 = min_val;
+                    end
+                end
+            end
+        end
+        
+        % Handle case where no maps are being viewed
+        else
+            minval1 = 0; maxval1 = 0;
+        end
+        
         max_functmap_value = maxval1; min_functmap_value = minval1;
         incr_val=max_functmap_value/5;
         int_part=floor(incr_val); frac_part=incr_val-int_part;
@@ -2176,6 +2200,7 @@ end
         axes(findobj('Tag', 'colorMap'));
         set(gca,'NextPlot','add')
         colorbar_plot( findobj('Tag', 'colorMap'), ddat.colorbar_labels, ddat.scaled_pp_labels);
+        
     end
 
 %% Data Loading Functions
