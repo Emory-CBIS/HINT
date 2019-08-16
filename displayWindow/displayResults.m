@@ -68,6 +68,8 @@ ddat.trajPreviousTag = ''; % string value of previously added line. used to clea
 ddat.viewTracker = zeros(1, ddat.nVisit);
 ddat.viewTracker(1, 1) = 1;
 
+ddat.tileType = 'vertical';
+
 % Check if an instance of displayResults already running
 hs = findall(0,'tag','displayResults');
 if (isempty(hs))
@@ -100,6 +102,9 @@ end
         uimenu(viewerMenu, 'Label', 'Sub-Population', 'Callback', @stSubPop);
         uimenu(viewerMenu, 'Label', 'Single Subject', 'Callback', @stSubj);
         uimenu(viewerMenu, 'Label', 'Covariate Effect', 'Callback', @stBeta);
+        BrainView = uimenu(viewerMenu, 'Label', 'Brain View', 'tag', 'BrainViewSubmenu');
+            uimenu(BrainView, 'Label', 'Stacked', 'Callback', @brain_view_stacked);
+            uimenu(BrainView, 'Label', 'Grouped', 'Callback', @brain_view_grouped);
         helpMenu = uimenu('Label','Help');
         textalign = 'left';
         licaMenu = uimenu('Label', 'Longitudinal Tools', 'Tag', 'licaMenu');
@@ -524,10 +529,28 @@ end
                 shift_to_trajectory_view;
             end
             
+            if (keypress.Character == 'v') && strcmp(keypress.Modifier{1}, 'command')
+                if strcmp(ddat.tileType, 'vertical')
+                    brain_view_grouped;
+                else
+                    brain_view_stacked;
+                end
+            end
+            
         end
         %         if (keypress.Character == 't')
         %             shift_to_trajectory_view;
         %         end
+    end
+
+% Menu functions
+    function brain_view_stacked(varargin)
+        ddat.tileType = 'vertical';
+        set_viewing_properties;
+    end
+    function brain_view_grouped(varargin)
+        ddat.tileType = 'grouped';
+        set_viewing_properties;
     end
 
 % Function to calculate the required amount of the screen used up by
@@ -593,7 +616,9 @@ end
         % Fourth, scale the brain maps to fit in the space allocated to
         % them
         y_avail = y_use / nMapsViewed;
-
+        
+        [apos, cpos, spos, axesInfoPanelPos] = generate_axes_positioning( ddat.viewTracker, ddat.tileType);
+        
         % transpose and reorder is so that the ordering comes out one pop
         % at a time
         [visit_numbers, selected_pops] = find(ddat.viewTracker' > 0);
@@ -604,22 +629,22 @@ end
             visit_number = visit_numbers(i);
             
             % Calculate the map position
-            spos = [0.01 (.18 + 0.82*(nMapsViewed-i)/nMapsViewed) .27 0.82/nMapsViewed];
-            cpos = [0.30 (.18 + 0.82*(nMapsViewed-i)/nMapsViewed) .27 0.82/nMapsViewed];
-            apos = [0.59 (.18 + 0.82*(nMapsViewed-i)/nMapsViewed) .27 0.82/nMapsViewed];
-
+            %             spos = [0.01 (.18 + 0.82*(nMapsViewed-i)/nMapsViewed) .27 0.82/nMapsViewed];
+            %             cpos = [0.30 (.18 + 0.82*(nMapsViewed-i)/nMapsViewed) .27 0.82/nMapsViewed];
+            %             apos = [0.59 (.18 + 0.82*(nMapsViewed-i)/nMapsViewed) .27 0.82/nMapsViewed];
+            
             % Move the maps to their positions
             set(findobj('Tag', ['CoronalAxes'  num2str(selected_pop) '_'...
-                    num2str(visit_number)] ) , 'position', cpos);
+                num2str(visit_number)] ) , 'position', cpos{selected_pop, visit_number});
             set(findobj('Tag', ['AxialAxes'    num2str(selected_pop) '_'...
-                num2str(visit_number)] ) , 'position', apos);
+                num2str(visit_number)] ) , 'position', apos{selected_pop, visit_number});
             set(findobj('Tag', ['SagittalAxes' num2str(selected_pop) '_'...
-                num2str(visit_number)] ) , 'position', spos);
+                num2str(visit_number)] ) , 'position', spos{selected_pop, visit_number});
             
             % Move the info panel to its position
-            axesInfoPanelPos = [0.87 (.18 + 0.82*(nMapsViewed-i)/nMapsViewed) .13 0.82/nMapsViewed];
+            %             axesInfoPanelPos = [0.87 (.18 + 0.82*(nMapsViewed-i)/nMapsViewed) .13 0.82/nMapsViewed];
             set(findobj('Tag', ['axesPanel' num2str(selected_pop), '_' num2str(visit_number)]),...
-                'position', axesInfoPanelPos);
+                'position', axesInfoPanelPos{selected_pop, visit_number});
             
         end
         
@@ -727,13 +752,13 @@ end
                 ddat.viewTracker( ddat.viewTracker > 0 ) = cumsum( ddat.viewTracker(ddat.viewTracker > 0)); % renumber
                 
                 % Update axes visibility
-%                 set(findobj('Tag', ['CoronalAxes'  num2str(selected_pop) '_'...
-%                     num2str(visit_number)] ) , 'visible', 'on');
-%                 set(findobj('Tag', ['AxialAxes'    num2str(selected_pop) '_'...
-%                     num2str(visit_number)] ) , 'visible', 'on');
-%                 set(findobj('Tag', ['SagittalAxes' num2str(selected_pop) '_'...
-%                     num2str(visit_number)] ) , 'visible', 'on');
-
+                %                 set(findobj('Tag', ['CoronalAxes'  num2str(selected_pop) '_'...
+                %                     num2str(visit_number)] ) , 'visible', 'on');
+                %                 set(findobj('Tag', ['AxialAxes'    num2str(selected_pop) '_'...
+                %                     num2str(visit_number)] ) , 'visible', 'on');
+                %                 set(findobj('Tag', ['SagittalAxes' num2str(selected_pop) '_'...
+                %                     num2str(visit_number)] ) , 'visible', 'on');
+                
                 % Update axes existence
                 set_number_of_brain_axes(0);
                 
@@ -744,7 +769,7 @@ end
                 
                 % Set to no
                 eventdata.Source.Data{selected_row, 1} = 'no';
-                                
+                
                 % Remove from tracker
                 ddat.viewTracker(selected_pop, visit_number) = 0;
                 ddat.viewTracker( ddat.viewTracker > 0 ) = cumsum( ddat.viewTracker(ddat.viewTracker > 0)); % renumber
@@ -799,12 +824,12 @@ end
         %%% Delete axes
         % thsi uses viewTrackers size because this is axes
         % creation/deletion NOT placement of maps
-            
+        
         % Loop through possibilities and remove things that shouldnt be
         % there
         for iPop = 1:size(ddat.viewTracker, 1)
             for iVisit = 1:size(ddat.viewTracker, 2)
-
+                
                 % Check removal criteria
                 if redoAllMaps == 1 || ddat.viewTracker(iPop, iVisit) == 0
                     
@@ -818,7 +843,7 @@ end
                     end % end of check and delete
                     
                 end
-
+                
             end
         end
         
@@ -849,24 +874,24 @@ end
                         'Tag', ['AxialAxes' num2str(iPop) '_' num2str(iVisit)],...
                         'visible', 'off');
                     set(AxiAxes,'YDir','normal','XLimMode','manual','YLimMode','manual',...
-                    'ClimMode','manual','YColor',[0 0 0],'XColor',[0 0 0],...
-                    'xtick',[],'ytick',[],'Tag',['AxialAxes' num2str(iPop) '_' num2str(iVisit)])
+                        'ClimMode','manual','YColor',[0 0 0],'XColor',[0 0 0],...
+                        'xtick',[],'ytick',[],'Tag',['AxialAxes' num2str(iPop) '_' num2str(iVisit)])
                     daspect(AxiAxes,aspect([1 3 2]));
-%                     set(ddat.axial_image{iPop, iVisit},'ButtonDownFcn',...
-%                         {@image_button_press, 'axi'});
-%                     pos_axi = [ddat.sag, ddat.cor];
-%                     crosshair = plot_crosshair(pos_axi, [], AxiAxes);
-%                     ddat.axial_xline{iPop, iVisit} = crosshair.lx;
-%                     ddat.axial_yline{iPop, iVisit} = crosshair.ly;
+                    %                     set(ddat.axial_image{iPop, iVisit},'ButtonDownFcn',...
+                    %                         {@image_button_press, 'axi'});
+                    %                     pos_axi = [ddat.sag, ddat.cor];
+                    %                     crosshair = plot_crosshair(pos_axi, [], AxiAxes);
+                    %                     ddat.axial_xline{iPop, iVisit} = crosshair.lx;
+                    %                     ddat.axial_yline{iPop, iVisit} = crosshair.ly;
                     
                     % Sagittal Image
-                   SagAxes = axes('Parent', hs.fig.Children(3).Children(2), ...
+                    SagAxes = axes('Parent', hs.fig.Children(3).Children(2), ...
                         'Units', 'Normalized', ...
                         'Tag', ['SagittalAxes' num2str(iPop) '_' num2str(iVisit)],...
                         'visible', 'off' );
-                   set(SagAxes,'YDir','normal','XLimMode','manual','YLimMode','manual',...
-                    'ClimMode','manual','YColor',[0 0 0],'XColor',[0 0 0],...
-                    'xtick',[],'ytick',[],'Tag',['SagittalAxes' num2str(iPop) '_' num2str(iVisit)])
+                    set(SagAxes,'YDir','normal','XLimMode','manual','YLimMode','manual',...
+                        'ClimMode','manual','YColor',[0 0 0],'XColor',[0 0 0],...
+                        'xtick',[],'ytick',[],'Tag',['SagittalAxes' num2str(iPop) '_' num2str(iVisit)])
                     daspect(SagAxes,aspect([2 3 1]));
                     
                     %% Information Panel
@@ -876,21 +901,21 @@ end
                         'Parent', hs.fig.Children(3).Children(2), ...
                         'units', 'normalized', 'visible', 'on');
                     % Label strings for the information panel
-%                     MapString = uicontrol('Parent', InfoPanel, ...
-%                         'Style', 'Text', 'String', 'Map: ', ...
-%                         'Units', 'Normalized', ...
-%                         'HorizontalAlignment', 'left',...
-%                         'Position', [0.01, 0.81, 0.98, 0.16]);
-%                     VisitString = uicontrol('Parent', InfoPanel, ...
-%                         'Style', 'Text', 'String', 'Visit: ', ...
-%                         'Units', 'Normalized', ...
-%                         'HorizontalAlignment', 'left',...
-%                         'Position', [0.01, 0.49, 0.98, 0.16]);
-%                     VoxelValueString  = uicontrol('Parent', InfoPanel, ...
-%                         'Style', 'Text', 'String', 'Value: ', ...
-%                         'Units', 'Normalized', ...
-%                         'HorizontalAlignment', 'left',...
-%                         'Position', [0.01, 0.17, 0.98, 0.16]);
+                    %                     MapString = uicontrol('Parent', InfoPanel, ...
+                    %                         'Style', 'Text', 'String', 'Map: ', ...
+                    %                         'Units', 'Normalized', ...
+                    %                         'HorizontalAlignment', 'left',...
+                    %                         'Position', [0.01, 0.81, 0.98, 0.16]);
+                    %                     VisitString = uicontrol('Parent', InfoPanel, ...
+                    %                         'Style', 'Text', 'String', 'Visit: ', ...
+                    %                         'Units', 'Normalized', ...
+                    %                         'HorizontalAlignment', 'left',...
+                    %                         'Position', [0.01, 0.49, 0.98, 0.16]);
+                    %                     VoxelValueString  = uicontrol('Parent', InfoPanel, ...
+                    %                         'Style', 'Text', 'String', 'Value: ', ...
+                    %                         'Units', 'Normalized', ...
+                    %                         'HorizontalAlignment', 'left',...
+                    %                         'Position', [0.01, 0.17, 0.98, 0.16]);
                     % The actual labels
                     MapValue = uicontrol('Parent', InfoPanel, ...
                         'Style', 'Text', 'String', map_fields{iPop, iVisit}, ...
@@ -913,79 +938,79 @@ end
             end
         end
         
-%         if current_n_maps < size(ddat.viewTracker, 1)
-%             
-%             %hs.fig.Children(3).Children(2)
-%             aspect = 1./ddat.daspect;
-%             
-%             for iaxes = (current_n_maps+1):size(ddat.viewTracker, 1)
-%                 for ivisit = 1:ddat.nVisit
-%                     
-%                     
-%                     % Coronal Image
-%                     CorAxes = axes('Parent', hs.fig.Children(3).Children(2), ...
-%                         'Units', 'Normalized',...
-%                         'Tag', ['CoronalAxes' num2str(iaxes) '_' num2str(ivisit)],...
-%                         'visible', 'off' );
-%                     set(CorAxes,'YDir','normal','XLimMode','manual','YLimMode','manual',...
-%                         'ClimMode','manual','YColor',[0 0 0],'XColor',[0 0 0],...
-%                         'xtick',[],'ytick',[],...
-%                         'Tag',['CoronalAxes' num2str(iaxes) '_' num2str(ivisit)])
-%                     daspect(CorAxes, aspect([1 3 2]));
-%                     % this is just to put image in place at creation,
-%                     % actual displayed image comes from display function
-%                     %ddat.coronal_image{iaxes, ivisit} = image(ddat.coronal_image(1, 1));
-%                     %ddat.coronal_image{iaxes, ivisit} = ddat.coronal_image(1, 1));
-% %                     set(ddat.coronal_image{iaxes, ivisit},'ButtonDownFcn',...
-% %                         {@image_button_press, 'cor'});
-% %                     pos_cor = [ddat.sag, ddat.axi];
-% %                     crosshair = plot_crosshair(pos_cor, [], CorAxes);
-% %                     ddat.coronal_xline{iaxes, ivisit} = crosshair.lx;
-% %                     ddat.coronal_yline{iaxes, ivisit} = crosshair.ly;
-%                     
-%                     % Axial Image
-%                     AxiAxes = axes('Parent', hs.fig.Children(3).Children(2), ...
-%                         'Units', 'Normalized', ...
-%                         'Tag', ['AxialAxes' num2str(iaxes) '_' num2str(ivisit)],...
-%                         'visible', 'off');
-%                     set(AxiAxes,'YDir','normal','XLimMode','manual','YLimMode','manual',...
-%                     'ClimMode','manual','YColor',[0 0 0],'XColor',[0 0 0],...
-%                     'xtick',[],'ytick',[],'Tag',['AxialAxes' num2str(iaxes) '_' num2str(ivisit)])
-%                     daspect(AxiAxes,aspect([1 3 2]));
-%                     % this is just to put image in place at creation,
-%                     % actual displayed image comes from display function
-%                     %ddat.axial_image{iaxes, ivisit} = image(ddat.axial_image(1, 1));
-%                     set(ddat.axial_image{iaxes, ivisit},'ButtonDownFcn',...
-%                         {@image_button_press, 'axi'});
-%                     pos_axi = [ddat.sag, ddat.cor];
-%                     crosshair = plot_crosshair(pos_axi, [], AxiAxes);
-%                     ddat.axial_xline{iaxes, ivisit} = crosshair.lx;
-%                     ddat.axial_yline{iaxes, ivisit} = crosshair.ly;
-%                     
-%                     % Sagittal Image
-%                    SagAxes = axes('Parent', hs.fig.Children(3).Children(2), ...
-%                         'Units', 'Normalized', ...
-%                         'Tag', ['SagittalAxes' num2str(iaxes) '_' num2str(ivisit)],...
-%                         'visible', 'off' );
-%                    set(SagAxes,'YDir','normal','XLimMode','manual','YLimMode','manual',...
-%                     'ClimMode','manual','YColor',[0 0 0],'XColor',[0 0 0],...
-%                     'xtick',[],'ytick',[],'Tag',['SagittalAxes' num2str(iaxes) '_' num2str(ivisit)])
-%                     daspect(SagAxes,aspect([2 3 1]));
-%                     % this is just to put image in place at creation,
-%                     % actual displayed image comes from display function
-%                     %ddat.axial_image{iaxes, ivisit} = image(ddat.axial_image(1, 1));
-% %                     set(ddat.sagittal_image{iaxes, ivisit},'ButtonDownFcn',...
-% %                         {@image_button_press, 'sag'});
-% %                     pos_sag = [ddat.cor, ddat.axi];
-% %                     crosshair = plot_crosshair(pos_sag, [], SagAxes);
-% %                     %crosshair = plot_crosshair(pos_sag);
-% %                     ddat.sagittal_xline{iaxes, ivisit} = crosshair.lx;
-% %                     ddat.sagittal_yline{iaxes, ivisit} = crosshair.ly;
-%                     
-%                 end
-%             end
-%             
-%         end
+        %         if current_n_maps < size(ddat.viewTracker, 1)
+        %
+        %             %hs.fig.Children(3).Children(2)
+        %             aspect = 1./ddat.daspect;
+        %
+        %             for iaxes = (current_n_maps+1):size(ddat.viewTracker, 1)
+        %                 for ivisit = 1:ddat.nVisit
+        %
+        %
+        %                     % Coronal Image
+        %                     CorAxes = axes('Parent', hs.fig.Children(3).Children(2), ...
+        %                         'Units', 'Normalized',...
+        %                         'Tag', ['CoronalAxes' num2str(iaxes) '_' num2str(ivisit)],...
+        %                         'visible', 'off' );
+        %                     set(CorAxes,'YDir','normal','XLimMode','manual','YLimMode','manual',...
+        %                         'ClimMode','manual','YColor',[0 0 0],'XColor',[0 0 0],...
+        %                         'xtick',[],'ytick',[],...
+        %                         'Tag',['CoronalAxes' num2str(iaxes) '_' num2str(ivisit)])
+        %                     daspect(CorAxes, aspect([1 3 2]));
+        %                     % this is just to put image in place at creation,
+        %                     % actual displayed image comes from display function
+        %                     %ddat.coronal_image{iaxes, ivisit} = image(ddat.coronal_image(1, 1));
+        %                     %ddat.coronal_image{iaxes, ivisit} = ddat.coronal_image(1, 1));
+        % %                     set(ddat.coronal_image{iaxes, ivisit},'ButtonDownFcn',...
+        % %                         {@image_button_press, 'cor'});
+        % %                     pos_cor = [ddat.sag, ddat.axi];
+        % %                     crosshair = plot_crosshair(pos_cor, [], CorAxes);
+        % %                     ddat.coronal_xline{iaxes, ivisit} = crosshair.lx;
+        % %                     ddat.coronal_yline{iaxes, ivisit} = crosshair.ly;
+        %
+        %                     % Axial Image
+        %                     AxiAxes = axes('Parent', hs.fig.Children(3).Children(2), ...
+        %                         'Units', 'Normalized', ...
+        %                         'Tag', ['AxialAxes' num2str(iaxes) '_' num2str(ivisit)],...
+        %                         'visible', 'off');
+        %                     set(AxiAxes,'YDir','normal','XLimMode','manual','YLimMode','manual',...
+        %                     'ClimMode','manual','YColor',[0 0 0],'XColor',[0 0 0],...
+        %                     'xtick',[],'ytick',[],'Tag',['AxialAxes' num2str(iaxes) '_' num2str(ivisit)])
+        %                     daspect(AxiAxes,aspect([1 3 2]));
+        %                     % this is just to put image in place at creation,
+        %                     % actual displayed image comes from display function
+        %                     %ddat.axial_image{iaxes, ivisit} = image(ddat.axial_image(1, 1));
+        %                     set(ddat.axial_image{iaxes, ivisit},'ButtonDownFcn',...
+        %                         {@image_button_press, 'axi'});
+        %                     pos_axi = [ddat.sag, ddat.cor];
+        %                     crosshair = plot_crosshair(pos_axi, [], AxiAxes);
+        %                     ddat.axial_xline{iaxes, ivisit} = crosshair.lx;
+        %                     ddat.axial_yline{iaxes, ivisit} = crosshair.ly;
+        %
+        %                     % Sagittal Image
+        %                    SagAxes = axes('Parent', hs.fig.Children(3).Children(2), ...
+        %                         'Units', 'Normalized', ...
+        %                         'Tag', ['SagittalAxes' num2str(iaxes) '_' num2str(ivisit)],...
+        %                         'visible', 'off' );
+        %                    set(SagAxes,'YDir','normal','XLimMode','manual','YLimMode','manual',...
+        %                     'ClimMode','manual','YColor',[0 0 0],'XColor',[0 0 0],...
+        %                     'xtick',[],'ytick',[],'Tag',['SagittalAxes' num2str(iaxes) '_' num2str(ivisit)])
+        %                     daspect(SagAxes,aspect([2 3 1]));
+        %                     % this is just to put image in place at creation,
+        %                     % actual displayed image comes from display function
+        %                     %ddat.axial_image{iaxes, ivisit} = image(ddat.axial_image(1, 1));
+        % %                     set(ddat.sagittal_image{iaxes, ivisit},'ButtonDownFcn',...
+        % %                         {@image_button_press, 'sag'});
+        % %                     pos_sag = [ddat.cor, ddat.axi];
+        % %                     crosshair = plot_crosshair(pos_sag, [], SagAxes);
+        % %                     %crosshair = plot_crosshair(pos_sag);
+        % %                     ddat.sagittal_xline{iaxes, ivisit} = crosshair.lx;
+        % %                     ddat.sagittal_yline{iaxes, ivisit} = crosshair.ly;
+        %
+        %                 end
+        %             end
+        %
+        %         end
         
         set_viewing_properties;
         
@@ -1593,6 +1618,83 @@ end
     end
 
 
+% Function to load a new IC - called when the user changes ICs.
+    function updateIC(hObject, callbackdata)
+        % Turn off contrast
+        ddat.viewingContrast = 0;
+        % IC to load
+        newIC = get(findobj('Tag', 'ICselect'), 'val');
+        % file based on current viewer
+        if strcmp(ddat.type, 'grp')
+            % Load each visit for this subject
+            for iVisit = 1:ddat.nVisit
+                newFile = [ddat.outdir '/' ddat.outpre '_aggregateIC_' num2str(newIC) '_visit' num2str(iVisit) '.nii'];
+                newData = load_nii(newFile);
+                ddat.img{1, iVisit} = newData.img; ddat.oimg{1, iVisit} = newData.img;
+            end
+        elseif strcmp(ddat.type, 'subpop')
+            newFile = [ddat.outdir '/' ddat.outpre '_S0_IC_' num2str(newIC) '.nii'];
+            updateSubPopulation;
+        elseif strcmp(ddat.type, 'beta')
+            covnum = get(findobj('Tag', 'selectCovariate'), 'Value');
+            ndata = load_nii([ddat.outdir '/' ddat.outpre...
+                '_beta_cov' num2str(covnum) '_IC' num2str(newIC) '.nii']);
+            ddat.img{1} = ndata.img; ddat.oimg{1} = ndata.img;
+            % Fill out the beta map for the current IC
+            newIC = get(findobj('Tag', 'ICselect'), 'val');
+            newMap = load(fullfile(ddat.outdir,...
+                [ddat.outpre '_BetaVarEst_IC_' num2str(newIC) '.mat']));
+            ddat.betaVarEst = newMap.betaVarEst;
+        elseif strcmp(ddat.type, 'subj')
+            generateSingleSubjMap;
+        elseif strcmp(ddat.type, 'icsel')
+            ndata = load_nii([ddat.outdir '/' ddat.outpre '_iniIC_' num2str(newIC) '.nii']);
+            % need to turn the 0's into NaN values
+            zeroImg = ndata.img; zeroImg(find(ndata.img == 0)) = nan;
+            ddat.img{1} = zeroImg; ddat.oimg{1} = zeroImg;
+            % get if the checkbox should be selected
+            isSelected = get(findobj('Tag', 'icSelRef'), 'Data');
+            if strcmp(isSelected{newIC,2}, 'x')
+                set(findobj('Tag', 'keepIC'), 'Value', 1);
+            else
+                set(findobj('Tag', 'keepIC'), 'Value', 0);
+            end
+        elseif strcmp(ddat.type, 'reEst')
+            ndata = load_nii([ddat.outdir '/' ddat.outpre '_iniguess/' ddat.outpre '_reducedIniGuess_GroupMap_IC_' num2str(newIC) '.nii']);
+            % need to turn the 0's into NaN values
+            zeroImg = ndata.img; zeroImg(find(ndata.img == 0)) = nan;
+            ddat.img{1} = zeroImg; ddat.oimg{1} = zeroImg;
+        elseif strcmp(ddat.type, 'subPopCompare')
+            % Read in the data for the sub population in this panel
+            covariateSettings = get(findobj('Tag', 'subPopDisplay'),'Data');
+            newFile = strcat(ddat.outdir,'/',ddat.outpre,'_S0_IC_',num2str(newIC),'.nii');
+            newDat = load_nii(newFile);
+            for subPop = 1:ddat.nCompare
+                newFunc = newDat.img;
+                for xi = 1:ddat.p
+                    beta = load_nii([ddat.outdir '/' ddat.outpre '_beta_cov' num2str(xi) '_IC' num2str(newIC) '.nii']);
+                    xb = beta.img * str2double(covariateSettings( subPop , xi));
+                    newFunc = newFunc + xb;
+                end
+                ddat.img{subPop} = newFunc; ddat.oimg{subPop} = newFunc;
+            end
+        end
+        
+        % Convert the image to a z-score if that option is selected
+        updateZImg;
+        maskSearch;
+        editThreshold;
+        
+        update_brain_maps('updateCombinedImage')
+        
+        % If viewing a single subject and a mask is currently selected,
+        % then apply that mask to the new subect's data;
+        if strcmp(ddat.type, 'subj')
+            applyMask;
+        end
+    end
+
+
 %% Brain Map Plotting
 
 % update_brain_maps - primary function that updates the brain maps
@@ -1723,12 +1825,12 @@ end
                     ddat.coronal_xline{iRow, iCol} = crosshair.lx;
                     ddat.coronal_yline{iRow, iCol} = crosshair.ly;
                     
-%                     set(ddat.coronal_image{iRow, iCol},'ButtonDownFcn', {@image_button_press, 'cor'});
-%                     pos_cor = [ddat.sag, ddat.cor];
-%                     crosshair = plot_crosshair(pos_axi, [], axesC);
-%                     ddat.axial_xline{subPop, currentVisitIndex} = crosshair.lx;
-%                     ddat.axial_yline{subPop, currentVisitIndex} = crosshair.ly;
-%                     
+                    %                     set(ddat.coronal_image{iRow, iCol},'ButtonDownFcn', {@image_button_press, 'cor'});
+                    %                     pos_cor = [ddat.sag, ddat.cor];
+                    %                     crosshair = plot_crosshair(pos_axi, [], axesC);
+                    %                     ddat.axial_xline{subPop, currentVisitIndex} = crosshair.lx;
+                    %                     ddat.axial_yline{subPop, currentVisitIndex} = crosshair.ly;
+                    %
                     
                     axesC = (findobj('Tag', ['AxialAxes' num2str(iRow) '_' num2str(iCol)] ));
                     ddat.axial_image{iRow, iCol} = image(axesC, Saxi);
@@ -1772,9 +1874,9 @@ end
         end
         
         % this is leftover from old version
-%         % Update the colormap (here as a safety precaution).
-%         axesC = findobj('Tag', 'colorMap');
-%         updateColorbar;
+        %         % Update the colormap (here as a safety precaution).
+        %         axesC = findobj('Tag', 'colorMap');
+        %         updateColorbar;
         
     end
 
@@ -1789,59 +1891,59 @@ end
             for iVisit = 1:ddat.nVisit
                 
                 if ddat.viewTracker(iPop, iVisit) > 0
+                    
+                    axes(findobj('Tag', ['SagittalAxes' num2str(iPop) '_' num2str(iVisit)]));
+                    ddat.sag = round(get(hObject, 'Value'));
+                    for cl = 1:3
+                        Ssag(:, :, cl) = squeeze(ddat.combinedImg{iPop, iVisit}(cl).combound(ddat.sag, :, :))';
+                    end
+                    set(ddat.sagittal_image{iPop, iVisit},'CData',Ssag);
+                    set(ddat.axial_yline{iPop, iVisit},'Xdata',[ddat.sag ddat.sag]);
+                    set(ddat.coronal_yline{iPop, iVisit},'Xdata',[ddat.sag ddat.sag]);
+                    set(findobj('Tag','crosshairPos'),'String',...
+                        sprintf('%7.0d %7.0d %7.0d',ddat.sag,ddat.cor, ddat.axi));
+                    updateInfoText;
+                    %                 if ddat.nCompare == 1
+                    %                     if get(findobj('Tag', 'viewZScores'), 'Value') == 0
+                    %                         set(findobj('Tag', 'crosshairVal1'),'String',...
+                    %                             sprintf('Value at Voxel: %4.2f', ddat.img{1}(ddat.sag, ddat.cor, ddat.axi)));
+                    %                     elseif get(findobj('Tag', 'viewZScores'), 'Value') == 1
+                    %                         set(findobj('Tag', 'crosshairVal1'),'String',...
+                    %                             sprintf('Z = %4.2f', ddat.img{1}(ddat.sag, ddat.cor, ddat.axi)));
+                    %                     end
+                    %                 else
+                    %                     if get(findobj('Tag', 'viewZScores'), 'Value') == 0
+                    %                         for iPop = 1:ddat.nCompare
+                    %                             set(findobj('Tag', ['crosshairVal' num2str(iPop)]),'String',...
+                    %                                 sprintf('Value at Voxel: %4.2f',...
+                    %                                 ddat.img{iPop}(ddat.sag, ddat.cor, ddat.axi)));
+                    %                         end
+                    %                     else
+                    %                         for iPop = 1:ddat.nCompare
+                    %                             set(findobj('Tag', ['crosshairVal' num2str(iPop)]),'String',...
+                    %                                 sprintf('Z = %4.2f',...
+                    %                                 ddat.img{iPop}(ddat.sag, ddat.cor, ddat.axi)));
+                    %                         end
+                    %                     end
+                    %                 end
+                    %                 valId = cell2mat(ddat.total_region_name(:, 1));
+                    %                 curIdVal = ddat.region_struct.img(ddat.sag, ddat.cor, ddat.axi);
+                    %                 curIdPos = find(ismember(valId, curIdVal));
+                    %                 if curIdPos
+                    %                     set(findobj('Tag', 'curInfo'), 'ForegroundColor','g',...
+                    %                         'FontSize', 10, 'HorizontalAlignment', 'left', 'String', ...
+                    %                         sprintf('Current crosshair is located in the region: %s', ...
+                    %                         ddat.total_region_name{curIdPos, 2}));
+                    %                 else
+                    %                     set(findobj('Tag', 'curInfo'), 'String', '');
+                    %                 end
+                end
                 
-                axes(findobj('Tag', ['SagittalAxes' num2str(iPop) '_' num2str(iVisit)]));
-                ddat.sag = round(get(hObject, 'Value'));
-                for cl = 1:3
-                    Ssag(:, :, cl) = squeeze(ddat.combinedImg{iPop, iVisit}(cl).combound(ddat.sag, :, :))';
+                
+                % Add the currently selected voxel to the trajectory plot
+                if ddat.trajectoryActive == 1
+                    plot_voxel_trajectory([ddat.sag, ddat.cor, ddat.axi])
                 end
-                set(ddat.sagittal_image{iPop, iVisit},'CData',Ssag);
-                set(ddat.axial_yline{iPop, iVisit},'Xdata',[ddat.sag ddat.sag]);
-                set(ddat.coronal_yline{iPop, iVisit},'Xdata',[ddat.sag ddat.sag]);
-                set(findobj('Tag','crosshairPos'),'String',...
-                    sprintf('%7.0d %7.0d %7.0d',ddat.sag,ddat.cor, ddat.axi));
-                updateInfoText;
-%                 if ddat.nCompare == 1
-%                     if get(findobj('Tag', 'viewZScores'), 'Value') == 0
-%                         set(findobj('Tag', 'crosshairVal1'),'String',...
-%                             sprintf('Value at Voxel: %4.2f', ddat.img{1}(ddat.sag, ddat.cor, ddat.axi)));
-%                     elseif get(findobj('Tag', 'viewZScores'), 'Value') == 1
-%                         set(findobj('Tag', 'crosshairVal1'),'String',...
-%                             sprintf('Z = %4.2f', ddat.img{1}(ddat.sag, ddat.cor, ddat.axi)));
-%                     end
-%                 else
-%                     if get(findobj('Tag', 'viewZScores'), 'Value') == 0
-%                         for iPop = 1:ddat.nCompare
-%                             set(findobj('Tag', ['crosshairVal' num2str(iPop)]),'String',...
-%                                 sprintf('Value at Voxel: %4.2f',...
-%                                 ddat.img{iPop}(ddat.sag, ddat.cor, ddat.axi)));
-%                         end
-%                     else
-%                         for iPop = 1:ddat.nCompare
-%                             set(findobj('Tag', ['crosshairVal' num2str(iPop)]),'String',...
-%                                 sprintf('Z = %4.2f',...
-%                                 ddat.img{iPop}(ddat.sag, ddat.cor, ddat.axi)));
-%                         end
-%                     end
-%                 end
-%                 valId = cell2mat(ddat.total_region_name(:, 1));
-%                 curIdVal = ddat.region_struct.img(ddat.sag, ddat.cor, ddat.axi);
-%                 curIdPos = find(ismember(valId, curIdVal));
-%                 if curIdPos
-%                     set(findobj('Tag', 'curInfo'), 'ForegroundColor','g',...
-%                         'FontSize', 10, 'HorizontalAlignment', 'left', 'String', ...
-%                         sprintf('Current crosshair is located in the region: %s', ...
-%                         ddat.total_region_name{curIdPos, 2}));
-%                 else
-%                     set(findobj('Tag', 'curInfo'), 'String', '');
-%                 end
-                end
-
-        
-            % Add the currently selected voxel to the trajectory plot
-            if ddat.trajectoryActive == 1
-                plot_voxel_trajectory([ddat.sag, ddat.cor, ddat.axi])
-            end
             end
         end
         
@@ -1849,61 +1951,61 @@ end
 
 % Update coronal slider.
     function corSliderMove(hObject, callbackdata)
-         % Loop over populations and visits
+        % Loop over populations and visits
         for iPop = 1:ddat.nCompare
             for iVisit = 1:ddat.nVisit
                 if ddat.viewTracker(iPop, iVisit) > 0
-            axes(findobj('Tag', ['CoronalAxes' num2str(iPop) '_' num2str(iVisit)]));
-            ddat.cor = round(get(hObject, 'Value'));
-            for cl = 1:3
-                Scor(:, :, cl) = squeeze(ddat.combinedImg{iPop, iVisit}(cl).combound(:,ddat.cor,:))';
-            end
-            set(ddat.coronal_image{iPop, iVisit},'CData',Scor);
-            set(ddat.axial_xline{iPop, iVisit},'Ydata',[ddat.cor ddat.cor]);
-            set(ddat.sagittal_yline{iPop, iVisit},'Xdata',[ddat.cor ddat.cor]);
-            set(findobj('Tag','crosshairPos'),'String',...
-                sprintf('%7.0d %7.0d %7.0d',ddat.sag,ddat.cor, ddat.axi));
-            updateInfoText;
-%             if ddat.nCompare == 1
-%                 if get(findobj('Tag', 'viewZScores'), 'Value') == 0
-%                     set(findobj('Tag', 'crosshairVal1'),'String',...
-%                         sprintf('Value at Voxel: %4.2f', ddat.img{1}(ddat.sag, ddat.cor, ddat.axi)));
-%                 elseif get(findobj('Tag', 'viewZScores'), 'Value') == 1
-%                     set(findobj('Tag', 'crosshairVal1'),'String',...
-%                         sprintf('Z = %4.2f', ddat.img{1}(ddat.sag, ddat.cor, ddat.axi)));
-%                 end
-%             else
-%                 if get(findobj('Tag', 'viewZScores'), 'Value') == 0
-%                     for iPop = 1:ddat.nCompare
-%                         set(findobj('Tag', ['crosshairVal' num2str(iPop)]),'String',...
-%                             sprintf('Value at Voxel: %4.2f',...
-%                             ddat.img{iPop}(ddat.sag, ddat.cor, ddat.axi)));
-%                     end
-%                 else
-%                     for iPop = 1:ddat.nCompare
-%                         set(findobj('Tag', ['crosshairVal' num2str(iPop)]),'String',...
-%                             sprintf('Z = %4.2f',...
-%                             ddat.img{iPop}(ddat.sag, ddat.cor, ddat.axi)));
-%                     end
-%                 end
-%             end
-%             valId = cell2mat(ddat.total_region_name(:, 1));
-%             curIdVal = ddat.region_struct.img(ddat.sag, ddat.cor, ddat.axi);
-%             curIdPos = find(ismember(valId, curIdVal));
-%             if curIdPos
-%                 set(findobj('Tag', 'curInfo'), 'ForegroundColor','g',...
-%                     'FontSize', 10, 'HorizontalAlignment', 'left', 'String', ...
-%                     sprintf('Current crosshair is located in the region: %s', ...
-%                     ddat.total_region_name{curIdPos, 2}));
-%             else
-%                 set(findobj('Tag', 'curInfo'), 'String', '');
-%             end
-        
-        % Add the currently selected voxel to the trajectory plot
-        if ddat.trajectoryActive == 1
-            plot_voxel_trajectory([ddat.sag, ddat.cor, ddat.axi])
-        end
-            end
+                    axes(findobj('Tag', ['CoronalAxes' num2str(iPop) '_' num2str(iVisit)]));
+                    ddat.cor = round(get(hObject, 'Value'));
+                    for cl = 1:3
+                        Scor(:, :, cl) = squeeze(ddat.combinedImg{iPop, iVisit}(cl).combound(:,ddat.cor,:))';
+                    end
+                    set(ddat.coronal_image{iPop, iVisit},'CData',Scor);
+                    set(ddat.axial_xline{iPop, iVisit},'Ydata',[ddat.cor ddat.cor]);
+                    set(ddat.sagittal_yline{iPop, iVisit},'Xdata',[ddat.cor ddat.cor]);
+                    set(findobj('Tag','crosshairPos'),'String',...
+                        sprintf('%7.0d %7.0d %7.0d',ddat.sag,ddat.cor, ddat.axi));
+                    updateInfoText;
+                    %             if ddat.nCompare == 1
+                    %                 if get(findobj('Tag', 'viewZScores'), 'Value') == 0
+                    %                     set(findobj('Tag', 'crosshairVal1'),'String',...
+                    %                         sprintf('Value at Voxel: %4.2f', ddat.img{1}(ddat.sag, ddat.cor, ddat.axi)));
+                    %                 elseif get(findobj('Tag', 'viewZScores'), 'Value') == 1
+                    %                     set(findobj('Tag', 'crosshairVal1'),'String',...
+                    %                         sprintf('Z = %4.2f', ddat.img{1}(ddat.sag, ddat.cor, ddat.axi)));
+                    %                 end
+                    %             else
+                    %                 if get(findobj('Tag', 'viewZScores'), 'Value') == 0
+                    %                     for iPop = 1:ddat.nCompare
+                    %                         set(findobj('Tag', ['crosshairVal' num2str(iPop)]),'String',...
+                    %                             sprintf('Value at Voxel: %4.2f',...
+                    %                             ddat.img{iPop}(ddat.sag, ddat.cor, ddat.axi)));
+                    %                     end
+                    %                 else
+                    %                     for iPop = 1:ddat.nCompare
+                    %                         set(findobj('Tag', ['crosshairVal' num2str(iPop)]),'String',...
+                    %                             sprintf('Z = %4.2f',...
+                    %                             ddat.img{iPop}(ddat.sag, ddat.cor, ddat.axi)));
+                    %                     end
+                    %                 end
+                    %             end
+                    %             valId = cell2mat(ddat.total_region_name(:, 1));
+                    %             curIdVal = ddat.region_struct.img(ddat.sag, ddat.cor, ddat.axi);
+                    %             curIdPos = find(ismember(valId, curIdVal));
+                    %             if curIdPos
+                    %                 set(findobj('Tag', 'curInfo'), 'ForegroundColor','g',...
+                    %                     'FontSize', 10, 'HorizontalAlignment', 'left', 'String', ...
+                    %                     sprintf('Current crosshair is located in the region: %s', ...
+                    %                     ddat.total_region_name{curIdPos, 2}));
+                    %             else
+                    %                 set(findobj('Tag', 'curInfo'), 'String', '');
+                    %             end
+                    
+                    % Add the currently selected voxel to the trajectory plot
+                    if ddat.trajectoryActive == 1
+                        plot_voxel_trajectory([ddat.sag, ddat.cor, ddat.axi])
+                    end
+                end
             end
         end
         
@@ -1915,57 +2017,57 @@ end
         for iPop = 1:ddat.nCompare
             for iVisit = 1:ddat.nVisit
                 if ddat.viewTracker(iPop, iVisit) > 0
-            axes(findobj('Tag', ['AxialAxes' num2str(iPop, iVisit)]));
-            ddat.axi = round(get(hObject, 'Value'));
-            for cl = 1:3
-                Saxi(:, :, cl) = squeeze(ddat.combinedImg{iPop, iVisit}(cl).combound(:, :, ddat.axi))';
-            end
-            set(ddat.axial_image{iPop, iVisit},'CData',Saxi);
-            set(ddat.coronal_xline{iPop, iVisit},'Ydata',[ddat.axi ddat.axi]);
-            set(ddat.sagittal_xline{iPop, iVisit},'Ydata',[ddat.axi ddat.axi]);
-            set(findobj('Tag','crosshairPos'),'String',...
-                sprintf('%7.0d %7.0d %7.0d',ddat.sag,ddat.cor, ddat.axi));
-            updateInfoText;
-            disp('move update info text for slider functions')
-%             if ddat.nCompare == 1
-%                 if get(findobj('Tag', 'viewZScores'), 'Value') == 0
-%                     set(findobj('Tag', 'crosshairVal1'),'String',...
-%                         sprintf('Value at Voxel: %4.2f', ddat.img{1}(ddat.sag, ddat.cor, ddat.axi)));
-%                 elseif get(findobj('Tag', 'viewZScores'), 'Value') == 1
-%                     set(findobj('Tag', 'crosshairVal1'),'String',...
-%                         sprintf('Z = %4.2f', ddat.img{1}(ddat.sag, ddat.cor, ddat.axi)));
-%                 end
-%             else
-%                 if get(findobj('Tag', 'viewZScores'), 'Value') == 0
-%                     for iPop = 1:ddat.nCompare
-%                         set(findobj('Tag', ['crosshairVal' num2str(iPop)]),'String',...
-%                             sprintf('Value at Voxel: %4.2f',...
-%                             ddat.img{iPop}(ddat.sag, ddat.cor, ddat.axi)));
-%                     end
-%                 else
-%                     for iPop = 1:ddat.nCompare
-%                         set(findobj('Tag', ['crosshairVal' num2str(iPop)]),'String',...
-%                             sprintf('Z = %4.2f',...
-%                             ddat.img{iPop}(ddat.sag, ddat.cor, ddat.axi)));
-%                     end
-%                 end
-%             end
-%             valId = cell2mat(ddat.total_region_name(:, 1));
-%             curIdVal = ddat.region_struct.img(ddat.sag, ddat.cor, ddat.axi);
-%             curIdPos = find(ismember(valId, curIdVal));
-%             if curIdPos
-%                 set(findobj('Tag', 'curInfo'), 'ForegroundColor','g',...
-%                     'FontSize', 10, 'HorizontalAlignment', 'left', 'String', ...
-%                     sprintf('Current crosshair is located in the region: %s', ...
-%                     ddat.total_region_name{curIdPos, 2}));
-%             else
-%                 set(findobj('Tag', 'curInfo'), 'String', '');
-%             end
-        
-        % Add the currently selected voxel to the trajectory plot
-        if ddat.trajectoryActive == 1
-            plot_voxel_trajectory([ddat.sag, ddat.cor, ddat.axi])
-        end
+                    axes(findobj('Tag', ['AxialAxes' num2str(iPop, iVisit)]));
+                    ddat.axi = round(get(hObject, 'Value'));
+                    for cl = 1:3
+                        Saxi(:, :, cl) = squeeze(ddat.combinedImg{iPop, iVisit}(cl).combound(:, :, ddat.axi))';
+                    end
+                    set(ddat.axial_image{iPop, iVisit},'CData',Saxi);
+                    set(ddat.coronal_xline{iPop, iVisit},'Ydata',[ddat.axi ddat.axi]);
+                    set(ddat.sagittal_xline{iPop, iVisit},'Ydata',[ddat.axi ddat.axi]);
+                    set(findobj('Tag','crosshairPos'),'String',...
+                        sprintf('%7.0d %7.0d %7.0d',ddat.sag,ddat.cor, ddat.axi));
+                    updateInfoText;
+                    disp('move update info text for slider functions')
+                    %             if ddat.nCompare == 1
+                    %                 if get(findobj('Tag', 'viewZScores'), 'Value') == 0
+                    %                     set(findobj('Tag', 'crosshairVal1'),'String',...
+                    %                         sprintf('Value at Voxel: %4.2f', ddat.img{1}(ddat.sag, ddat.cor, ddat.axi)));
+                    %                 elseif get(findobj('Tag', 'viewZScores'), 'Value') == 1
+                    %                     set(findobj('Tag', 'crosshairVal1'),'String',...
+                    %                         sprintf('Z = %4.2f', ddat.img{1}(ddat.sag, ddat.cor, ddat.axi)));
+                    %                 end
+                    %             else
+                    %                 if get(findobj('Tag', 'viewZScores'), 'Value') == 0
+                    %                     for iPop = 1:ddat.nCompare
+                    %                         set(findobj('Tag', ['crosshairVal' num2str(iPop)]),'String',...
+                    %                             sprintf('Value at Voxel: %4.2f',...
+                    %                             ddat.img{iPop}(ddat.sag, ddat.cor, ddat.axi)));
+                    %                     end
+                    %                 else
+                    %                     for iPop = 1:ddat.nCompare
+                    %                         set(findobj('Tag', ['crosshairVal' num2str(iPop)]),'String',...
+                    %                             sprintf('Z = %4.2f',...
+                    %                             ddat.img{iPop}(ddat.sag, ddat.cor, ddat.axi)));
+                    %                     end
+                    %                 end
+                    %             end
+                    %             valId = cell2mat(ddat.total_region_name(:, 1));
+                    %             curIdVal = ddat.region_struct.img(ddat.sag, ddat.cor, ddat.axi);
+                    %             curIdPos = find(ismember(valId, curIdVal));
+                    %             if curIdPos
+                    %                 set(findobj('Tag', 'curInfo'), 'ForegroundColor','g',...
+                    %                     'FontSize', 10, 'HorizontalAlignment', 'left', 'String', ...
+                    %                     sprintf('Current crosshair is located in the region: %s', ...
+                    %                     ddat.total_region_name{curIdPos, 2}));
+                    %             else
+                    %                 set(findobj('Tag', 'curInfo'), 'String', '');
+                    %             end
+                    
+                    % Add the currently selected voxel to the trajectory plot
+                    if ddat.trajectoryActive == 1
+                        plot_voxel_trajectory([ddat.sag, ddat.cor, ddat.axi])
+                    end
                 end
             end
         end
@@ -2077,80 +2179,6 @@ end
     end
 
 %% Data Loading Functions
-
-% Function to load a new IC - called when the user changes ICs.
-    function updateIC(hObject, callbackdata)
-        % Turn off contrast
-        ddat.viewingContrast = 0;
-        % IC to load
-        newIC = get(findobj('Tag', 'ICselect'), 'val');
-        % file based on current viewer
-        if strcmp(ddat.type, 'grp')
-            % Load each visit for this subject
-            for iVisit = 1:ddat.nVisit
-                newFile = [ddat.outdir '/' ddat.outpre '_aggregateIC_' num2str(newIC) '_visit' num2str(iVisit) '.nii'];
-                newData = load_nii(newFile);
-                ddat.img{1, iVisit} = newData.img; ddat.oimg{1, iVisit} = newData.img;
-            end
-        elseif strcmp(ddat.type, 'subpop')
-            newFile = [ddat.outdir '/' ddat.outpre '_S0_IC_' num2str(newIC) '.nii'];
-            updateSubPopulation;
-        elseif strcmp(ddat.type, 'beta')
-            covnum = get(findobj('Tag', 'selectCovariate'), 'Value');
-            ndata = load_nii([ddat.outdir '/' ddat.outpre...
-                '_beta_cov' num2str(covnum) '_IC' num2str(newIC) '.nii']);
-            ddat.img{1} = ndata.img; ddat.oimg{1} = ndata.img;
-            % Fill out the beta map for the current IC
-            newIC = get(findobj('Tag', 'ICselect'), 'val');
-            newMap = load(fullfile(ddat.outdir,...
-                [ddat.outpre '_BetaVarEst_IC_' num2str(newIC) '.mat']));
-            ddat.betaVarEst = newMap.betaVarEst;
-        elseif strcmp(ddat.type, 'subj')
-            generateSingleSubjMap;
-        elseif strcmp(ddat.type, 'icsel')
-            ndata = load_nii([ddat.outdir '/' ddat.outpre '_iniIC_' num2str(newIC) '.nii']);
-            % need to turn the 0's into NaN values
-            zeroImg = ndata.img; zeroImg(find(ndata.img == 0)) = nan;
-            ddat.img{1} = zeroImg; ddat.oimg{1} = zeroImg;
-            % get if the checkbox should be selected
-            isSelected = get(findobj('Tag', 'icSelRef'), 'Data');
-            if strcmp(isSelected{newIC,2}, 'x')
-                set(findobj('Tag', 'keepIC'), 'Value', 1);
-            else
-                set(findobj('Tag', 'keepIC'), 'Value', 0);
-            end
-        elseif strcmp(ddat.type, 'reEst')
-            ndata = load_nii([ddat.outdir '/' ddat.outpre '_iniguess/' ddat.outpre '_reducedIniGuess_GroupMap_IC_' num2str(newIC) '.nii']);
-            % need to turn the 0's into NaN values
-            zeroImg = ndata.img; zeroImg(find(ndata.img == 0)) = nan;
-            ddat.img{1} = zeroImg; ddat.oimg{1} = zeroImg;
-        elseif strcmp(ddat.type, 'subPopCompare')
-            % Read in the data for the sub population in this panel
-            covariateSettings = get(findobj('Tag', 'subPopDisplay'),'Data');
-            newFile = strcat(ddat.outdir,'/',ddat.outpre,'_S0_IC_',num2str(newIC),'.nii');
-            newDat = load_nii(newFile);
-            for subPop = 1:ddat.nCompare
-                newFunc = newDat.img;
-                for xi = 1:ddat.p
-                    beta = load_nii([ddat.outdir '/' ddat.outpre '_beta_cov' num2str(xi) '_IC' num2str(newIC) '.nii']);
-                    xb = beta.img * str2double(covariateSettings( subPop , xi));
-                    newFunc = newFunc + xb;
-                end
-                ddat.img{subPop} = newFunc; ddat.oimg{subPop} = newFunc;
-            end
-        end
-        
-        % Convert the image to a z-score if that option is selected
-        updateZImg;
-        maskSearch;
-        editThreshold;
-        
-        % If viewing a single subject and a mask is currently selected,
-        % then apply that mask to the new subect's data;
-        if strcmp(ddat.type, 'subj')
-            applyMask;
-        end
-    end
 
 %% Crosshair and Information
 
