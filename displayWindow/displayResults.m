@@ -39,6 +39,7 @@ ddat.covTypes = varargin{8};
 ddat.betaVarEst = 0;
 ddat.interactions = varargin{9};
 ddat.nVisit = varargin{10};
+ddat.color_map = parula;
 [~, ddat.p] = size(ddat.X);
 global keeplist;
 if ~isempty(keeplist)
@@ -1634,12 +1635,14 @@ end
         newIC = get(findobj('Tag', 'ICselect'), 'val');
         % file based on current viewer
         if strcmp(ddat.type, 'grp')
-            % Load each visit for this subject
+            
+            % Load each visit 
             for iVisit = 1:ddat.nVisit
                 newFile = [ddat.outdir '/' ddat.outpre '_aggregateIC_' num2str(newIC) '_visit' num2str(iVisit) '.nii'];
                 newData = load_nii(newFile);
                 ddat.img{1, iVisit} = newData.img; ddat.oimg{1, iVisit} = newData.img;
             end
+            
         elseif strcmp(ddat.type, 'subpop')
             newFile = [ddat.outdir '/' ddat.outpre '_S0_IC_' num2str(newIC) '.nii'];
             updateSubPopulation;
@@ -1689,11 +1692,13 @@ end
         end
         
         % Convert the image to a z-score if that option is selected
-        updateZImg;
-        maskSearch;
-        editThreshold;
-        
-        update_brain_maps('updateCombinedImage')
+        disp('figure out which of the three below need to run')
+        %updateZImg;
+        %maskSearch;
+        %editThreshold;
+        [rowInd, colInd] = find(ddat.viewTracker > 0);
+        update_brain_maps('updateCombinedImage', [rowInd', colInd']);
+
         
         % If viewing a single subject and a mask is currently selected,
         % then apply that mask to the new subect's data;
@@ -2273,53 +2278,73 @@ end
         % Find out if should be looking at Z-scores
         current_Z = get(findobj('Tag', 'viewZScores'), 'Value');
         
-        for subPop = 1:ddat.nCompare
-            if current_Z == 1
-                if strcmp('beta', ddat.type)
-                    % get the current beta map
-                    cBeta = get(findobj('Tag', 'selectCovariate'), 'Value');
-                    % get the current IC map
-                    cIC = get(findobj('Tag', 'ICselect'), 'Value');
-                    % get the index of the se matrix needed
-                    %seIndex = (ddat.q)*cBeta + cIC;
-                    if (ddat.viewingContrast == 0)
-                        % Scale using the theoretical variance estimate
-                        % theoretical estimate is q(p+1) * q(p+1)
-                        ddat.img{subPop} = ddat.oimg{subPop} ./...
-                            sqrt(squeeze(ddat.betaVarEst( cBeta, cBeta, :,:,: )));
-                    end
-                    if (ddat.viewingContrast == 1)
-                        contrastSettings = get(findobj('Tag', 'contrastDisplay'), 'Data');
-                        % Load the contrast
-                        c = zeros(ddat.p,1);
-                        for xi = 1:ddat.p
-                            c(xi) = str2double(contrastSettings( get(findobj('Tag',...
-                                ['contrastSelect' num2str(1)]), 'Value') , xi));
+        %for subPop = 1:ddat.nCompare
+         for iPop = 1:size(ddat.viewTracker, 1)
+             for iVisit = 1:size(ddat.viewTracker, 2)
+                 if ddat.viewTracker(iPop, iVisit) > 0
+                     
+                    if current_Z == 1
+                        if strcmp('beta', ddat.type)
+                            % get the current beta map
+                            cBeta = get(findobj('Tag', 'selectCovariate'), 'Value');
+                            % get the current IC map
+                            cIC = get(findobj('Tag', 'ICselect'), 'Value');
+                            % get the index of the se matrix needed
+                            %seIndex = (ddat.q)*cBeta + cIC;
+                            if (ddat.viewingContrast == 0)
+                                % Scale using the theoretical variance estimate
+                                % theoretical estimate is q(p+1) * q(p+1)
+                                ddat.img{subPop} = ddat.oimg{subPop} ./...
+                                    sqrt(squeeze(ddat.betaVarEst( cBeta, cBeta, :,:,: )));
+                            end
+                            if (ddat.viewingContrast == 1)
+                                contrastSettings = get(findobj('Tag', 'contrastDisplay'), 'Data');
+                                % Load the contrast
+                                c = zeros(ddat.p,1);
+                                for xi = 1:ddat.p
+                                    c(xi) = str2double(contrastSettings( get(findobj('Tag',...
+                                        ['contrastSelect' num2str(1)]), 'Value') , xi));
+                                end
+                                % Get the variance estimate; loop over each voxel
+                                seContrast = sqrt(squeeze(mtimesx(mtimesx(c', ddat.betaVarEst), c)));
+                                ddat.img{subPop} = ddat.oimg{subPop} ./...
+                                    squeeze(seContrast);
+                            end
+                        else
+                            ddat.img{iPop, iVisit} = ddat.oimg{iPop, iVisit} /...
+                                std(ddat.oimg{iPop, iVisit}(:), 'omitnan');
+                            set(findobj('Tag', 'manualThreshold'), 'max',1);
+                            editThreshold;
                         end
-                        % Get the variance estimate; loop over each voxel
-                        seContrast = sqrt(squeeze(mtimesx(mtimesx(c', ddat.betaVarEst), c)));
-                        ddat.img{subPop} = ddat.oimg{subPop} ./...
-                            squeeze(seContrast);
+                    else
+                        ddat.img{iPop, iVisit} = ddat.oimg{iPop, iVisit};
+                        set(findobj('Tag', 'thresholdSlider'), 'Value', 0);
+                        set(findobj('Tag', 'manualThreshold'), 'String', '');
+                        set(findobj('Tag', 'manualThreshold'), 'Value', 0);
                     end
-                else
-                    ddat.img{subPop} = ddat.oimg{subPop} /...
-                        std(ddat.oimg{subPop}(:), 'omitnan');
-                    set(findobj('Tag', 'manualThreshold'), 'max',1);
-                    editThreshold;
-                end
-            else
-                ddat.img{subPop} = ddat.oimg{subPop};
-                set(findobj('Tag', 'thresholdSlider'), 'Value', 0);
-                set(findobj('Tag', 'manualThreshold'), 'String', '');
-                set(findobj('Tag', 'manualThreshold'), 'Value', 0);
-            end
-        end
+
+                 end
+             end
+         end
+            
+            
+            
+            
+           %end
+        
+        
         
         % Redisplay the new image
-        createCombinedImage;
-        redisplay;
-        updateCrosshairValue;
-        updateInfoText;
+        disp('figure out what I need from here. All 4 were enabled')
+        %createCombinedImage;
+        %redisplay;
+        %updateCrosshairValue;
+        %updateInfoText;
+        
+        [rowInd, colInd] = find(ddat.viewTracker > 0);
+        update_brain_maps('updateCombinedImage', [rowInd', colInd']);
+        
+        
     end
 
 % Function to let the user know where in the brain they have clicked.
@@ -2390,15 +2415,24 @@ end
         end
         
         % Loop over sub populations and update Z threshold.
-        for subPop = 1:ddat.nCompare
-            threshImg = ddat.scaledFunc{subPop} .* (abs(ddat.img{subPop}) >= cutoff);
-            threshImg(threshImg == 0) = 1;
-            ddat.combinedImg{subPop} = overlay_w_transparency(uint16(ddat.scaledImg),...
-                uint16(threshImg),1, 0.6, ddat.color_map, ddat.highcolor);
+        for iPop = 1:size(ddat.viewTracker, 1)
+            for iVisit = 1:size(ddat.viewTracker, 2)
+                if ddat.viewTracker(iPop, iVisit) > 0
+                    % THIS IS WHAT IT WAS BACK WHEN REDISPLAY WAS A THING
+                    %threshImg = ddat.scaledFunc{iPop, iVisit} .* (abs(ddat.img{iPop, iVisit}) >= cutoff);
+                    %threshImg(threshImg == 0) = 1;
+                    %ddat.combinedImg{iPop, iVisit} = overlay_w_transparency(uint16(ddat.scaledImg),...
+                    %    uint16(threshImg),1, 0.6, ddat.color_map, ddat.highcolor);
+                    ddat.img{iPop, iVisit} = ddat.scaledFunc{iPop, iVisit} .* (abs(ddat.img{iPop, iVisit}) >= cutoff);
+                    ddat.img{iPop, iVisit}(ddat.img{iPop, iVisit} == 0) = nan;
+                end
+            end
         end
         
-        redisplay;
-        updateInfoText;
+        update_brain_maps('updateCombinedImage');
+        
+        %redisplay;
+        %updateInfoText;
     end
 
 % Function to handle Z-thresholding if the user manually enters a
