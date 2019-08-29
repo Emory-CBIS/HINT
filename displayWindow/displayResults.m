@@ -772,6 +772,7 @@ end
                 set_number_of_brain_axes(0);
                 
                 % Refresh the display window with the new row
+                editThreshold;
                 update_brain_maps('updateCombinedImage', [selected_pop, visit_number]);
                 
             else
@@ -796,6 +797,7 @@ end
                 
                 % Refresh the display window - remove the row from img,
                 % oimg, scaled image
+                editThreshold;
                 update_brain_maps('updateCombinedImage', [selected_pop, visit_number]);
                 
             end
@@ -1295,6 +1297,8 @@ end
         ddat.sagittal_xline = cell(ddat.nCompare, ddat.nVisit);
         ddat.sagittal_yline = cell(ddat.nCompare, ddat.nVisit);
         ddat.img = cell(ddat.nCompare, ddat.nVisit); ddat.oimg = cell(ddat.nCompare, ddat.nVisit);
+        % New 8/29/19, used to keep track of which voxels to show
+        ddat.maskingStatus = cell(ddat.nCompare, ddat.nVisit);
         
         % Change what display panels are seen based on what viewer is open.
         if strcmp(ddat.type, 'grp')
@@ -1313,6 +1317,7 @@ end
             for iVisit = 1:ddat.nVisit
                 ndata = load_nii([ddat.outdir '/' ddat.outpre '_aggregate' 'IC_1_visit' num2str(iVisit) '.nii']);
                 ddat.img{1, iVisit} = ndata.img; ddat.oimg{1, iVisit} = ndata.img;
+                ddat.maskingStatus{1, iVisit} = ~isnan(ddat.img{1, iVisit});
             end
             
         elseif strcmp(ddat.type, 'subpop')
@@ -1696,6 +1701,8 @@ end
         %updateZImg;
         %maskSearch;
         %editThreshold;
+        set( findobj('Tag', 'thresholdSlider'), 'value', 0);
+        editThreshold;
         [rowInd, colInd] = find(ddat.viewTracker > 0);
         update_brain_maps('updateCombinedImage', [rowInd', colInd']);
 
@@ -1722,8 +1729,9 @@ end
 
     function update_brain_maps(varargin)
         
-        % Log for what steps are required
-        updateCombinedImage = 0; updateCombinedImageElements = 0;
+        % Log for what steps are required (defaults here)
+        updateCombinedImage = 0; updateCombinedImageElements = 0; %updateScaling=0;
+        updateColorbar = 1;
         
         % Determine which steps are required based on user input
         narg = length(varargin)/2;
@@ -1738,6 +1746,10 @@ end
                 case 'updateCombinedImage'
                     updateCombinedImage = 1;
                     updateCombinedImageElements = varargin{index+1};
+                %case 'updateScaling'
+                %    updateScaling = varargin{index+1};
+                case 'updateColorbar'
+                    updateColorbar = varargin{index+1};
                 otherwise
                     disp(['Invalid Argument: ', varargin{index}])
             end
@@ -1756,11 +1768,14 @@ end
         update_axes_image;
         
         % Update the colorbar
-        updateColorbar;
+        if updateColorbar == 1
+            updateColorbar;
+        end
         
     end
 
 % New version of the create combined image function
+% issue is with what to scale by... XXXXX
     function create_combined_image(indices)
         
         nUpdate = size(indices, 1);
@@ -1773,19 +1788,25 @@ end
             
             % Cell to update
             iRow = indices(iUpdate, 1); iCol = indices(iUpdate, 2);
-            
+                        
             % Scale the functional image
+            %tempImage = ddat.img{iRow, iCol} ;
+            %tempImage(isnan(ddat.img{iRow, iCol})) = minVal1 - 1;
+            
             tempImage = ddat.img{iRow, iCol};
-            tempImage(isnan(ddat.img{iRow, iCol})) = minVal1 - 1;
+            tempImage(ddat.maskingStatus{iRow, iCol} == 0 ) = nan;
+            tempImage(isnan(tempImage)) = minVal1 - 1;
+            
             minVal2 = minVal1 - 1;
-            
+
             ddat.scaledFunc{iRow, iCol} = scale_in(tempImage, minVal2, maxVal1, 63);
-            
+                            
             newColormap = [(gray(191));zeros(1, 3); ddat.highcolor];%%index 192 is not used, just for seperate the base and top colormap;
             %ddat.color_map = newColormap;
             
             ddat.combinedImg{iRow, iCol} = overlay_w_transparency(uint16(ddat.scaledImg),...
-                uint16(ddat.scaledFunc{iRow, iCol}),1, 0.6, newColormap, ddat.highcolor);
+                uint16( ddat.scaledFunc{iRow, iCol} ),...
+                1, 0.6, newColormap, ddat.highcolor);
             
         end
         
@@ -2400,6 +2421,7 @@ end
 
 %% Thresholding
 
+% last updated to work with lICA version on 8/28/19x
 % Function to edit the z-threshold required to view on brain image.
     function editThreshold(hObject, callbackdata)
         
@@ -2423,13 +2445,18 @@ end
                     %threshImg(threshImg == 0) = 1;
                     %ddat.combinedImg{iPop, iVisit} = overlay_w_transparency(uint16(ddat.scaledImg),...
                     %    uint16(threshImg),1, 0.6, ddat.color_map, ddat.highcolor);
-                    ddat.img{iPop, iVisit} = ddat.scaledFunc{iPop, iVisit} .* (abs(ddat.img{iPop, iVisit}) >= cutoff);
-                    ddat.img{iPop, iVisit}(ddat.img{iPop, iVisit} == 0) = nan;
+                    
+                    %ddat.scaledFunc{iPop, iVisit} = ddat.scaledFunc{iPop, iVisit} .* (abs(ddat.img{iPop, iVisit}) >= cutoff);
+                    %ddat.scaledFunc{iPop, iVisit}(ddat.scaledFunc{iPop, iVisit} == 0) = 1;
+                    
+                    ddat.maskingStatus{iPop, iVisit} = (abs(ddat.img{iPop, iVisit}) >= cutoff);
                 end
             end
         end
         
-        update_brain_maps('updateCombinedImage');
+        %update_brain_maps('updateCombinedImage');
+        [rowInd, colInd] = find(ddat.viewTracker > 0);
+        update_brain_maps('updateCombinedImage', [rowInd', colInd'], 'updateColorbar', 0);
         
         %redisplay;
         %updateInfoText;
