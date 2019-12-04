@@ -2321,6 +2321,7 @@ end
 %                         uint16(ddat.scaledFunc{iPop, iVisit}),1, 0.6, ddat.color_map, ddat.hot3);
 %                 end
 %             end
+            [rowInd, colInd] = find(ddat.viewTracker > 0);
             update_brain_maps('updateCombinedImage', [rowInd', colInd']);
             set(findobj('Tag', 'thresholdSlider'), 'Value', 0);
             set(findobj('Tag', 'manualThreshold'), 'String', '0');
