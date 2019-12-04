@@ -953,7 +953,7 @@ function varargout = main(varargin)
             global keeplist;
             keeplist = ones(data.q,1);
             displayResults(data.q, data.outpath, data.prefix,...
-                data.N, 'icsel', data.covariates, data.X, data.covTypes, data.interactions);
+                data.N, 'icsel', data.covariates, data.X, data.covTypes, data.interactions, 1);
             uiwait()
             % qStar <= q contains the number of selected ICs.
             data.qstar = sum(keeplist);
