@@ -1204,37 +1204,47 @@ end
             ddat.sag = eventdata.Source.Data{selected_row, 1};
             ddat.cor = eventdata.Source.Data{selected_row, 2};
             ddat.axi = eventdata.Source.Data{selected_row, 3};
-            
+                  
             % Move the display window to this position
             redisplay;
             % Force set axis info
             
-            % Move all images to the correct slices
-            moveptr( get(findobj('tag', 'SagittalAxes1')), ddat.cor, ddat.axi )
-            moveptr( get(findobj('tag', 'CoronalAxes1')), ddat.sag, ddat.axi )
-            moveptr( get(findobj('tag', 'AxialAxes1')), ddat.cor, ddat.sag )
+            % New loop over population/visit
+            [rowInd, colInd] = find(ddat.viewTracker > 0);
+            indices = [rowInd', colInd'];
+            nUpdate = size(indices, 1);
+        
+            for iUpdate = 1:nUpdate
+                
+                iRow = indices(iUpdate, 1); iCol = indices(iUpdate, 2);
+                axes_suffix = [num2str(iRow) '_' num2str(iCol)];
             
-            % Saggital Axis
-            cld = get(findobj('tag', 'SagittalAxes1'), 'Children');
-            newevent.Button = 1;
-            %newevent.IntersectionPoint = [ddat.cor ddat.axi ddat.sag];
-            newevent.IntersectionPoint = [ddat.cor ddat.axi 0];
-            newevent.Source = cld(3);
-            newevent.EventName = 'Hit';
-            set(gcf,'CurrentAxes', findobj('tag', 'SagittalAxes1'))
-            cp = [ddat.cor, ddat.axi, 20.0; ddat.cor, ddat.axi, 0.0];
-            %set(findobj('tag', 'SagittalAxes1'), 'CurrentPoint', cp);
-            image_button_press( cld(3), newevent, 'sag', cp)
-            
-            %             %% Coronal Axis
-            cld = get(findobj('tag', 'CoronalAxes1'), 'Children');
-            newevent.Button = 1;
-            newevent.IntersectionPoint = [ddat.sag ddat.axi ddat.cor ];
-            newevent.Source = cld(3);
-            newevent.EventName = 'Hit';
-            set(gcf,'CurrentAxes', findobj('tag', 'CoronalAxes1'))
-            cp = [ddat.sag, ddat.axi, 20.0; ddat.sag, ddat.axi, 0.0];
-            image_button_press( cld(3), newevent, 'cor', cp)
+                % Move all images to the correct slices
+                moveptr( get(findobj('tag', ['SagittalAxes' axes_suffix])), ddat.cor, ddat.axi )
+                moveptr( get(findobj('tag', ['CoronalAxes' axes_suffix])), ddat.sag, ddat.axi )
+                moveptr( get(findobj('tag', ['AxialAxes' axes_suffix])), ddat.cor, ddat.sag )
+
+                % Saggital Axis
+                cld = get(findobj('tag', ['SagittalAxes' axes_suffix]), 'Children');
+                newevent.Button = 1;
+                %newevent.IntersectionPoint = [ddat.cor ddat.axi ddat.sag];
+                newevent.IntersectionPoint = [ddat.cor ddat.axi 0];
+                newevent.Source = cld(3);
+                newevent.EventName = 'Hit';
+                set(gcf,'CurrentAxes', findobj('tag', ['SagittalAxes' axes_suffix]))
+                cp = [ddat.cor, ddat.axi, 20.0; ddat.cor, ddat.axi, 0.0];
+                %set(findobj('tag', 'SagittalAxes1'), 'CurrentPoint', cp);
+                image_button_press( cld(3), newevent, 'sag', cp)
+
+                %             %% Coronal Axis
+                cld = get(findobj('tag', ['CoronalAxes' axes_suffix]), 'Children');
+                newevent.Button = 1;
+                newevent.IntersectionPoint = [ddat.sag ddat.axi ddat.cor ];
+                newevent.Source = cld(3);
+                newevent.EventName = 'Hit';
+                set(gcf,'CurrentAxes', findobj('tag', ['CoronalAxes' axes_suffix]))
+                cp = [ddat.sag, ddat.axi, 20.0; ddat.sag, ddat.axi, 0.0];
+                image_button_press( cld(3), newevent, 'cor', cp)
             %
             %             %% Axi Axis
             %             cld = get(findobj('tag', 'AxialAxes1'), 'Children');
@@ -1244,6 +1254,7 @@ end
             %             newevent.Source = cld(3);
             %             newevent.EventName = 'Hit';
             %             image_button_press( cld(3), newevent, 'axi')
+            end
             
         end
         
