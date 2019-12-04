@@ -2183,7 +2183,7 @@ end
 
 
 % Callback for the create mask function
-
+% last edited 12/4/19
     function create_mask(hObject, callbackdata)
         
         % hs.fig
@@ -2254,6 +2254,69 @@ end
             maskSearch;
         end % end of check that user did not cancel in mask window
     end
+
+
+
+% Function to apply a user created mask to the data.
+% edited for longitudinal data on 12/4/19
+    function applyMask(hObject, callbackdata)
+        
+        % Find what mask has been selected
+        maskOptions = findobj('Tag', 'maskSelect');
+        
+        % When a mask has been selected
+        if maskOptions.Value > 1
+            mask = load_nii( fullfile( ddat.outdir, fileparts(ddat.outpre), maskOptions.String{maskOptions.Value}) );
+            
+            % Loop over each sub-population being viewed
+            for iPop = 1:ddat.nCompare
+                % Loop over each visit
+                for iVisit = 1:ddat.nVisit
+                    maskedFunc = ddat.scaledFunc{iPop, iVisit} .* mask.img;
+                    maskedFunc(maskedFunc == 0) = 1;
+                    % this is original that im having issues with
+                    %ddat.combinedImg{iPop, iVisit} =...
+                    %    overlay_w_transparency( uint16(ddat.scaledImg),...
+                    %    uint16(maskedFunc),...
+                    %    1, 0.6, ddat.color_map, ddat.hot3);
+                    % this is me trying to fix it
+                    ddat.combinedImg{iPop, iVisit} =...
+                        overlay_w_transparency( uint16(ddat.scaledImg),...
+                        uint16(maskedFunc),...
+                        1, 0.6, ddat.basecolor, ddat.hot3);
+                end
+            end
+            
+            set(findobj('Tag', 'thresholdSlider'), 'Value', 0);
+            set(findobj('Tag', 'manualThreshold'), 'String', '0');
+        
+        % When no mask is selected
+        else
+            
+            % Loop over each sub-population being viewed
+            for iPop = 1:ddat.nCompare
+                % Loop over each visit
+                for iVisit = 1:ddat.nVisit
+                    ddat.combinedImg{iPop, iVisit} = overlay_w_transparency(uint16(ddat.scaledImg{iPop, iVisit}),...
+                        uint16(ddat.scaledFunc{iPop, iVisit}),1, 0.6, ddat.color_map, ddat.hot3);
+                end
+            end
+            set(findobj('Tag', 'thresholdSlider'), 'Value', 0);
+            set(findobj('Tag', 'manualThreshold'), 'String', '0');
+            
+        end
+        redisplay;
+    end
+
+
+
+
+
+
+
+
+
+
 
 
 %% Currently Here
@@ -2341,30 +2404,6 @@ end
         end
     end
 
-% Function to apply a user created mask to the data.
-    function applyMask(hObject, callbackdata)
-        % Find what mask has been selected
-        maskOptions = findobj('Tag', 'maskSelect');
-        if maskOptions.Value > 1
-            mask = load_nii( fullfile( ddat.outdir, fileparts(ddat.outpre), maskOptions.String{maskOptions.Value}) );
-            for iPop = 1:ddat.nCompare
-                maskedFunc = ddat.scaledFunc{iPop} .* mask.img;
-                maskedFunc(maskedFunc == 0) = 1;
-                ddat.combinedImg{iPop} = overlay_w_transparency(uint16(ddat.scaledImg),...
-                    uint16(maskedFunc),1, 0.6, ddat.color_map, ddat.hot3);
-            end
-            set(findobj('Tag', 'thresholdSlider'), 'Value', 0);
-            set(findobj('Tag', 'manualThreshold'), 'String', '0');
-        else
-            for iPop = 1:ddat.nCompare
-                ddat.combinedImg{iPop} = overlay_w_transparency(uint16(ddat.scaledImg),...
-                    uint16(ddat.scaledFunc{iPop}),1, 0.6, ddat.color_map, ddat.hot3);
-            end
-            set(findobj('Tag', 'thresholdSlider'), 'Value', 0);
-            set(findobj('Tag', 'manualThreshold'), 'String', '0');
-        end
-        redisplay;
-    end
 
 % Check if user has selected Z-scores or not and update corresponding
 % GUI elements.
