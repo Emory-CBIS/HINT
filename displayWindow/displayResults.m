@@ -344,7 +344,7 @@ end
             'String', 'Create Mask', ...
             'Units', 'Normalized', ...
             'Position', [0.24, 0.01, 0.49, 0.25], ...
-            'Tag', 'createMask', 'callback', @saveMask, ...
+            'Tag', 'createMask', 'callback', @create_mask, ...
             'Visible', 'Off');
         useEmpiricalVar = uicontrol('Parent', thresholdPanel,...
             'Style', 'checkbox', ...
@@ -2182,6 +2182,80 @@ end
     end
 
 
+% Callback for the create mask function
+
+    function create_mask(hObject, callbackdata)
+        
+        % hs.fig
+        
+        
+        % Open the mask creation window and get:
+        %   1. The type of mask to be created (single, union, intersect, cancel)
+        %   2. The contributing nifti files
+        visit_list = get(findobj('tag', 'ViewSelectTable'), 'RowName');
+        [mask_gui_output, selected_visits] = MaskSelectionWindow(visit_list);
+        
+        % Only create a mask if the gui did not return cancel
+        if ~strcmp(mask_gui_output, 'cancel')
+                        
+            mask_fname = '';
+            
+            threshold = str2double(get(findobj('Tag', 'manualThreshold'), 'string'));
+        
+            % Create the mask based on the user's selection
+            switch mask_gui_output
+                
+                case 'Single-Visit Mask'
+                    disp('Creating single visit mask')
+                    mask_fname = strcat(ddat.outdir, '/' , ddat.outpre, '_SingleVisit_maskIC_',...
+                        num2str(get(findobj('Tag', 'ICselect'), 'Value')), '_zthresh_',...
+                        get(findobj('Tag', 'manualThreshold'), 'string'),...
+                        '_Visit_', sprintf('%.0f_' , selected_visits), '.nii');
+                    
+                    % Create the mask
+                    new_mask = (abs(ddat.img{selected_visits}) >= threshold);
+                    
+                case 'Union Mask'
+                    disp('Creating union mask')
+                    mask_fname = strcat(ddat.outdir, '/' , ddat.outpre, '_Union_maskIC_',...
+                        num2str(get(findobj('Tag', 'ICselect'), 'Value')), '_zthresh_',...
+                        get(findobj('Tag', 'manualThreshold'), 'string'),...
+                        '_Visits_', sprintf('%.0f_' , selected_visits), '.nii');
+                    
+                    % Create the mask
+                    new_mask = zeros(size(ddat.img{1}));
+                    for ivisit = 1:length(selected_visits)
+                        new_mask = new_mask + (abs(ddat.img{selected_visits(ivisit)}) >= threshold);
+                    end
+                    % union mask can end up with larger values (counts),
+                    % this line is to make them all 1s or 0s
+                    new_mask = (new_mask > 0);
+                    
+                case 'Intersection Mask'
+                    
+                    disp('Creating intersection mask')
+                    mask_fname = strcat(ddat.outdir, '/' , ddat.outpre, '_Intersect_maskIC_',...
+                        num2str(get(findobj('Tag', 'ICselect'), 'Value')), '_zthresh_',...
+                        get(findobj('Tag', 'manualThreshold'), 'string'),...
+                        '_Visits_', sprintf('%.0f_' , selected_visits), '.nii');
+                    
+                     % Create the mask
+                    new_mask = zeros(size(ddat.img{1}));
+                    for ivisit = 1:length(selected_visits)
+                        new_mask = new_mask .* (abs(ddat.img{selected_visits(ivisit)}) >= threshold);
+                    end
+                    
+            end
+            
+            disp(['Saving ' mask_fname])
+
+            save_nii(make_nii(double(new_mask)), mask_fname);
+
+            maskSearch;
+        end % end of check that user did not cancel in mask window
+    end
+
+
 %% Currently Here
 
 
@@ -2483,16 +2557,6 @@ end
         end
     end
 
-% Function to save a thresholded mask for future use. Should only be
-% available from the group level IC window.
-    function saveMask(hObject, callbackdata)
-        newfile = strcat(ddat.outdir, '/' , ddat.outpre, '_maskIC_',...
-            num2str(get(findobj('Tag', 'ICselect'), 'Value')), '_zthresh_',...
-            get(findobj('Tag', 'manualThreshold'), 'string'), '.nii');
-        newMask = (abs(ddat.img{1}) >= str2double(get(findobj('Tag', 'manualThreshold'), 'string')));
-        save_nii(make_nii(double(newMask)), newfile);
-        maskSearch;
-    end
 
 
 % Function to allow user to select sub populations to compare. Opens a
