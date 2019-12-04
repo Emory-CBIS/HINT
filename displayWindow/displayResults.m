@@ -1731,7 +1731,7 @@ end
         
         % Log for what steps are required (defaults here)
         updateCombinedImage = 0; updateCombinedImageElements = 0; %updateScaling=0;
-        updateColorbar = 1;
+        updateColorbar = 1; mask=[];
         
         % Determine which steps are required based on user input
         narg = length(varargin)/2;
@@ -1750,6 +1750,8 @@ end
                 %    updateScaling = varargin{index+1};
                 case 'updateColorbar'
                     updateColorbar = varargin{index+1};
+                case 'updateMasking'
+                    mask = varargin{index+1};
                 otherwise
                     disp(['Invalid Argument: ', varargin{index}])
             end
@@ -1760,7 +1762,7 @@ end
         
         %%% Re-create the combined images
         if updateCombinedImage == 1
-            create_combined_image(updateCombinedImageElements);
+            create_combined_image(updateCombinedImageElements, mask);
         end
         
         %%% Update the images on the axes
@@ -1776,7 +1778,7 @@ end
 
 % New version of the create combined image function
 % issue is with what to scale by... XXXXX
-    function create_combined_image(indices)
+    function create_combined_image(indices, mask)
         
         nUpdate = size(indices, 1);
         
@@ -1800,13 +1802,27 @@ end
             minVal2 = minVal1 - 1;
 
             ddat.scaledFunc{iRow, iCol} = scale_in(tempImage, minVal2, maxVal1, 63);
+            
+            % check if a mask should be applied
+            if ~isempty(mask)
+                ddat.scaledFunc{iRow, iCol} = scale_in(tempImage, minVal2, maxVal1, 63);
+                maskedFunc = ddat.scaledFunc{iRow, iCol} .* mask.img;
+                maskedFunc(maskedFunc == 0) = 1;
+            else
+                maskedFunc = ddat.scaledFunc{iRow, iCol};
+            end
                             
             newColormap = [(gray(191));zeros(1, 3); ddat.highcolor];%%index 192 is not used, just for seperate the base and top colormap;
             %ddat.color_map = newColormap;
             
+            % this is from before I added masking to this function
+            %ddat.combinedImg{iRow, iCol} = overlay_w_transparency(uint16(ddat.scaledImg),...
+            %    uint16( ddat.scaledFunc{iRow, iCol} ),...
+            %    1, 0.6, newColormap, ddat.highcolor);
+            
             ddat.combinedImg{iRow, iCol} = overlay_w_transparency(uint16(ddat.scaledImg),...
-                uint16( ddat.scaledFunc{iRow, iCol} ),...
-                1, 0.6, newColormap, ddat.highcolor);
+               uint16( maskedFunc ),...
+               1, 0.6, newColormap, ddat.highcolor);
             
         end
         
@@ -2240,7 +2256,7 @@ end
                         '_Visits_', sprintf('%.0f_' , selected_visits), '.nii');
                     
                      % Create the mask
-                    new_mask = zeros(size(ddat.img{1}));
+                    new_mask = ones(size(ddat.img{1}));
                     for ivisit = 1:length(selected_visits)
                         new_mask = new_mask .* (abs(ddat.img{selected_visits(ivisit)}) >= threshold);
                     end
@@ -2268,39 +2284,44 @@ end
         if maskOptions.Value > 1
             mask = load_nii( fullfile( ddat.outdir, fileparts(ddat.outpre), maskOptions.String{maskOptions.Value}) );
             
-            % Loop over each sub-population being viewed
-            for iPop = 1:ddat.nCompare
-                % Loop over each visit
-                for iVisit = 1:ddat.nVisit
-                    maskedFunc = ddat.scaledFunc{iPop, iVisit} .* mask.img;
-                    maskedFunc(maskedFunc == 0) = 1;
-                    % this is original that im having issues with
-                    %ddat.combinedImg{iPop, iVisit} =...
-                    %    overlay_w_transparency( uint16(ddat.scaledImg),...
-                    %    uint16(maskedFunc),...
-                    %    1, 0.6, ddat.color_map, ddat.hot3);
-                    % this is me trying to fix it
-                    ddat.combinedImg{iPop, iVisit} =...
-                        overlay_w_transparency( uint16(ddat.scaledImg),...
-                        uint16(maskedFunc),...
-                        1, 0.6, ddat.basecolor, ddat.hot3);
-                end
-            end
+            [rowInd, colInd] = find(ddat.viewTracker > 0);
+            update_brain_maps('updateCombinedImage', [rowInd', colInd'],...
+                'updateMasking', mask);
             
+            % Loop over each sub-population being viewed
+%             for iPop = 1:ddat.nCompare
+%                 % Loop over each visit
+%                 for iVisit = 1:ddat.nVisit
+%                     maskedFunc = ddat.scaledFunc{iPop, iVisit} .* mask.img;
+%                     maskedFunc(maskedFunc == 0) = 1;
+%                     % this is original that im having issues with
+%                     %ddat.combinedImg{iPop, iVisit} =...
+%                     %    overlay_w_transparency( uint16(ddat.scaledImg),...
+%                     %    uint16(maskedFunc),...
+%                     %    1, 0.6, ddat.color_map, ddat.hot3);
+%                     % this is me trying to fix it
+%                     ddat.combinedImg{iPop, iVisit} =...
+%                         overlay_w_transparency( uint16(ddat.scaledImg),...
+%                         uint16(maskedFunc),...
+%                         1, 0.6, ddat.basecolor, ddat.hot3);
+%                 end
+%             end
+%             
             set(findobj('Tag', 'thresholdSlider'), 'Value', 0);
             set(findobj('Tag', 'manualThreshold'), 'String', '0');
         
         % When no mask is selected
         else
             
-            % Loop over each sub-population being viewed
-            for iPop = 1:ddat.nCompare
-                % Loop over each visit
-                for iVisit = 1:ddat.nVisit
-                    ddat.combinedImg{iPop, iVisit} = overlay_w_transparency(uint16(ddat.scaledImg{iPop, iVisit}),...
-                        uint16(ddat.scaledFunc{iPop, iVisit}),1, 0.6, ddat.color_map, ddat.hot3);
-                end
-            end
+%             % Loop over each sub-population being viewed
+%             for iPop = 1:ddat.nCompare
+%                 % Loop over each visit
+%                 for iVisit = 1:ddat.nVisit
+%                     ddat.combinedImg{iPop, iVisit} = overlay_w_transparency(uint16(ddat.scaledImg{iPop, iVisit}),...
+%                         uint16(ddat.scaledFunc{iPop, iVisit}),1, 0.6, ddat.color_map, ddat.hot3);
+%                 end
+%             end
+            update_brain_maps('updateCombinedImage', [rowInd', colInd']);
             set(findobj('Tag', 'thresholdSlider'), 'Value', 0);
             set(findobj('Tag', 'manualThreshold'), 'String', '0');
             
