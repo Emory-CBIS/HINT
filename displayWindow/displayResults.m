@@ -1133,6 +1133,79 @@ end
         
     end
 
+% Function to update the trajectory information when a new subject/IC/subpop has been
+% selected. Main idea is that we need to force an update of all saved
+% lines, as well as the red line. Can also be used in future we we "save" a
+% state of the viewer window to re-loaded saved voxels.
+%
+% Last Edited - 12/5/19
+%
+% Steps Involved
+% 0. Remove all lines from the plot
+% 1. Get a list of all saved voxels
+% 2. Re-plot the blue lines for each of these
+% 3. Obtain currently selected voxel
+% 4. Plot red line for this one
+%
+% Potential Changes 
+% 1. Right now starts with a check that the trajectories are active. I
+% might want to remove this, since I think I want to call it any time that
+% a large number of things change. On the other hand, I could make it run
+% any time that the trajectory box is enabled/disabled (might be less error
+% prone).
+    function update_all_traj_fields()
+        
+        % verify that trajectories are being plotted
+        if ddat.trajectoryActive == 1
+            
+            % Get the axes to plot to
+            trajAxesHandle = findobj('Tag', 'TrajAxes');
+            
+            % Step 0 - Remove all old lines
+            for iline = 1:length(trajAxesHandle.Children)
+                delete(trajAxesHandle.Children(1));
+            end
+            
+            % Step 1 - Obtain list of all saved voxels
+            storedCoordinates = get( findobj('Tag', 'TrajTable'), 'Data' );
+            nStored = size(storedCoordinates, 1);
+            %storedCoordinates{iStored, :}
+            
+            % Step 2 - Plot a blue line for each voxel in the list
+            % TODO in future might need to loop over pops/contrasts here
+            traj = zeros(ddat.nVisit, 1);
+            for iline = 1:nStored
+                
+                % Extract the voxel indices
+                voxelIndex = [storedCoordinates{iline, :}];
+                
+                % Get the value at this voxel for each visit
+                for iVisit = 1:ddat.nVisit
+                    traj(iVisit) = ddat.oimg{1, iVisit}(voxelIndex(1), voxelIndex(2), voxelIndex(3));
+                end
+                
+                % Plot the corresponding blue line
+                lineName = num2str(voxelIndex);
+                line(trajAxesHandle, 1:ddat.nVisit, traj, 'Tag', lineName, 'Color', 'Blue');
+                
+            end
+            
+            % Step 3 - Grab the currently selected voxel coordinates/values
+            % TODO in future might need to loop over pops/contrasts here
+            for iVisit = 1:ddat.nVisit
+                traj(iVisit) = ddat.oimg{1, iVisit}(ddat.sag, ddat.cor, ddat.axi);
+            end
+ 
+            % Step 4 - Plot the red line
+            % TODO in future might need to loop over pops/contrasts here
+            lineName = num2str([ddat.sag, ddat.cor, ddat.axi]);
+            line(trajAxesHandle, 1:ddat.nVisit, traj, 'Tag', lineName, 'Color', 'Red');
+            ddat.trajPreviousTag = lineName;
+        
+        end % end of verification that traj being plotted
+        
+    end
+
 % Function to move the viewer window to a selected voxel
     function traj_box_cell_select(hObject, eventdata, handles)
         
@@ -1675,6 +1748,10 @@ end
         if strcmp(ddat.type, 'subj')
             applyMask;
         end
+        
+        % Update the trajectory viewer
+        update_all_traj_fields;
+        
     end
 
 
@@ -1919,40 +1996,7 @@ end
                     set(findobj('Tag','crosshairPos'),'String',...
                         sprintf('%7.0d %7.0d %7.0d',ddat.sag,ddat.cor, ddat.axi));
                     updateInfoText;
-                    %                 if ddat.nCompare == 1
-                    %                     if get(findobj('Tag', 'viewZScores'), 'Value') == 0
-                    %                         set(findobj('Tag', 'crosshairVal1'),'String',...
-                    %                             sprintf('Value at Voxel: %4.2f', ddat.img{1}(ddat.sag, ddat.cor, ddat.axi)));
-                    %                     elseif get(findobj('Tag', 'viewZScores'), 'Value') == 1
-                    %                         set(findobj('Tag', 'crosshairVal1'),'String',...
-                    %                             sprintf('Z = %4.2f', ddat.img{1}(ddat.sag, ddat.cor, ddat.axi)));
-                    %                     end
-                    %                 else
-                    %                     if get(findobj('Tag', 'viewZScores'), 'Value') == 0
-                    %                         for iPop = 1:ddat.nCompare
-                    %                             set(findobj('Tag', ['crosshairVal' num2str(iPop)]),'String',...
-                    %                                 sprintf('Value at Voxel: %4.2f',...
-                    %                                 ddat.img{iPop}(ddat.sag, ddat.cor, ddat.axi)));
-                    %                         end
-                    %                     else
-                    %                         for iPop = 1:ddat.nCompare
-                    %                             set(findobj('Tag', ['crosshairVal' num2str(iPop)]),'String',...
-                    %                                 sprintf('Z = %4.2f',...
-                    %                                 ddat.img{iPop}(ddat.sag, ddat.cor, ddat.axi)));
-                    %                         end
-                    %                     end
-                    %                 end
-                    %                 valId = cell2mat(ddat.total_region_name(:, 1));
-                    %                 curIdVal = ddat.region_struct.img(ddat.sag, ddat.cor, ddat.axi);
-                    %                 curIdPos = find(ismember(valId, curIdVal));
-                    %                 if curIdPos
-                    %                     set(findobj('Tag', 'curInfo'), 'ForegroundColor','g',...
-                    %                         'FontSize', 10, 'HorizontalAlignment', 'left', 'String', ...
-                    %                         sprintf('Current crosshair is located in the region: %s', ...
-                    %                         ddat.total_region_name{curIdPos, 2}));
-                    %                 else
-                    %                     set(findobj('Tag', 'curInfo'), 'String', '');
-                    %                 end
+                   
                 end
                 
                 
@@ -2684,6 +2728,7 @@ end
         end
         ddat.type = 'grp';
         initialDisp;
+        update_all_traj_fields;
     end
 
 % Function to switch to the subject level viewer.
