@@ -593,6 +593,21 @@ end
             set( findobj('Tag', 'ViewSelectionPanel'), 'Position',[.67, 0.01 .31 .98]);
         end
         
+        if strcmp(ddat.type, 'subj')
+            % Set visible/invisible
+            set(findobj('Tag', 'useEmpiricalVar'), 'Visible', 'Off');
+            set(findobj('Tag', 'selectSubject'), 'Visible', 'On');
+            set(findobj('Tag', 'selectCovariate'), 'Visible', 'Off');
+            set(findobj('Tag', 'SubpopulationControl'), 'Visible', 'Off');
+            set(findobj('Tag', 'covariateContrastControl'), 'Visible', 'Off');
+            set( findobj('Tag', 'createMask'), 'Visible', 'Off' );
+            % Resize the info panels
+            set( findobj('Tag', 'thresholdPanel'), 'Position',[.34, 0.01 .31 .39]);
+            set( findobj('Tag', 'icPanel'), 'Position',[.34, 0.42 .31 .57]);
+            set( findobj('Tag', 'locPanel'), 'Position',[.01, 0.01 .31 .98]);
+            set( findobj('Tag', 'ViewSelectionPanel'), 'Position',[.67, 0.01 .31 .98]);
+        end
+        
         % Third, based on the number of brain maps being viewed, determine
         % the relative amount to real estate to give the brain maps over
         % the controls panel.
@@ -710,7 +725,7 @@ end
         % first place (Cross-Sectional hc-ICA aggregate - should not appear)
         
         % Determine whether the table should be editable
-        if strcmp(ddat.type, 'grp')
+        if strcmp(ddat.type, 'grp') || strcmp(ddat.type, 'subj')
             set(findobj('tag', 'ViewSelectTable'), 'ColumnEditable', false);
         else
             set(findobj('tag', 'ViewSelectTable'), 'ColumnEditable', true);
@@ -720,7 +735,7 @@ end
         % fixed. Will just be a list of visits and whether or not they
         % are being viewed.
         
-        if strcmp(ddat.type, 'grp')
+        if strcmp(ddat.type, 'grp') || strcmp(ddat.type, 'subj')
             for k=1:ddat.nVisit; table_data{k} = 'no'; end
             table_data{1} = 'yes';
             set(findobj('tag', 'ViewSelectTable'), 'Data', table_data');
@@ -858,8 +873,12 @@ end
             end
         end
         
-        
-        [map_fields, visit_fields] = generate_info_box_fields(ddat.type, ddat.viewTracker);
+        if ddat.type == "subj"
+            subj_index = get(findobj('tag', 'selectSubject'), 'value');
+            [map_fields, visit_fields] = generate_info_box_fields(ddat.type, ddat.viewTracker, subj_index);
+        else
+            [map_fields, visit_fields] = generate_info_box_fields(ddat.type, ddat.viewTracker);
+        end
         
         %%% Add axes
         aspect = 1./ddat.daspect;
@@ -911,29 +930,16 @@ end
                         'Tag', ['axesPanel' num2str(iPop), '_' num2str(iVisit)], ...
                         'Parent', hs.fig.Children(3).Children(2), ...
                         'units', 'normalized', 'visible', 'on');
-                    % Label strings for the information panel
-                    %                     MapString = uicontrol('Parent', InfoPanel, ...
-                    %                         'Style', 'Text', 'String', 'Map: ', ...
-                    %                         'Units', 'Normalized', ...
-                    %                         'HorizontalAlignment', 'left',...
-                    %                         'Position', [0.01, 0.81, 0.98, 0.16]);
-                    %                     VisitString = uicontrol('Parent', InfoPanel, ...
-                    %                         'Style', 'Text', 'String', 'Visit: ', ...
-                    %                         'Units', 'Normalized', ...
-                    %                         'HorizontalAlignment', 'left',...
-                    %                         'Position', [0.01, 0.49, 0.98, 0.16]);
-                    %                     VoxelValueString  = uicontrol('Parent', InfoPanel, ...
-                    %                         'Style', 'Text', 'String', 'Value: ', ...
-                    %                         'Units', 'Normalized', ...
-                    %                         'HorizontalAlignment', 'left',...
-                    %                         'Position', [0.01, 0.17, 0.98, 0.16]);
+
                     % The actual labels
                     MapValue = uicontrol('Parent', InfoPanel, ...
                         'Style', 'Text', 'String', map_fields{iPop, iVisit}, ...
+                        'tag', ['axesPanel' num2str(iPop), '_' num2str(iVisit), '_MAP'],...
                         'Units', 'Normalized', ...
                         'Position', [0.01, 0.66, 0.98, 0.33]);
                     VisitValue = uicontrol('Parent', InfoPanel, ...
                         'Style', 'Text', 'String', visit_fields{iPop, iVisit}, ...
+                        'tag', ['axesPanel' num2str(iPop), '_' num2str(iVisit), '_VISIT'],...
                         'Units', 'Normalized', ...
                         'Position', [0.01, 0.35, 0.98, 0.30]);
                     VoxelValue = uicontrol('Parent', InfoPanel, ...
@@ -945,83 +951,19 @@ end
                     %iPop iVisit
                     %obtain
                     
-                end
+                % The else statement handles the case where the axes
+                % already exists. In this case, we might still need to
+                % update the desciptor text
+                else
+                    set(findobj('tag', ['axesPanel' num2str(iPop), '_' num2str(iVisit), '_MAP']),...
+                        'String', map_fields{iPop, iVisit});
+                    set(findobj('tag', ['axesPanel' num2str(iPop), '_' num2str(iVisit), '_VISIT']),...
+                        'String', visit_fields{iPop, iVisit});
+                    set(findobj('tag', ['VoxelValueBox' num2str(iPop) '_' num2str(iVisit)]),...
+                        'String', '');
+                end % end of check for existance of axes
             end
         end
-        
-        %         if current_n_maps < size(ddat.viewTracker, 1)
-        %
-        %             %hs.fig.Children(3).Children(2)
-        %             aspect = 1./ddat.daspect;
-        %
-        %             for iaxes = (current_n_maps+1):size(ddat.viewTracker, 1)
-        %                 for ivisit = 1:ddat.nVisit
-        %
-        %
-        %                     % Coronal Image
-        %                     CorAxes = axes('Parent', hs.fig.Children(3).Children(2), ...
-        %                         'Units', 'Normalized',...
-        %                         'Tag', ['CoronalAxes' num2str(iaxes) '_' num2str(ivisit)],...
-        %                         'visible', 'off' );
-        %                     set(CorAxes,'YDir','normal','XLimMode','manual','YLimMode','manual',...
-        %                         'ClimMode','manual','YColor',[0 0 0],'XColor',[0 0 0],...
-        %                         'xtick',[],'ytick',[],...
-        %                         'Tag',['CoronalAxes' num2str(iaxes) '_' num2str(ivisit)])
-        %                     daspect(CorAxes, aspect([1 3 2]));
-        %                     % this is just to put image in place at creation,
-        %                     % actual displayed image comes from display function
-        %                     %ddat.coronal_image{iaxes, ivisit} = image(ddat.coronal_image(1, 1));
-        %                     %ddat.coronal_image{iaxes, ivisit} = ddat.coronal_image(1, 1));
-        % %                     set(ddat.coronal_image{iaxes, ivisit},'ButtonDownFcn',...
-        % %                         {@image_button_press, 'cor'});
-        % %                     pos_cor = [ddat.sag, ddat.axi];
-        % %                     crosshair = plot_crosshair(pos_cor, [], CorAxes);
-        % %                     ddat.coronal_xline{iaxes, ivisit} = crosshair.lx;
-        % %                     ddat.coronal_yline{iaxes, ivisit} = crosshair.ly;
-        %
-        %                     % Axial Image
-        %                     AxiAxes = axes('Parent', hs.fig.Children(3).Children(2), ...
-        %                         'Units', 'Normalized', ...
-        %                         'Tag', ['AxialAxes' num2str(iaxes) '_' num2str(ivisit)],...
-        %                         'visible', 'off');
-        %                     set(AxiAxes,'YDir','normal','XLimMode','manual','YLimMode','manual',...
-        %                     'ClimMode','manual','YColor',[0 0 0],'XColor',[0 0 0],...
-        %                     'xtick',[],'ytick',[],'Tag',['AxialAxes' num2str(iaxes) '_' num2str(ivisit)])
-        %                     daspect(AxiAxes,aspect([1 3 2]));
-        %                     % this is just to put image in place at creation,
-        %                     % actual displayed image comes from display function
-        %                     %ddat.axial_image{iaxes, ivisit} = image(ddat.axial_image(1, 1));
-        %                     set(ddat.axial_image{iaxes, ivisit},'ButtonDownFcn',...
-        %                         {@image_button_press, 'axi'});
-        %                     pos_axi = [ddat.sag, ddat.cor];
-        %                     crosshair = plot_crosshair(pos_axi, [], AxiAxes);
-        %                     ddat.axial_xline{iaxes, ivisit} = crosshair.lx;
-        %                     ddat.axial_yline{iaxes, ivisit} = crosshair.ly;
-        %
-        %                     % Sagittal Image
-        %                    SagAxes = axes('Parent', hs.fig.Children(3).Children(2), ...
-        %                         'Units', 'Normalized', ...
-        %                         'Tag', ['SagittalAxes' num2str(iaxes) '_' num2str(ivisit)],...
-        %                         'visible', 'off' );
-        %                    set(SagAxes,'YDir','normal','XLimMode','manual','YLimMode','manual',...
-        %                     'ClimMode','manual','YColor',[0 0 0],'XColor',[0 0 0],...
-        %                     'xtick',[],'ytick',[],'Tag',['SagittalAxes' num2str(iaxes) '_' num2str(ivisit)])
-        %                     daspect(SagAxes,aspect([2 3 1]));
-        %                     % this is just to put image in place at creation,
-        %                     % actual displayed image comes from display function
-        %                     %ddat.axial_image{iaxes, ivisit} = image(ddat.axial_image(1, 1));
-        % %                     set(ddat.sagittal_image{iaxes, ivisit},'ButtonDownFcn',...
-        % %                         {@image_button_press, 'sag'});
-        % %                     pos_sag = [ddat.cor, ddat.axi];
-        % %                     crosshair = plot_crosshair(pos_sag, [], SagAxes);
-        % %                     %crosshair = plot_crosshair(pos_sag);
-        % %                     ddat.sagittal_xline{iaxes, ivisit} = crosshair.lx;
-        % %                     ddat.sagittal_yline{iaxes, ivisit} = crosshair.ly;
-        %
-        %                 end
-        %             end
-        %
-        %         end
         
         set_viewing_properties;
         
@@ -1378,6 +1320,7 @@ end
             set(findobj('Tag', 'selectCovariate'), 'Visible', 'On');
             setupCovMenu;
         elseif strcmp(ddat.type, 'subj')
+            
             set(findobj('Tag', 'useEmpiricalVar'), 'Visible', 'Off');
             set(findobj('Tag', 'selectCovariate'), 'Visible', 'Off');
             set( findobj('Tag', 'createMask'), 'Visible', 'Off' );
@@ -1385,17 +1328,19 @@ end
             set(findobj('Tag', 'covariateContrastControl'), 'Visible', 'Off');
             % move the info panels to the middle of the screen
             set( findobj('Tag', 'thresholdPanel'), 'Position',[.56, 0.01 .32 .19]);
-            set( findobj('Tag', 'icPanel'), 'Position',[.56, 0.21 .32 .25]);
-            set( findobj('Tag', 'locPanel'), 'Position',[.12, 0.01 .32 .45]);
+            set( findobj('Tag', 'icPanel'), 'Position',[.56, 0.21 .32 .50]);
+            set( findobj('Tag', 'locPanel'), 'Position',[.12, 0.01 .32 .98]);
+            
             % Load a top level aggregate map just to have the dimensions
-            ndata = load_nii([ddat.outdir '/' ddat.outpre '_' 'S0_IC_1.nii']);
+            ndata = load_nii([ddat.outdir '/' ddat.outpre '_aggregate' 'IC_1_visit' num2str(1) '.nii']);
             ddat.img{1} = ndata.img; ddat.oimg{1} = ndata.img;
             % load the data
             ddat.subjectLevelData = load([ddat.outdir '/' ddat.outpre '_subject_IC_estimates.mat']);
-            ddat.subjectLevelData = ddat.subjectLevelData.subICmean
-            generateSingleSubjMap;
+            ddat.subjectLevelData = ddat.subjectLevelData.subICmean;
+            generate_single_subject_map;
             set(findobj('Tag', 'selectSubject'), 'Visible', 'On');
             setupSubMenu;
+            
         elseif strcmp(ddat.type, 'icsel')
             ndata = load_nii([ddat.outdir '/_iniIC_1.nii']);
             % need to turn the 0's into NaN values
@@ -1423,6 +1368,7 @@ end
             set( findobj('Tag', 'locPanel'), 'Position',[.12, 0.01 .32 .45]);
             setupICMenu;
             % This should only be called from subpopulation display
+            
         elseif strcmp(ddat.type, 'subPopCompare')
             ddat.nCompare = 2;
             set(findobj('Tag', 'SubpopulationControl'), 'Visible', 'On');
@@ -1579,22 +1525,27 @@ end
 
 % Function to generate the single subject maps. This is preferable to
 % storing all of the maps in case there are many subjects
-    function generateSingleSubjMap(hObject, callbackdata)
+    function generate_single_subject_map(hObject, callbackdata)
         
-        disp('Generating map for requested subject.')
+        disp('Generating map for requested subject and component.')
+        
         % Get the requested subject number
         subnum = get( findobj('Tag', 'selectSubject'), 'Value' );
+        
         % Get the requested IC
         newIC = get(findobj('Tag', 'ICselect'), 'val');
         
         % Get the correct elements of the subjicmean vector
-        vectData = squeeze(ddat.subjectLevelData(newIC, subnum, :));
-        % Place in the correct dimensions
-        vxl = size(ddat.oimg{1});
-        locs = ~isnan(ddat.oimg{1});
-        nmat = nan(vxl);
-        nmat(locs) = vectData;
-        ddat.img{1} = nmat; ddat.oimg{1} = nmat;
+        for iVisit = 1:ddat.nVisit
+            vectData = squeeze(ddat.subjectLevelData(iVisit, newIC, subnum, :));
+            % Place in the correct dimensions
+            vxl = size(ddat.oimg{1});
+            locs = ~isnan(ddat.oimg{1, 1});
+            nmat = nan(vxl);
+            nmat(locs) = vectData;
+            ddat.img{1, iVisit} = nmat; ddat.oimg{1, iVisit} = nmat;
+        end
+        
     end
 
 %% Anatomical Image and Mask Functions
@@ -1673,7 +1624,8 @@ end
                 [ddat.outpre '_BetaVarEst_IC_' num2str(newIC) '.mat']));
             ddat.betaVarEst = newMap.betaVarEst;
         elseif strcmp(ddat.type, 'subj')
-            generateSingleSubjMap;
+            generate_single_subject_map;
+            set_number_of_brain_axes(0);
         elseif strcmp(ddat.type, 'icsel')
             ndata = load_nii([ddat.outdir '/' ddat.outpre '_iniIC_' num2str(newIC) '.nii']);
             % need to turn the 0's into NaN values
