@@ -1388,7 +1388,7 @@ end
                 ddat.contrastExists = 0;
             end
             % load the data
-            ndata = load_nii([ddat.outdir '/' ddat.outpre '_beta_cov1_IC1.nii']);
+            ndata = load_nii([ddat.outdir '/' ddat.outpre '_beta_cov1_IC1_visit1.nii']);
             ddat.img{1} = ndata.img; ddat.oimg{1} = ndata.img;
             set(findobj('Tag', 'selectCovariate'), 'Visible', 'On');
             setupCovMenu;
@@ -1479,14 +1479,24 @@ end
         dim = size(ddat.img{1, 1});
         ddat.xdim = dim(1); ddat.ydim = dim(2); ddat.zdim = dim(3);
         
+        % Load the Variance Estimates for the regression coefficients
         if strcmp(ddat.type, 'beta')
-            %%% Create the beta variance estimate map
+            
+            % Create the beta variance estimate map
             ddat.betaVarEst = zeros(ddat.p, ddat.p, ddat.xdim, ddat.ydim, ddat.zdim);
+            
             % Fill out the beta map for the current IC
             currentIC = get(findobj('Tag', 'ICselect'), 'val');
+            
+            % TODO check the selected visit here just in case
+            iVisit = 1;
+            
+            % Load the map
             newMap = load(fullfile(ddat.outdir,...
-                [ddat.outpre '_BetaVarEst_IC_' num2str(currentIC) '.mat']));
+                [ddat.outpre '_BetaVarEst_IC' num2str(currentIC)...
+                '_visit' num2str(iVisit) '.mat']));
             ddat.betaVarEst = newMap.betaVarEst;
+            
         end
         
         % Load the brain region information
