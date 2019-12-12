@@ -20,7 +20,7 @@ axesInfoPanelPos = cell(size(viewTracker, 1), size(viewTracker, 2));
 
 [visit_numbers, selected_pops] = find(viewTracker' > 0);
 % get the number of maps being viewed
-nMapsViewed = sum(viewTracker > 0);
+nMapsViewed = sum(viewTracker(:) > 0);
 
 % Find coordinates based on view type
 switch tileType

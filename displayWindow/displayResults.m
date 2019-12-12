@@ -296,6 +296,33 @@ end
             'Position', [0.01, 0.51, 0.48, 0.1], ...
             'Tag', 'selectCovariate', 'Callback', @updateIC, ...
             'String', 'Select Covariate', 'Visible', 'Off');
+        
+        EffectViewButtonGroup = uibuttongroup('Parent',icPanel,...
+            'units', 'normalized',...
+            'tag', 'EffectTypeButtonGroup',...
+            'visible', 'off',...
+            'Position',[0.01 0.38 0.5 0.35]);
+        SelectEffectView = uicontrol(EffectViewButtonGroup,...
+            'string', 'Effect View',...
+            'style', 'radiobutton',...
+            'units', 'normalized',...
+            'Position',[0.1 0.6 0.9 0.3]);
+        SelectContrastView = uicontrol(EffectViewButtonGroup,...
+            'style', 'radiobutton',...
+            'string', 'Contrast View',...
+            'units', 'normalized',...
+            'Position',[0.1 0.2 0.9 0.3]);
+        
+%         viewEffectOrContrast = uicontrol('Parent', icPanel,...
+%             'Style', 'checkbox',...
+%             'units', 'normalized',...
+%             'visible', 'off',...
+%             'position', [0.01, 0.46, 0.42, 0.15], ...
+%             'tag', 'viewEffectOrContrast',...
+%             'String', 'View Contrasts', ...
+%             'value', 0);
+        
+        
         selectSubject = uicontrol('Parent', icPanel,...
             'Style', 'popupmenu', ...
             'Units', 'Normalized', ...
@@ -376,7 +403,7 @@ end
         % Box containing subpopulations, contrasts, or visits
         ViewSelectTable = uitable('Parent', ViewSelectionPanel, ...
             'Units', 'Normalized', ...
-            'Position', [0.1, 0.3, 0.8, 0.5], ...
+            'Position', [0.1, 0.1, 0.8, 0.8], ...
             'Tag', 'ViewSelectTable', ...
             'CellSelectionCallback', @ViewSelectTable_cell_select);
         
@@ -429,21 +456,22 @@ end
             'Units', 'Normalized', ...
             'Position', [0.255, 0.85, 0.49, 0.1], ...
             'Tag', 'contrastSelect1', 'Callback', @updateContrastDisp, ...
+            'visible', 'off',...
             'String', 'No Contrast Created');
         contrastDisplay = uitable('Parent', betaContrastPanel, ...
             'Units', 'Normalized', ...
-            'Position', [0.1, 0.3, 0.8, 0.5], ...
+            'Position', [0.1, 0.17, 0.8, 0.8], ...
             'Tag', 'contrastDisplay', ...
             'CellEditCallback', @newPopCellEdit);
         newContrast = uicontrol('Parent', betaContrastPanel, ...
             'Units', 'Normalized', ...
             'String', 'Add New Contrast', ...
-            'Position', [0.15, 0.15, 0.7, 0.15], ...
+            'Position', [0.01, 0.01, 0.49, 0.15], ...
             'Tag', 'newContrast', 'Callback', @addNewContrast);
         removeContrastButton = uicontrol('Parent', betaContrastPanel, ...
             'Units', 'Normalized', ...
             'String', 'Remove A Contrast', ...
-            'Position', [0.15, 0.01, 0.7, 0.15], ...
+            'Position', [0.51, 0.01, 0.49, 0.15], ...
             'Tag', 'newContrast', 'Callback', @removeContrast);
         
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -608,14 +636,24 @@ end
             set( findobj('Tag', 'ViewSelectionPanel'), 'Position',[.67, 0.01 .31 .98]);
         end
         
+        if strcmp(ddat.type, 'beta')
+            set( findobj('Tag', 'thresholdPanel'), 'Position',[.34, 0.01 .31 .39]);
+            set( findobj('Tag', 'icPanel'), 'Position',[.34, 0.42 .31 .57]);
+            set( findobj('Tag', 'locPanel'), 'Position',[.01, 0.01 .31 .98]);
+            set( findobj('Tag', 'ViewSelectionPanel'), 'Position',[.67, 0.51 .31 .48]);
+            set( findobj('Tag', 'covariateContrastControl'), 'Position',[.67, 0.01 .31 .48]);
+            
+            set( findobj('tag', 'EffectTypeButtonGroup'), 'visible', 'on' );
+        end
+        
         % Third, based on the number of brain maps being viewed, determine
         % the relative amount to real estate to give the brain maps over
         % the controls panel.
         % Cases: 1  maps - 50/50
         %        2  maps - 60/40
         %        3+ maps - 70/30
-        nMapsViewed = sum(ddat.viewTracker > 0);
-        switch sum(ddat.viewTracker > 0)
+        nMapsViewed = sum(ddat.viewTracker(:) > 0);
+        switch nMapsViewed
             case 1
                 y_use = 0.5;
             case 2
@@ -725,7 +763,7 @@ end
         % first place (Cross-Sectional hc-ICA aggregate - should not appear)
         
         % Determine whether the table should be editable
-        if strcmp(ddat.type, 'grp') || strcmp(ddat.type, 'subj')
+        if strcmp(ddat.type, 'grp') || strcmp(ddat.type, 'subj') || strcmp(ddat.type, 'beta')
             set(findobj('tag', 'ViewSelectTable'), 'ColumnEditable', false);
         else
             set(findobj('tag', 'ViewSelectTable'), 'ColumnEditable', true);
@@ -745,6 +783,24 @@ end
             set(findobj('tag', 'ViewSelectTable'), 'ColumnName', {'Viewing'});
         end
         
+        % If Effect maps, then box is nVisit x P (or P+1)
+        if strcmp(ddat.type, 'beta')
+            
+            for k=1:ddat.nVisit; for p=1:ddat.p; table_data{k, p} = 'no'; end; end;
+            table_data{1, 1} = 'yes';
+            
+            set(findobj('tag', 'ViewSelectTable'), 'Data', table_data');
+            
+            % Set the visit names (rows)
+            for k=1:ddat.nVisit; visit_names{k} = ['Visit ' num2str(k)]; end
+            set(findobj('tag', 'ViewSelectTable'), 'RowName', visit_names');
+            
+            % set the column names (covariates)
+            for p=1:ddat.p; column_names{p} = ddat.varNamesX{p}; end;
+            set(findobj('tag', 'ViewSelectTable'), 'ColumnName', column_names');
+            
+        end
+        
     end
 
 % Function to add/remove a visit/subpop/contrast from the view window
@@ -758,7 +814,7 @@ end
             selected_row = eventdata.Indices(1);
             
             % Get the corresponding population
-            selected_pop = ceil(selected_row / ddat.nVisit);
+            selected_pop = eventdata.Indices(2);
             
             % Find the visit this corresponds to, this will be the column
             % of the img object we load in
@@ -766,10 +822,10 @@ end
             
             
             % If not viewed, add to viewer, else remove
-            if strcmp(eventdata.Source.Data{selected_row, 1}, 'no')
+            if strcmp(eventdata.Source.Data{selected_row, selected_pop}, 'no')
                 
                 % Set to yes
-                eventdata.Source.Data{selected_row, 1} = 'yes';
+                eventdata.Source.Data{selected_row, selected_pop} = 'yes';
                 
                 % Add to tracker
                 ddat.viewTracker(selected_pop, visit_number) = 1;
@@ -793,7 +849,7 @@ end
             else
                 
                 % Set to no
-                eventdata.Source.Data{selected_row, 1} = 'no';
+                eventdata.Source.Data{selected_row, selected_pop} = 'no';
                 
                 % Remove from tracker
                 ddat.viewTracker(selected_pop, visit_number) = 0;
@@ -1328,6 +1384,10 @@ end
         
         % Change what display panels are seen based on what viewer is open.
         if strcmp(ddat.type, 'grp')
+            
+            ddat.viewTracker = zeros(1, ddat.nVisit);
+            ddat.viewTracker(1, 1) = 1;
+            
             set(findobj('Tag', 'useEmpiricalVar'), 'Visible', 'Off');
             set(findobj('Tag', 'selectSubject'), 'Visible', 'Off');
             set(findobj('Tag', 'selectCovariate'), 'Visible', 'Off');
@@ -1368,7 +1428,12 @@ end
             % No data to display at first
             tempImg = load_nii([ddat.outdir '/' ddat.outpre '_S0_' 'IC_1.nii']);
             ddat.img{1} = zeros(size(tempImg.img)); ddat.oimg{1} = zeros(size(tempImg.img));
+            
         elseif strcmp(ddat.type, 'beta')
+            
+            ddat.viewTracker = zeros(ddat.p, ddat.nVisit);
+            ddat.viewTracker(1, 1) = 1;
+            
             ddat.viewingContrast = 0;
             set(findobj('Tag', 'useEmpiricalVar'), 'Visible', 'Off');
             set(findobj('Tag', 'covariateContrastControl'), 'Visible', 'On');
@@ -1387,12 +1452,31 @@ end
                 set(findobj('Tag', 'contrastDisplay'), 'ColumnEditable', true);
                 ddat.contrastExists = 0;
             end
+            
+            % load each beta map for each visit
+            for p = 1:ddat.p
+                for iVisit = 1:ddat.nVisit
+                    
+                    % File name
+                    ndata = load_nii([ddat.outdir '/' ddat.outpre...
+                        '_beta_cov' num2str(p) '_IC1_visit'...
+                        num2str(iVisit) '.nii']);
+                    
+                    ddat.img{p, iVisit} = ndata.img; ddat.oimg{p, iVisit} = ndata.img;
+                    ddat.maskingStatus{p, iVisit} = ~isnan(ddat.img{p, iVisit});
+                end
+            end
+            
             % load the data
-            ndata = load_nii([ddat.outdir '/' ddat.outpre '_beta_cov1_IC1_visit1.nii']);
-            ddat.img{1} = ndata.img; ddat.oimg{1} = ndata.img;
+            %ndata = load_nii([ddat.outdir '/' ddat.outpre '_beta_cov1_IC1_visit1.nii']);
+            %ddat.img{1} = ndata.img; ddat.oimg{1} = ndata.img;
             set(findobj('Tag', 'selectCovariate'), 'Visible', 'On');
             setupCovMenu;
+            
         elseif strcmp(ddat.type, 'subj')
+            
+            ddat.viewTracker = zeros(1, ddat.nVisit);
+            ddat.viewTracker(1, 1) = 1;
             
             set(findobj('Tag', 'useEmpiricalVar'), 'Visible', 'Off');
             set(findobj('Tag', 'selectCovariate'), 'Visible', 'Off');
@@ -2130,6 +2214,7 @@ end
 % Function to combine the anatomical image and the functional image.
 % Taken from bs-mac viewer.
     function createCombinedImage(hObject,callbackdata)
+        
         ddat.scaledFunc  = cell(ddat.nCompare, ddat.nVisit);
         ddat.combinedImg = cell(ddat.nCompare, ddat.nVisit);
         
@@ -2137,25 +2222,34 @@ end
         minVal1 = min(min(min(cat(1,ddat.img{:}))));
         maxVal1 = max(max(max(cat(1,ddat.img{:}))));
         
-        % Loop over each sub-population to compare and create the combined
-        % image.
-        for iPop = 1:ddat.nCompare
-            
-            % Loop over each visit
-            for iVisit = 1:ddat.nVisit
-                % Scale the functional image
-                tempImage = ddat.img{iPop, iVisit};
-                tempImage(isnan(ddat.img{iPop, iVisit})) = minVal1 - 1;
-                minVal2 = minVal1 - 1;
-                ddat.scaledFunc{iPop, iVisit} = scale_in(tempImage, minVal2, maxVal1, 63);
-                newColormap = [(gray(191));zeros(1, 3); ddat.highcolor];%%index 192 is not used, just for seperate the base and top colormap;
-                ddat.color_map = newColormap;
-                ddat.combinedImg{iPop, iVisit} = overlay_w_transparency(uint16(ddat.scaledImg),...
-                    uint16(ddat.scaledFunc{iPop, iVisit}),1, 0.6, newColormap, ddat.highcolor);
-            end% end loop over visits
-            
-        end % end loop over sub-populations
+%         % Loop over each sub-population to compare and create the combined
+%         % image.
+%         for iPop = 1:ddat.nCompare
+%             
+%             % Loop over each visit
+%             for iVisit = 1:ddat.nVisit
+%                 % Scale the functional image
+%                 tempImage = ddat.img{iPop, iVisit};
+%                 tempImage(isnan(ddat.img{iPop, iVisit})) = minVal1 - 1;
+%                 minVal2 = minVal1 - 1;
+%                 ddat.scaledFunc{iPop, iVisit} = scale_in(tempImage, minVal2, maxVal1, 63);
+%                 newColormap = [(gray(191));zeros(1, 3); ddat.highcolor];%%index 192 is not used, just for seperate the base and top colormap;
+%                 ddat.color_map = newColormap;
+%                 ddat.combinedImg{iPop, iVisit} = overlay_w_transparency(uint16(ddat.scaledImg),...
+%                     uint16(ddat.scaledFunc{iPop, iVisit}),1, 0.6, newColormap, ddat.highcolor);
+%             end% end loop over visits
+%             
+%         end % end loop over sub-populations
+        
+
+        
+
     end
+
+
+
+
+
 
 % Function to replace the brain images on the viewer.
     function redisplay(hObject,callbackdata)
@@ -2431,25 +2525,45 @@ end
         % Find out if should be looking at Z-scores
         current_Z = get(findobj('Tag', 'viewZScores'), 'Value');
         
+        % If looking at effect/contrast maps, go ahead and load all of the
+        % variances for the currently selected IC and visits, this way we do not keep
+        % reloading them during the loop
+        current_vars = {};
+        current_IC = get(findobj('Tag', 'ICselect'), 'val');
+        if strcmp('beta', ddat.type)
+            for iVisit = 1:size(ddat.viewTracker, 2)
+                
+                newMap = load(fullfile(ddat.outdir, [ddat.outpre '_BetaVarEst_IC'...
+                    num2str(current_IC) '_visit' num2str(iVisit) '.mat']));
+                
+                current_vars{iVisit} = newMap.betaVarEst;
+                
+            end
+        end
+        
         %for subPop = 1:ddat.nCompare
          for iPop = 1:size(ddat.viewTracker, 1)
              for iVisit = 1:size(ddat.viewTracker, 2)
                  if ddat.viewTracker(iPop, iVisit) > 0
                      
                     if current_Z == 1
+                        
                         if strcmp('beta', ddat.type)
-                            % get the current beta map
-                            cBeta = get(findobj('Tag', 'selectCovariate'), 'Value');
-                            % get the current IC map
-                            cIC = get(findobj('Tag', 'ICselect'), 'Value');
-                            % get the index of the se matrix needed
-                            %seIndex = (ddat.q)*cBeta + cIC;
+  
                             if (ddat.viewingContrast == 0)
+                                
+                                % TODO preallcoate and stop re-doing this
+                                % using above current vars
+                                current_var_est = current_vars{iVisit};
+                                                                
                                 % Scale using the theoretical variance estimate
                                 % theoretical estimate is q(p+1) * q(p+1)
-                                ddat.img{subPop} = ddat.oimg{subPop} ./...
-                                    sqrt(squeeze(ddat.betaVarEst( cBeta, cBeta, :,:,: )));
+                                ddat.img{iPop, iVisit} = ddat.oimg{iPop, iVisit} ./...
+                                    sqrt(squeeze( current_var_est( iPop, iPop, :,:,: )));
+                                
+                                
                             end
+                            
                             if (ddat.viewingContrast == 1)
                                 contrastSettings = get(findobj('Tag', 'contrastDisplay'), 'Data');
                                 % Load the contrast
@@ -2495,7 +2609,11 @@ end
         %updateInfoText;
         
         [rowInd, colInd] = find(ddat.viewTracker > 0);
-        update_brain_maps('updateCombinedImage', [rowInd', colInd']);
+        if length(rowInd) == 1
+            update_brain_maps('updateCombinedImage', [rowInd', colInd']);
+        else
+            update_brain_maps('updateCombinedImage', [rowInd, colInd]);
+        end
         
         
     end
