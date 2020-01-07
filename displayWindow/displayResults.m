@@ -125,12 +125,12 @@ end
             'Tag', 'DefaultPanel',...
             'units', 'normalized',...
             'Position',[0.0, 0.0 1.0 1.0], ...;
-            'BackgroundColor',get(hs.fig,'color'))
+            'BackgroundColor',get(hs.fig,'color'));
         AugmentingPanel = uipanel('BackgroundColor','white',...
             'Tag', 'AugmentingPanel',...
             'units', 'normalized',...
             'Position',[0.0, 8.0 0.0 0.0], ...;
-            'BackgroundColor',get(hs.fig,'color'))
+            'BackgroundColor',get(hs.fig,'color'));
         
         % Sub Panels (layout)
         colorbarPanel = uipanel('BackgroundColor','white',...
@@ -786,18 +786,45 @@ end
         % If Effect maps, then box is nVisit x P (or P+1)
         if strcmp(ddat.type, 'beta')
             
-            for k=1:ddat.nVisit; for p=1:ddat.p; table_data{k, p} = 'no'; end; end;
-            table_data{1, 1} = 'yes';
+            % Have to choose between table for effect view and table for 
+            % contrast view
             
-            set(findobj('tag', 'ViewSelectTable'), 'Data', table_data');
+            % Setup for Effect view
+            if strcmp(get(get(findobj('tag', 'EffectTypeButtonGroup'), 'SelectedObject'), 'String'), 'Effect View')
+                for k=1:ddat.nVisit; for p=1:ddat.p; table_data{k, p} = 'no'; end; end;
+                table_data{1, 1} = 'yes';
+
+                set(findobj('tag', 'ViewSelectTable'), 'Data', table_data);
+
+                % Set the visit names (rows)
+                for k=1:ddat.nVisit; visit_names{k} = ['Visit ' num2str(k)]; end
+                set(findobj('tag', 'ViewSelectTable'), 'RowName', visit_names');
+
+                % set the column names (covariates)
+                for p=1:ddat.p; column_names{p} = ddat.varNamesX{p}; end;
+                set(findobj('tag', 'ViewSelectTable'), 'ColumnName', column_names');
             
-            % Set the visit names (rows)
-            for k=1:ddat.nVisit; visit_names{k} = ['Visit ' num2str(k)]; end
-            set(findobj('tag', 'ViewSelectTable'), 'RowName', visit_names');
-            
-            % set the column names (covariates)
-            for p=1:ddat.p; column_names{p} = ddat.varNamesX{p}; end;
-            set(findobj('tag', 'ViewSelectTable'), 'ColumnName', column_names');
+            % Contrast View Table Setup
+            else
+                
+                % Check the contrast table to find how many contrasts have
+                % been created. This will be the number of columns
+                contrasts = get(findobj('tag', 'contrastDisplay'), 'data');
+                contrast_names = get(findobj('tag', 'contrastDisplay'), 'RowName');
+                n_contrast = size(contrasts, 2);
+                for k=1:ddat.nVisit; for p=1:n_contrast; table_data{k, p} = 'no'; end; end;
+                
+                set(findobj('tag', 'ViewSelectTable'), 'Data', table_data);
+                
+                % Set the visit names (rows)
+                for k=1:ddat.nVisit; visit_names{k} = ['Visit ' num2str(k)]; end
+                set(findobj('tag', 'ViewSelectTable'), 'RowName', visit_names');
+                
+                % set the column names (contrasts)
+                %for p=1:ddat.p; column_names{p} = ddat.varNamesX{p}; end;
+                set(findobj('tag', 'ViewSelectTable'), 'ColumnName', contrast_names');
+                
+            end
             
         end
         
@@ -1865,7 +1892,7 @@ end
         
         % Log for what steps are required (defaults here)
         updateCombinedImage = 0; updateCombinedImageElements = 0; %updateScaling=0;
-        updateColorbar = 1; mask=[];
+        updateColorbarFlag = 1; mask=[];
         
         % Determine which steps are required based on user input
         narg = length(varargin)/2;
@@ -1883,7 +1910,7 @@ end
                 %case 'updateScaling'
                 %    updateScaling = varargin{index+1};
                 case 'updateColorbar'
-                    updateColorbar = varargin{index+1};
+                    updateColorbarFlag = varargin{index+1};
                 case 'updateMasking'
                     mask = varargin{index+1};
                 otherwise
@@ -1904,7 +1931,7 @@ end
         update_axes_image;
         
         % Update the colorbar
-        if updateColorbar == 1
+        if updateColorbarFlag == 1
             updateColorbar;
         end
         
@@ -2431,6 +2458,103 @@ end
 
 
 
+% Function to allow the user to specifiy covariates for a new
+% sub-population.
+% Updated for new display viewer (1/7/19)
+function newPopCellEdit(hObject, callbackdata)
+
+    % When the user edits a cell, need to make sure that it is a valid level
+    coledit = callbackdata.Indices(2);
+    % Make sure input value is a number and not a string
+    %if all(ismember(callbackdata.NewData, '0123456789+-.eEdD')) & ~isempty(callbackdata.NewData)
+    if all(ismember(callbackdata.NewData, '0123456789.-')) & ~isempty(callbackdata.NewData)
+        % check if the edited cell is categorical, should be binary
+        if length(unique(ddat.X(:, coledit))) == 2
+            if ~(str2num(callbackdata.NewData) == 1 || str2num(callbackdata.NewData) == 0)
+                warndlg('Categorical covariates should be set to either 0 or 1', 'Data input error');
+                newTable = get(findobj('Tag', 'subPopDisplay'), 'Data');
+                newTable(callbackdata.Indices(1), coledit) = {''};
+                set(findobj('Tag', 'subPopDisplay'), 'Data', newTable);
+            end
+        else
+            % make sure it is in the range of values recorded before
+            minval = min(ddat.X(:,coledit));
+            maxval = max(ddat.X(:,coledit));
+            if (str2num(callbackdata.NewData) < minval || str2num(callbackdata.NewData) > maxval)
+                warndlg('The value input is more extreme than any value for this covariate in the data set', 'Warning');
+            end
+        end
+    else
+        warndlg('Please input a number, see covariate table for examples', 'Warning');
+        newTable = get(findobj('Tag', 'subPopDisplay'), 'Data');
+        newTable(callbackdata.Indices(1), coledit) = {[]};
+        set(findobj('Tag', 'subPopDisplay'), 'Data', newTable);
+    end
+    [nsubpop ign] = size( get(findobj('Tag', 'subPopSelect'),'String'));
+
+    % Check if all main effects are now filled out. If so, update the
+    % interactions, otherwise set them to zero
+    factorValues = callbackdata.Source.Data{1:length(ddat.covTypes)};
+    allFilledOut = 1;
+    rowIndex = callbackdata.Indices(1);
+    for iCov=1:length(ddat.varNamesX)
+        if isempty(callbackdata.Source.Data{rowIndex, iCov})
+            allFilledOut = 0;
+        end
+    end
+
+    % If all factors are filled out, then update the interactions
+    if allFilledOut == 1
+        nInt = size(ddat.interactions, 1);
+        nCov = size(ddat.interactions, 2);
+        for iInt = 1:nInt
+            interactionValue = 1;
+            for iCov = 1:nCov
+                if ddat.interactions(iInt, iCov) == 1
+                    interactionValue = interactionValue *...
+                        str2double(callbackdata.Source.Data{callbackdata.Indices(1), iCov});
+                end
+            end
+            callbackdata.Source.Data{callbackdata.Indices(1), nCov+iInt} = num2str(interactionValue);
+        end
+    end
+    
+    % TODO this is where I am with editing this function
+
+    if (nsubpop == 1)
+        for iPop = 1:ddat.nCompare
+            updateSubPopulation(findobj('Tag', ['subPopSelect' num2str(iPop)]));
+        end
+    end
+    ddat.subPopExists = 1;
+
+    % If the data are all filled out AND the current selection is the
+    % one that was edited, update the display image
+    updatedViewing = 0;
+    updatedRow = callbackdata.Indices(1);
+    if updatedRow == get(findobj('tag',  ['subPopSelect' num2str(1)]), 'value')
+        updatedViewing = 1;
+    end
+    if updatedViewing && allFilledOut
+        if strcmp(ddat.type, 'beta')
+            if ddat.viewingContrast == 1
+                updateContrastDisp;
+            end
+        else
+            updateSubPopulation;
+        end
+    end
+
+end
+
+
+
+
+
+
+
+
+
 
 %% Currently Here
 
@@ -2531,6 +2655,7 @@ end
         current_vars = {};
         current_IC = get(findobj('Tag', 'ICselect'), 'val');
         if strcmp('beta', ddat.type)
+            
             for iVisit = 1:size(ddat.viewTracker, 2)
                 
                 newMap = load(fullfile(ddat.outdir, [ddat.outpre '_BetaVarEst_IC'...
@@ -2539,6 +2664,7 @@ end
                 current_vars{iVisit} = newMap.betaVarEst;
                 
             end
+            
         end
         
         %for subPop = 1:ddat.nCompare
@@ -2609,6 +2735,7 @@ end
         %updateInfoText;
         
         [rowInd, colInd] = find(ddat.viewTracker > 0);
+        %disp('Added updateColorbar to two update_brain_maps commands below. Make sure this is needed. currently not doing anything.')
         if length(rowInd) == 1
             update_brain_maps('updateCombinedImage', [rowInd', colInd']);
         else
@@ -3406,89 +3533,6 @@ end
         end
     end
 
-% Function to allow the user to specifiy covariates for a new
-% sub-population.
-    function newPopCellEdit(hObject, callbackdata)
-        % When the user edits a cell, need to make sure that it is a valid level
-        coledit = callbackdata.Indices(2);
-        % Make sure input value is a number and not a string
-        %if all(ismember(callbackdata.NewData, '0123456789+-.eEdD')) & ~isempty(callbackdata.NewData)
-        if all(ismember(callbackdata.NewData, '0123456789.-')) & ~isempty(callbackdata.NewData)
-            % check if the edited cell is categorical, should be binary
-            if length(unique(ddat.X(:, coledit))) == 2
-                if ~(str2num(callbackdata.NewData) == 1 || str2num(callbackdata.NewData) == 0)
-                    warndlg('Categorical covariates should be set to either 0 or 1', 'Data input error');
-                    newTable = get(findobj('Tag', 'subPopDisplay'), 'Data');
-                    newTable(callbackdata.Indices(1), coledit) = {''};
-                    set(findobj('Tag', 'subPopDisplay'), 'Data', newTable);
-                end
-            else
-                % make sure it is in the range of values recorded before
-                minval = min(ddat.X(:,coledit));
-                maxval = max(ddat.X(:,coledit));
-                if (str2num(callbackdata.NewData) < minval || str2num(callbackdata.NewData) > maxval)
-                    warndlg('The value input is more extreme than any value for this covariate in the data set', 'Warning');
-                end
-            end
-        else
-            warndlg('Please input a number, see covariate table for examples', 'Warning');
-            newTable = get(findobj('Tag', 'subPopDisplay'), 'Data');
-            newTable(callbackdata.Indices(1), coledit) = {[]};
-            set(findobj('Tag', 'subPopDisplay'), 'Data', newTable);
-        end
-        [nsubpop ign] = size( get(findobj('Tag', 'subPopSelect'),'String'));
-        
-        % Check if all main effects are now filled out. If so, update the
-        % interactions, otherwise set them to zero
-        factorValues = callbackdata.Source.Data{1:length(ddat.covTypes)};
-        allFilledOut = 1;
-        rowIndex = callbackdata.Indices(1);
-        for iCov=1:length(ddat.varNamesX)
-            if isempty(callbackdata.Source.Data{rowIndex, iCov})
-                allFilledOut = 0;
-            end
-        end
-        % If all factors are filled out, then update the interactions
-        if allFilledOut == 1
-            nInt = size(ddat.interactions, 1);
-            nCov = size(ddat.interactions, 2);
-            for iInt = 1:nInt
-                interactionValue = 1;
-                for iCov = 1:nCov
-                    if ddat.interactions(iInt, iCov) == 1
-                        interactionValue = interactionValue *...
-                            str2double(callbackdata.Source.Data{callbackdata.Indices(1), iCov});
-                    end
-                end
-                callbackdata.Source.Data{callbackdata.Indices(1), nCov+iInt} = num2str(interactionValue);
-            end
-        end
-        
-        if (nsubpop == 1)
-            for iPop = 1:ddat.nCompare
-                updateSubPopulation(findobj('Tag', ['subPopSelect' num2str(iPop)]));
-            end
-        end
-        ddat.subPopExists = 1;
-        
-        % If the data are all filled out AND the current selection is the
-        % one that was edited, update the display image
-        updatedViewing = 0;
-        updatedRow = callbackdata.Indices(1);
-        if updatedRow == get(findobj('tag',  ['subPopSelect' num2str(1)]), 'value')
-            updatedViewing = 1;
-        end
-        if updatedViewing && allFilledOut
-            if strcmp(ddat.type, 'beta')
-                if ddat.viewingContrast == 1
-                    updateContrastDisp;
-                end
-            else
-                updateSubPopulation;
-            end
-        end
-        
-    end
 
 % Function to allow a user to select what sub-population is being
 % viewed.
