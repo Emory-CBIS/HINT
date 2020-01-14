@@ -2521,6 +2521,9 @@ function newPopCellEdit(hObject, callbackdata)
     
     % TODO this is where I am with editing this function
 
+    % TODO this + below should be replaced by a check if the currently edited sub
+    % population is also being viewed. I think the "updateSubPopulation"
+    % call can be removed entirely.
     if (nsubpop == 1)
         for iPop = 1:ddat.nCompare
             updateSubPopulation(findobj('Tag', ['subPopSelect' num2str(iPop)]));
@@ -2544,9 +2547,69 @@ function newPopCellEdit(hObject, callbackdata)
             updateSubPopulation;
         end
     end
+    
+    
+    
 
 end
 
+
+
+
+
+
+% This is the function that handles editing the img object for different
+% contrasts and sub-populations.
+%
+% Difference between the contrast and sub-pop is that the sub-pop starts
+% with the S0 map
+    function generate_img_linear_combination()
+        
+        % If current viewer type is beta window
+        if strcmp(ddat.type, "beta")
+        
+            % This is the old way of loading the contrast.
+            % Load the first regression coefficient
+            beta = load_nii([ddat.outdir '/' ddat.outpre '_beta_cov' num2str(1) '_IC' num2str(newIC) '.nii']);
+            newFunc = beta.img .* str2double(contrastSettings( get(findobj('Tag',...
+                ['contrastSelect' num2str(viewer)]), 'Value') , 1));
+            
+            % Load the remaining pieces
+            for xi = 2:ddat.p
+                
+                beta = load_nii([ddat.outdir '/' ddat.outpre '_beta_cov' num2str(xi) '_IC' num2str(newIC) '.nii']);
+                max(max(max(beta.img)))
+                
+                xb = beta.img .* str2double(contrastSettings( get(findobj('Tag',...
+                    ['contrastSelect' num2str(viewer)]), 'Value') , xi));
+                newFunc = newFunc + xb;
+            end
+            
+            % This will be the new way of loading the contrast
+            for p = 1:ddat.p
+                for iVisit = 1:ddat.nVisit
+                    
+                    % Load the File
+                    ndata = load_nii([ddat.outdir '/' ddat.outpre...
+                        '_beta_cov' num2str(p) '_IC1_visit'...
+                        num2str(iVisit) '.nii']);
+                    
+                    % Apply the contrast funciton
+                    
+                    
+                    ddat.img{p, iVisit} = ndata.img;
+                    ddat.oimg{p, iVisit} = ndata.img;
+                    ddat.maskingStatus{p, iVisit} = ~isnan(ddat.img{p, iVisit});
+                    
+                end
+            end
+
+        % If current viewer type is sub-population window
+        else
+            disp('Generate linear combination not yet defined for this type of viewer.')
+        end
+        
+    end
 
 
 
