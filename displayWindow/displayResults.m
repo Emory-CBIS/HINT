@@ -306,7 +306,8 @@ end
             'string', 'Effect View',...
             'style', 'radiobutton',...
             'units', 'normalized',...
-            'Position',[0.1 0.6 0.9 0.3]);
+            'Position',[0.1 0.6 0.9 0.3],...
+            'callback', @beta_typeof_view_select);
         SelectContrastView = uicontrol(EffectViewButtonGroup,...
             'style', 'radiobutton',...
             'string', 'Contrast View',...
@@ -2451,7 +2452,50 @@ end
 
 
 
+% Function called when the user selected a button from the
+% EffectViewButtonGroup
 
+% TODO check if this is what is already being viewed?
+    function beta_typeof_view_select(hObject, callbackdata)
+        
+        % Effect view was selected -> load corresponding betas
+        if strcmp(callbackdata.Source.String, 'Effect View')
+            
+            % load each beta map for each visit
+            for p = 1:ddat.p
+                for iVisit = 1:ddat.nVisit
+                    
+                    % File name
+                    ndata = load_nii([ddat.outdir '/' ddat.outpre...
+                        '_beta_cov' num2str(p) '_IC1_visit'...
+                        num2str(iVisit) '.nii']);
+                    
+                    ddat.img{p, iVisit} = ndata.img; ddat.oimg{p, iVisit} = ndata.img;
+                    ddat.maskingStatus{p, iVisit} = ~isnan(ddat.img{p, iVisit});
+                    
+                end
+            end
+            
+        % Contrast View
+        else
+            
+            % Check the number of valid contrasts
+            disp('set this!')
+            n_valid_contrast = 1;
+            
+            % If an archived view table is present, then load it, otherwise
+            % setup a default view table based on the number of contrasts.
+            ddat.viewTable
+            
+            % Create each specified contrast
+            generate_img_linear_combination();
+           
+        end
+        
+        % Update the brain display to reflect the new images
+        
+        
+    end
 
 
 
@@ -2563,10 +2607,18 @@ end
 %
 % Difference between the contrast and sub-pop is that the sub-pop starts
 % with the S0 map
-    function generate_img_linear_combination()
+
+% LC_index is the index of the linear combination (sub pop or contrast)
+% that we are currently interested in.
+    function generate_img_linear_combination(LC_index)
         
-        % If current viewer type is beta window
+        
+        % If current viewer type is beta window -> setup a contrast
         if strcmp(ddat.type, "beta")
+            
+            % Pick off the user-specfied coefficients for the linear combination
+            all_LC = get(findobj('tag', 'XXX'), 'data');
+            sel_LC = all_LC(:, LC_index);
         
             % This is the old way of loading the contrast.
             % Load the first regression coefficient
