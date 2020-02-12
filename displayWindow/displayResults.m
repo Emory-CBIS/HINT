@@ -1640,15 +1640,6 @@ end
         ddat.basecolor = gray(191);
         ddat.colorlevel = 256;
         
-        %         jet2=jet(64); jet2(38:end, :)=[];
-        %         hot2=hot(64); hot2(end-5:end, :)=[]; hot2(1:4, :)=[];
-        %         hot2(1:2:38, :)=[]; hot2(2:2:16, :)=[]; hot2=flipud(hot2);
-        %         hot3=[jet2; hot2];
-        %         ddat.hot3 = hot3;
-        %         ddat.highcolor = hot3;
-        %         ddat.basecolor = gray(191);
-        %         ddat.colorlevel = 256;
-        
         % Get the crosshair origin information.
         ddat.pixdim = double(ddat.mri_struct.hdr.dime.pixdim(2:4));
         if any(ddat.pixdim <= 0)
@@ -1809,15 +1800,20 @@ end
             newFile = [ddat.outdir '/' ddat.outpre '_S0_IC_' num2str(newIC) '.nii'];
             updateSubPopulation;
         elseif strcmp(ddat.type, 'beta')
-            covnum = get(findobj('Tag', 'selectCovariate'), 'Value');
-            ndata = load_nii([ddat.outdir '/' ddat.outpre...
-                '_beta_cov' num2str(covnum) '_IC' num2str(newIC) '.nii']);
-            ddat.img{1} = ndata.img; ddat.oimg{1} = ndata.img;
-            % Fill out the beta map for the current IC
-            newIC = get(findobj('Tag', 'ICselect'), 'val');
-            newMap = load(fullfile(ddat.outdir,...
-                [ddat.outpre '_BetaVarEst_IC_' num2str(newIC) '.mat']));
-            ddat.betaVarEst = newMap.betaVarEst;
+           
+            for p = 1:ddat.p
+                for iVisit = 1:ddat.nVisit
+                    
+                    % File name
+                    ndata = load_nii([ddat.outdir '/' ddat.outpre...
+                        '_beta_cov' num2str(p) '_IC' num2str(newIC) '_visit'...
+                        num2str(iVisit) '.nii']);
+                    
+                    ddat.img{p, iVisit} = ndata.img; ddat.oimg{p, iVisit} = ndata.img;
+                    ddat.maskingStatus{p, iVisit} = ~isnan(ddat.img{p, iVisit});
+                end
+            end
+
         elseif strcmp(ddat.type, 'subj')
             generate_single_subject_map;
             set_number_of_brain_axes(0);
@@ -2101,21 +2097,25 @@ end
 % Update sagittal slider.
     function sagSliderMove(hObject, callbackdata)
         
+        [nRow, nCol] = size(ddat.img);
+        
         ddat.sag = round(get(hObject, 'Value'));
 
         % Loop over populations and visits
-        for iPop = 1:ddat.nCompare
-            for iVisit = 1:ddat.nVisit
+        for iRow = 1:nRow
+            for iCol = 1:nCol
+        %for iPop = 1:ddat.nCompare
+            %for iVisit = 1:ddat.nVisit
                 
-                if ddat.viewTracker(iPop, iVisit) > 0
+                if ddat.viewTracker(iRow, iCol) > 0
                     
-                    axes(findobj('Tag', ['SagittalAxes' num2str(iPop) '_' num2str(iVisit)]));
+                    axes(findobj('Tag', ['SagittalAxes' num2str(iRow) '_' num2str(iCol)]));
                     for cl = 1:3
-                        Ssag(:, :, cl) = squeeze(ddat.combinedImg{iPop, iVisit}(cl).combound(ddat.sag, :, :))';
+                        Ssag(:, :, cl) = squeeze(ddat.combinedImg{iRow, iCol}(cl).combound(ddat.sag, :, :))';
                     end
-                    set(ddat.sagittal_image{iPop, iVisit},'CData',Ssag);
-                    set(ddat.axial_yline{iPop, iVisit},'Xdata',[ddat.sag ddat.sag]);
-                    set(ddat.coronal_yline{iPop, iVisit},'Xdata',[ddat.sag ddat.sag]);
+                    set(ddat.sagittal_image{iRow, iCol},'CData',Ssag);
+                    set(ddat.axial_yline{iRow, iCol},'Xdata',[ddat.sag ddat.sag]);
+                    set(ddat.coronal_yline{iRow, iCol},'Xdata',[ddat.sag ddat.sag]);
                     set(findobj('Tag','crosshairPos'),'String',...
                         sprintf('%7.0d %7.0d %7.0d',ddat.sag,ddat.cor, ddat.axi));
                     updateInfoText;
@@ -2124,13 +2124,13 @@ end
                     
                     % Update axes-specific value at voxel text
                     if get(findobj('Tag', 'viewZScores'), 'Value') == 1
-                        set(findobj('tag', ['VoxelValueBox' num2str(iPop) '_' num2str(iVisit)]),...
+                        set(findobj('tag', ['VoxelValueBox' num2str(iRow) '_' num2str(iCol)]),...
                             'String', ...
-                            sprintf('Z = %4.2f', ddat.oimg{iPop, iVisit}(ddat.sag, ddat.cor, ddat.axi)));
+                            sprintf('Z = %4.2f', ddat.oimg{iRow, iCol}(ddat.sag, ddat.cor, ddat.axi)));
                     else
-                        set(findobj('tag', ['VoxelValueBox' num2str(iPop) '_' num2str(iVisit)]),...
+                        set(findobj('tag', ['VoxelValueBox' num2str(iRow) '_' num2str(iCol)]),...
                             'String', ...
-                            sprintf('Value at Voxel: %4.2f', ddat.oimg{iPop, iVisit}(ddat.sag, ddat.cor, ddat.axi)));
+                            sprintf('Value at Voxel: %4.2f', ddat.oimg{iRow, iCol}(ddat.sag, ddat.cor, ddat.axi)));
                     end
                 
                 
@@ -2138,6 +2138,7 @@ end
                 if ddat.trajectoryActive == 1
                     plot_voxel_trajectory([ddat.sag, ddat.cor, ddat.axi])
                 end
+                
             end
         end
         
@@ -2150,18 +2151,21 @@ end
 % Update coronal slider.
     function corSliderMove(hObject, callbackdata)
         ddat.cor = round(get(hObject, 'Value'));
+        
+        [nRow, nCol] = size(ddat.img);
 
         % Loop over populations and visits
-        for iPop = 1:ddat.nCompare
-            for iVisit = 1:ddat.nVisit
-                if ddat.viewTracker(iPop, iVisit) > 0
-                    axes(findobj('Tag', ['CoronalAxes' num2str(iPop) '_' num2str(iVisit)]));
+        for iRow = 1:nRow
+            for iCol = 1:nCol
+                
+                if ddat.viewTracker(iRow, iCol) > 0
+                    axes(findobj('Tag', ['CoronalAxes' num2str(iRow) '_' num2str(iCol)]));
                     for cl = 1:3
-                        Scor(:, :, cl) = squeeze(ddat.combinedImg{iPop, iVisit}(cl).combound(:,ddat.cor,:))';
+                        Scor(:, :, cl) = squeeze(ddat.combinedImg{iRow, iCol}(cl).combound(:,ddat.cor,:))';
                     end
-                    set(ddat.coronal_image{iPop, iVisit},'CData',Scor);
-                    set(ddat.axial_xline{iPop, iVisit},'Ydata',[ddat.cor ddat.cor]);
-                    set(ddat.sagittal_yline{iPop, iVisit},'Xdata',[ddat.cor ddat.cor]);
+                    set(ddat.coronal_image{iRow, iCol},'CData',Scor);
+                    set(ddat.axial_xline{iRow, iCol},'Ydata',[ddat.cor ddat.cor]);
+                    set(ddat.sagittal_yline{iRow, iCol},'Xdata',[ddat.cor ddat.cor]);
                     set(findobj('Tag','crosshairPos'),'String',...
                         sprintf('%7.0d %7.0d %7.0d',ddat.sag,ddat.cor, ddat.axi));
                     updateInfoText;
@@ -2169,13 +2173,13 @@ end
                                         
                     % Update axes-specific value at voxel text
                     if get(findobj('Tag', 'viewZScores'), 'Value') == 1
-                        set(findobj('tag', ['VoxelValueBox' num2str(iPop) '_' num2str(iVisit)]),...
+                        set(findobj('tag', ['VoxelValueBox' num2str(iRow) '_' num2str(iCol)]),...
                             'String', ...
-                            sprintf('Z = %4.2f', ddat.oimg{iPop, iVisit}(ddat.sag, ddat.cor, ddat.axi)));
+                            sprintf('Z = %4.2f', ddat.oimg{iRow, iCol}(ddat.sag, ddat.cor, ddat.axi)));
                     else
-                        set(findobj('tag', ['VoxelValueBox' num2str(iPop) '_' num2str(iVisit)]),...
+                        set(findobj('tag', ['VoxelValueBox' num2str(iRow) '_' num2str(iCol)]),...
                             'String', ...
-                            sprintf('Value at Voxel: %4.2f', ddat.oimg{iPop, iVisit}(ddat.sag, ddat.cor, ddat.axi)));
+                            sprintf('Value at Voxel: %4.2f', ddat.oimg{iRow, iCol}(ddat.sag, ddat.cor, ddat.axi)));
                     end
                     
                     % Add the currently selected voxel to the trajectory plot
@@ -2193,19 +2197,22 @@ end
 
 % Update axial slider.
     function axiSliderMove(hObject, callbackdata)
+        
+        [nRow, nCol] = size(ddat.img);
+        
         ddat.axi = round(get(hObject, 'Value'));
         % Loop over populations and visits
-        for iPop = 1:ddat.nCompare
-            for iVisit = 1:ddat.nVisit
-                if ddat.viewTracker(iPop, iVisit) > 0
-                    axes(findobj('Tag', ['AxialAxes' num2str(iPop, iVisit)]));
+        for iRow = 1:nRow
+            for iCol = 1:nCol
+                if ddat.viewTracker(iRow, iCol) > 0
+                    axes(findobj('Tag', ['AxialAxes' num2str(iRow, iCol)]));
                     
                     for cl = 1:3
-                        Saxi(:, :, cl) = squeeze(ddat.combinedImg{iPop, iVisit}(cl).combound(:, :, ddat.axi))';
+                        Saxi(:, :, cl) = squeeze(ddat.combinedImg{iRow, iCol}(cl).combound(:, :, ddat.axi))';
                     end
-                    set(ddat.axial_image{iPop, iVisit},'CData',Saxi);
-                    set(ddat.coronal_xline{iPop, iVisit},'Ydata',[ddat.axi ddat.axi]);
-                    set(ddat.sagittal_xline{iPop, iVisit},'Ydata',[ddat.axi ddat.axi]);
+                    set(ddat.axial_image{iRow, iCol},'CData',Saxi);
+                    set(ddat.coronal_xline{iRow, iCol},'Ydata',[ddat.axi ddat.axi]);
+                    set(ddat.sagittal_xline{iRow, iCol},'Ydata',[ddat.axi ddat.axi]);
                     set(findobj('Tag','crosshairPos'),'String',...
                         sprintf('%7.0d %7.0d %7.0d',ddat.sag,ddat.cor, ddat.axi));
                     updateInfoText;
@@ -2214,13 +2221,13 @@ end
                                         
                     % Update axes-specific value at voxel text
                     if get(findobj('Tag', 'viewZScores'), 'Value') == 1
-                        set(findobj('tag', ['VoxelValueBox' num2str(iPop) '_' num2str(iVisit)]),...
+                        set(findobj('tag', ['VoxelValueBox' num2str(iRow) '_' num2str(iCol)]),...
                             'String', ...
-                            sprintf('Z = %4.2f', ddat.oimg{iPop, iVisit}(ddat.sag, ddat.cor, ddat.axi)));
+                            sprintf('Z = %4.2f', ddat.oimg{iRow, iCol}(ddat.sag, ddat.cor, ddat.axi)));
                     else
-                        set(findobj('tag', ['VoxelValueBox' num2str(iPop) '_' num2str(iVisit)]),...
+                        set(findobj('tag', ['VoxelValueBox' num2str(iRow) '_' num2str(iCol)]),...
                             'String', ...
-                            sprintf('Value at Voxel: %4.2f', ddat.oimg{iPop, iVisit}(ddat.sag, ddat.cor, ddat.axi)));
+                            sprintf('Value at Voxel: %4.2f', ddat.oimg{iRow, iCol}(ddat.sag, ddat.cor, ddat.axi)));
                     end
                     
                     % Add the currently selected voxel to the trajectory plot
@@ -2683,20 +2690,22 @@ end
         if sum(ddat.viewTracker(:) > 0) > 0
         
         % Get range of all included images
-        for iPop = 1:size(ddat.viewTracker, 1)
-            for iVisit = 1:size(ddat.viewTracker, 2)
-                if ddat.viewTracker(iPop, iVisit) > 0
-                    max_val = max(ddat.img{iPop, iVisit}(:));
-                    min_val = min(ddat.img{iPop, iVisit}(:));
-                    if max_val > maxval1
-                        maxval1 = max_val;
-                    end
-                    if min_val < minval1
-                        minval1 = min_val;
-                    end
-                end
-            end
-        end
+%         for iPop = 1:size(ddat.viewTracker, 1)
+%             for iVisit = 1:size(ddat.viewTracker, 2)
+%                 if ddat.viewTracker(iPop, iVisit) > 0
+%                     max_val = max(ddat.img{iPop, iVisit}(:));
+%                     min_val = min(ddat.img{iPop, iVisit}(:));
+%                     if max_val > maxval1
+%                         maxval1 = max_val;
+%                     end
+%                     if min_val < minval1
+%                         minval1 = min_val;
+%                     end
+%                 end
+%             end
+%         end
+        minval1 = min(min(min(cat(1,ddat.img{:}))));
+        maxval1 = max(max(max(cat(1,ddat.img{:}))));
         
         % Handle case where no maps are being viewed
         else
