@@ -1,7 +1,7 @@
 function [theta, beta, z_mode, subICmean, subICvar, grpICmean, grpICvar,...
     success, G_z_dict, finalIter] = CoeffpICA_EM (Y, X, theta0, C_matrix_diag, beta0, maxiter,...
                             epsilon1, epsilon2, algo, outpath, prefix,...
-                            isScriptVersion)
+                            isScriptVersion, studyType)
 % CoeffpICA_EM - Function to run EM algorithm for hc-ICA
 % This function calls one of the EM algorithm choices for hc-ICA for given
 % number of iterations or till the algorithm converges.
@@ -31,6 +31,7 @@ function [theta, beta, z_mode, subICmean, subICvar, grpICmean, grpICvar,...
 %    prefix     - prefix for the analysis
 %    isScriptVersion - boolean. Is 1 is 'estimateFromSavedData' calls the
 %                       function
+%    studyType  - Cross-Sectional or Longitudinal
 %
 % Outputs:
 %    theta      - Object containing estimates for the EM algorithm
@@ -57,17 +58,29 @@ function [theta, beta, z_mode, subICmean, subICvar, grpICmean, grpICvar,...
         fprintf(outfile, strcat('Starting the estimation using approximate EM algorithm ...'));
     end
 
-    algofunc = @UpdateThetaBetaAprx_Vect_Experimental;
+    if strcmp(studyType, 'Cross-Sectional')
+        algofunc = @UpdateThetaBetaAprx_Vect_Experimental;
+    elseif strcmp(studyType, 'Longitudinal')
+        algofunc = @UpdateThetaBetaAprx_longitudinal;
+    else
+        error('Improper studyType specified')
+    end
     isApprox = true;
     disp('Starting the estimation using approximate EM algorithm ...');
     
     % Track the final iteration
     finalIter = 0;
 
-    X_mtx = X';
-    N = size(X,1);
-    p = size(X,2);
-    q = size(theta0.sigma2_sq, 1);
+    if strcmp(studyType, 'Cross-Sectional')
+        X_mtx = X';
+        nVisit = 1;
+    else
+        nVisit = size(theta0.A, 4);
+        X_mtx = X(1:nVisit:end, :)';
+    end
+    N = size(X_mtx, 2);
+    p = size(X_mtx, 1);
+    q = size(theta0.A, 1);
     T = q;
     m = 2;
     V = size(Y, 2);
@@ -103,7 +116,7 @@ function [theta, beta, z_mode, subICmean, subICvar, grpICmean, grpICvar,...
 
         [theta_new, beta_new, z_mode, subICmean, subICvar, grpICmean,...
             grpICvar, err, G_z_dict] = algofunc (Y, X_mtx, theta, C_matrix_diag,...
-                                        beta, N, T, q, p, m, V);
+                                        beta, N, T, nVisit, q, p, m, V);
         iterationTime = toc();    
         
         % Want to update plot every iteration or every 30 seconds
@@ -117,7 +130,7 @@ function [theta, beta, z_mode, subICmean, subICvar, grpICmean, grpICvar,...
                                     
         if(err == 1)
             success = 0;
-            disp('Fail to converge due to calculate of p(z|y)!');
+            disp('Fail to converge due to calculation of p(z|y)!');
             return;
         end;
 

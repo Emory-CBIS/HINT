@@ -22,13 +22,22 @@ function [vec_theta, vec_beta] = VectThetaBeta (theta, beta, p, q, V, T, N, m)
 %
 % See also: CoeffpICA_EM.m
 
-    vec_beta = reshape( beta, (p * q * V), 1);
+    %vec_beta = reshape( beta, (p * q * V), 1);
+    vec_beta = beta(:);
     
-    vec_theta = [reshape( theta.A, (T * q * N), 1);
-                 theta.sigma1_sq;
-                 reshape( theta.sigma2_sq, q, 1);
-                 reshape( theta.miu3, m*q, 1);
-                 reshape( theta.sigma3_sq, m*q, 1);
-                 reshape( theta.pi, m*q, 1)];
+    %     vec_theta = [reshape( theta.A, (T * q * N), 1);
+    %                  theta.sigma1_sq;
+    %                  reshape( theta.sigma2_sq, q, 1);
+    %                  reshape( theta.miu3, m*q, 1);
+    %                  reshape( theta.sigma3_sq, m*q, 1);
+    %                  reshape( theta.pi, m*q, 1)];
+
+    theta_fields = fieldnames(theta);
+    nField = length(theta_fields);
+    vec_theta = [];
+    for iField = 1:nField
+        vec_theta = [vec_theta; theta.(theta_fields{iField})(:)];
+    end
+
 end
              

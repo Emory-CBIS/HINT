@@ -19,6 +19,7 @@ save(subjFilename, 'subICmean');
 
 waitbar(1 / (2+data.qstar))
 
+% Loop over each independent component
 for i=1:data.qstar
     
     waitbar((1+i) / (2+data.qstar), waitSave, ['Saving results for IC ', num2str(i)])
@@ -34,7 +35,7 @@ for i=1:data.qstar
     % Save in the Cross-Sectional Case
     if data.nVisit == 1
         for k=1:size(data.beta_est,1)
-            bfilename = [prefix '_beta_cov' num2str(k) '_IC' num2str(i) '_V1' '.nii'];
+            bfilename = [prefix '_beta_cov' num2str(k) '_IC' num2str(i) '_visit1' '.nii'];
             nmat = nan(vxl);
             nmat(locs) = data.beta_est(k,i,:);
             nii = make_nii(nmat);
@@ -43,8 +44,17 @@ for i=1:data.qstar
     % Save in the longitudinal case
     else
         for iVisit = 1:data.nVisit
+            for k = 1:size(data.beta_est,1) - 1
+                % Setup the filename
+                bfilename = [prefix '_beta_cov' num2str(k) '_IC'...
+                    num2str(i) '_visit' num2str(iVisit) '.nii'];
+                % Save the map
+                nmat = nan(vxl);
+                nmat(locs) = data.beta_est(k+1, i, :, iVisit);
+                nii = make_nii(nmat);
+                save_nii(nii,strcat(path,bfilename));
+            end
         end
-        disp('Need longitudinal beta dimension')
     end
     
     %% Create aggregate IC maps
@@ -56,13 +66,37 @@ for i=1:data.qstar
             nullAggregateMatrix(locs) = nullAggregateMatrix(locs) +...
                 1/data.N * squeeze(subICmean(i,j,:));
         end
-        gfilename = [prefix '_aggregateIC_' num2str(i) '_V1.nii'];
+        gfilename = [prefix '_aggregateIC_' num2str(i) '_visit1.nii'];
         nii = make_nii(nullAggregateMatrix);
         save_nii(nii,strcat(data.outpath,'/',gfilename));
     else
         for iVisit = 1:data.nVisit
+            
+            nullAggregateMatrix = nan(vxl);
+            nullAggregateMatrix(locs) = 0.0;
+            
+            disp('still figuring out the indexing for sub ic mean')
+            indSubj = iVisit -  data.qstar * data.nVisit;
+            q = data.qstar;
+            for iSubj=1:data.N
+                
+               
+                ii = iSubj;
+                j = iVisit - 1;
+                ij = j+1+(ii-1)*(data.nVisit);
+                
+                qvsubj = subICmean(((1+q*(ij-1)):(q*ij)),:);
+                
+                nullAggregateMatrix(locs) = nullAggregateMatrix(locs) +...
+                    1/data.N * squeeze(qvsubj(i, :))';
+            end
+            
+            gfilename = [prefix '_aggregateIC_' num2str(i) '_visit'...
+                num2str(iVisit) '.nii'];
+            nii = make_nii(nullAggregateMatrix);
+            save_nii(nii,strcat(data.outpath,'/',gfilename));
+            
         end
-        disp('Need subject specific visit orderings for aggregate ICs!!!')
     end
     
 end
@@ -72,12 +106,19 @@ waitbar((data.qstar+1) / (2+data.qstar), waitSave, 'Estimating variance of covar
 %% Calculate the standard error estimates for the beta maps
 % Cross Sectional
 if data.nVisit == 1
+    
     theory_var = VarEst_hcica(data.theta_est, data.beta_est, data.X,...
-    data.z_mode, data.YtildeStar, data.G_z_dict, data.voxSize,...
-    data.validVoxels, prefix, data.outpath);
-    data.theoretical_beta_se_est = theory_var;
+        data.z_mode, data.YtildeStar, data.G_z_dict, data.voxSize,...
+        data.validVoxels, prefix, data.outpath);
+        data.theoretical_beta_se_est = theory_var;
+        
 else
-    disp('NEED BETA ESTS FOR LICA!')
+    
+    theory_var = var_est_longitudinal(data.theta_est, data.beta_est, data.X,...
+        data.z_mode, data.YtildeStar, data.G_z_dict, data.voxSize,...
+        data.validVoxels, prefix, data.outpath);
+        data.theoretical_beta_se_est = theory_var;
+    
 end
 
 waitbar(1)
