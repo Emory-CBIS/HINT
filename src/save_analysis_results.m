@@ -41,6 +41,7 @@ for i=1:data.qstar
             nii = make_nii(nmat);
             save_nii(nii,strcat(path,bfilename));
         end
+        
     % Save in the longitudinal case
     else
         for iVisit = 1:data.nVisit
@@ -50,7 +51,7 @@ for i=1:data.qstar
                     num2str(i) '_visit' num2str(iVisit) '.nii'];
                 % Save the map
                 nmat = nan(vxl);
-                nmat(locs) = data.beta_est(k+1, i, :, iVisit);
+                nmat(locs) = data.beta_est(i, k+1, :, iVisit);
                 nii = make_nii(nmat);
                 save_nii(nii,strcat(path,bfilename));
             end
