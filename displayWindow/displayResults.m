@@ -269,7 +269,8 @@ end
             'Style', 'popupmenu', ...
             'Units', 'Normalized', ...
             'Position', [0.01, 0.83, 0.48, 0.1], ...
-            'Tag', 'ICselect', 'Callback', @updateIC, ...
+            'Tag', 'ICselect', 'Callback',...
+            @(src, event)update_brain_data('setICMap', 1), ...
             'String', 'Select IC');
         viewZScores = uicontrol('Parent', icPanel,...
             'Style', 'checkbox', ...
@@ -2180,8 +2181,8 @@ end
 % setZStatus '0' for raw values '1' for zscores
     function update_brain_data(varargin)
         
-        % Defualt values
-        setICmap = -1;
+        % Default values
+        setICMap = -1;
         
         % Determine which steps are required based on user input
         narg = length(varargin)/2;
@@ -2200,7 +2201,7 @@ end
         end
         
         % Load a new IC Map, if requested
-        if setICmap > -1
+        if setICMap > -1
             update_viewed_component;
         end
         
@@ -3141,7 +3142,7 @@ end
         current_Z = get(findobj('Tag', 'viewZScores'), 'Value');
         if current_Z == 0
             set( findobj('Tag', 'viewZScores'), 'Value', 1 );
-            updateZImg;
+            %updateZImg;
         end
         
         % Loop over sub populations and update Z threshold.
