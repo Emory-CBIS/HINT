@@ -1923,8 +1923,10 @@ end
             end
             
         elseif strcmp(ddat.type, 'subj')
+            
             generate_single_subject_map;
             set_number_of_brain_axes(0);
+            
         elseif strcmp(ddat.type, 'icsel')
             ndata = load_nii([ddat.outdir '/' ddat.outpre '_iniIC_' num2str(newIC) '.nii']);
             % need to turn the 0's into NaN values
@@ -2175,10 +2177,15 @@ end
                     ddat.sagittal_xline{iRow, iCol} = crosshair.lx;
                     ddat.sagittal_yline{iRow, iCol} = crosshair.ly;
                     
+                  
                 end
                 
             end
         end
+        
+        % Update the position information text
+       %position_information_update;
+       disp('get position info text update fixed!')
         
     end
 
@@ -2234,50 +2241,52 @@ end
         [nRow, nCol] = size(ddat.img);
         
         ddat.sag = round(get(hObject, 'Value'));
+        disp('sag slider moved')
         
-        % Loop over populations and visits
-        for iRow = 1:nRow
-            for iCol = 1:nCol
-                
-                if ddat.viewTracker(iRow, iCol) > 0
-                    
-                    axes(findobj('Tag', ['SagittalAxes' num2str(iRow) '_' num2str(iCol)]));
-                    for cl = 1:3
-                        Ssag(:, :, cl) = squeeze(ddat.combinedImg{iRow, iCol}(cl).combound(ddat.sag, :, :))';
-                    end
-                    set(ddat.sagittal_image{iRow, iCol},'CData',Ssag);
-                    set(ddat.axial_yline{iRow, iCol},'Xdata',[ddat.sag ddat.sag]);
-                    set(ddat.coronal_yline{iRow, iCol},'Xdata',[ddat.sag ddat.sag]);
-                    set(findobj('Tag','crosshairPos'),'String',...
-                        sprintf('%7.0d %7.0d %7.0d',ddat.sag,ddat.cor, ddat.axi));
-                    updateInfoText;
-                    
-                    % Update value at voxel text
-                    
-                    % Update axes-specific value at voxel text
-                    if get(findobj('Tag', 'viewZScores'), 'Value') == 1
-                        set(findobj('tag', ['VoxelValueBox' num2str(iRow) '_' num2str(iCol)]),...
-                            'String', ...
-                            sprintf('Z = %4.2f', ddat.oimg{iRow, iCol}(ddat.sag, ddat.cor, ddat.axi)));
-                    else
-                        set(findobj('tag', ['VoxelValueBox' num2str(iRow) '_' num2str(iCol)]),...
-                            'String', ...
-                            sprintf('Value at Voxel: %4.2f', ddat.oimg{iRow, iCol}(ddat.sag, ddat.cor, ddat.axi)));
-                    end
-                    
-                    
-                    % Add the currently selected voxel to the trajectory plot
-                    if ddat.trajectoryActive == 1
-                        plot_voxel_trajectory([ddat.sag, ddat.cor, ddat.axi])
-                    end
-                    
-                end
-            end
-            
-            % This is to update the axes info text.
-            %set_number_of_brain_axes(0);
-            
-        end
+%         % Loop over populations and visits
+%         for iRow = 1:nRow
+%             for iCol = 1:nCol
+%                 
+%                 if ddat.viewTracker(iRow, iCol) > 0
+%                     
+%                     axes(findobj('Tag', ['SagittalAxes' num2str(iRow) '_' num2str(iCol)]));
+%                     for cl = 1:3
+%                         Ssag(:, :, cl) = squeeze(ddat.combinedImg{iRow, iCol}(cl).combound(ddat.sag, :, :))';
+%                     end
+%                     set(ddat.sagittal_image{iRow, iCol},'CData',Ssag);
+%                     set(ddat.axial_yline{iRow, iCol},'Xdata',[ddat.sag ddat.sag]);
+%                     set(ddat.coronal_yline{iRow, iCol},'Xdata',[ddat.sag ddat.sag]);
+%                     set(findobj('Tag','crosshairPos'),'String',...
+%                         sprintf('%7.0d %7.0d %7.0d',ddat.sag,ddat.cor, ddat.axi));
+%                     updateInfoText;
+%                     
+%                     % Update value at voxel text
+%                     
+%                     % Update axes-specific value at voxel text
+%                     if get(findobj('Tag', 'viewZScores'), 'Value') == 1
+%                         set(findobj('tag', ['VoxelValueBox' num2str(iRow) '_' num2str(iCol)]),...
+%                             'String', ...
+%                             sprintf('Z = %4.2f', ddat.oimg{iRow, iCol}(ddat.sag, ddat.cor, ddat.axi)));
+%                     else
+%                         set(findobj('tag', ['VoxelValueBox' num2str(iRow) '_' num2str(iCol)]),...
+%                             'String', ...
+%                             sprintf('Value at Voxel: %4.2f', ddat.oimg{iRow, iCol}(ddat.sag, ddat.cor, ddat.axi)));
+%                     end
+%                     
+%                     
+%                     % Add the currently selected voxel to the trajectory plot
+%                     if ddat.trajectoryActive == 1
+%                         plot_voxel_trajectory([ddat.sag, ddat.cor, ddat.axi])
+%                     end
+%                     
+%                 end
+%             end
+%             
+%             % This is to update the axes info text.
+%             %set_number_of_brain_axes(0);
+%             
+%         end
+        update_axes_image;
     end
 
 % Update coronal slider.
@@ -2287,44 +2296,44 @@ end
         [nRow, nCol] = size(ddat.img);
         
         % Loop over populations and visits
-        for iRow = 1:nRow
-            for iCol = 1:nCol
-                
-                if ddat.viewTracker(iRow, iCol) > 0
-                    axes(findobj('Tag', ['CoronalAxes' num2str(iRow) '_' num2str(iCol)]));
-                    for cl = 1:3
-                        Scor(:, :, cl) = squeeze(ddat.combinedImg{iRow, iCol}(cl).combound(:,ddat.cor,:))';
-                    end
-                    set(ddat.coronal_image{iRow, iCol},'CData',Scor);
-                    set(ddat.axial_xline{iRow, iCol},'Ydata',[ddat.cor ddat.cor]);
-                    set(ddat.sagittal_yline{iRow, iCol},'Xdata',[ddat.cor ddat.cor]);
-                    set(findobj('Tag','crosshairPos'),'String',...
-                        sprintf('%7.0d %7.0d %7.0d',ddat.sag,ddat.cor, ddat.axi));
-                    updateInfoText;
-                    
-                    
-                    % Update axes-specific value at voxel text
-                    if get(findobj('Tag', 'viewZScores'), 'Value') == 1
-                        set(findobj('tag', ['VoxelValueBox' num2str(iRow) '_' num2str(iCol)]),...
-                            'String', ...
-                            sprintf('Z = %4.2f', ddat.oimg{iRow, iCol}(ddat.sag, ddat.cor, ddat.axi)));
-                    else
-                        set(findobj('tag', ['VoxelValueBox' num2str(iRow) '_' num2str(iCol)]),...
-                            'String', ...
-                            sprintf('Value at Voxel: %4.2f', ddat.oimg{iRow, iCol}(ddat.sag, ddat.cor, ddat.axi)));
-                    end
-                    
-                    % Add the currently selected voxel to the trajectory plot
-                    if ddat.trajectoryActive == 1
-                        plot_voxel_trajectory([ddat.sag, ddat.cor, ddat.axi])
-                    end
-                end
-            end
-        end
-        
+%         for iRow = 1:nRow
+%             for iCol = 1:nCol
+%                 
+%                 if ddat.viewTracker(iRow, iCol) > 0
+%                     axes(findobj('Tag', ['CoronalAxes' num2str(iRow) '_' num2str(iCol)]));
+%                     for cl = 1:3
+%                         Scor(:, :, cl) = squeeze(ddat.combinedImg{iRow, iCol}(cl).combound(:,ddat.cor,:))';
+%                     end
+%                     set(ddat.coronal_image{iRow, iCol},'CData',Scor);
+%                     set(ddat.axial_xline{iRow, iCol},'Ydata',[ddat.cor ddat.cor]);
+%                     set(ddat.sagittal_yline{iRow, iCol},'Xdata',[ddat.cor ddat.cor]);
+%                     set(findobj('Tag','crosshairPos'),'String',...
+%                         sprintf('%7.0d %7.0d %7.0d',ddat.sag,ddat.cor, ddat.axi));
+%                     updateInfoText;
+%                     
+%                     
+%                     % Update axes-specific value at voxel text
+%                     if get(findobj('Tag', 'viewZScores'), 'Value') == 1
+%                         set(findobj('tag', ['VoxelValueBox' num2str(iRow) '_' num2str(iCol)]),...
+%                             'String', ...
+%                             sprintf('Z = %4.2f', ddat.oimg{iRow, iCol}(ddat.sag, ddat.cor, ddat.axi)));
+%                     else
+%                         set(findobj('tag', ['VoxelValueBox' num2str(iRow) '_' num2str(iCol)]),...
+%                             'String', ...
+%                             sprintf('Value at Voxel: %4.2f', ddat.oimg{iRow, iCol}(ddat.sag, ddat.cor, ddat.axi)));
+%                     end
+%                     
+%                     % Add the currently selected voxel to the trajectory plot
+%                     if ddat.trajectoryActive == 1
+%                         plot_voxel_trajectory([ddat.sag, ddat.cor, ddat.axi])
+%                     end
+%                 end
+%             end
+%         end
+%         
         % This is to update the axes info text.
         %set_number_of_brain_axes(0);
-        
+        update_axes_image;
     end
 
 % Update axial slider.
@@ -2334,44 +2343,46 @@ end
         
         ddat.axi = round(get(hObject, 'Value'));
         % Loop over populations and visits
-        for iRow = 1:nRow
-            for iCol = 1:nCol
-                if ddat.viewTracker(iRow, iCol) > 0
-                    axes(findobj('Tag', ['AxialAxes' num2str(iRow, iCol)]));
-                    
-                    for cl = 1:3
-                        Saxi(:, :, cl) = squeeze(ddat.combinedImg{iRow, iCol}(cl).combound(:, :, ddat.axi))';
-                    end
-                    set(ddat.axial_image{iRow, iCol},'CData',Saxi);
-                    set(ddat.coronal_xline{iRow, iCol},'Ydata',[ddat.axi ddat.axi]);
-                    set(ddat.sagittal_xline{iRow, iCol},'Ydata',[ddat.axi ddat.axi]);
-                    set(findobj('Tag','crosshairPos'),'String',...
-                        sprintf('%7.0d %7.0d %7.0d',ddat.sag,ddat.cor, ddat.axi));
-                    updateInfoText;
-                    disp('move update info text for slider functions')
-                    
-                    
-                    % Update axes-specific value at voxel text
-                    if get(findobj('Tag', 'viewZScores'), 'Value') == 1
-                        set(findobj('tag', ['VoxelValueBox' num2str(iRow) '_' num2str(iCol)]),...
-                            'String', ...
-                            sprintf('Z = %4.2f', ddat.oimg{iRow, iCol}(ddat.sag, ddat.cor, ddat.axi)));
-                    else
-                        set(findobj('tag', ['VoxelValueBox' num2str(iRow) '_' num2str(iCol)]),...
-                            'String', ...
-                            sprintf('Value at Voxel: %4.2f', ddat.oimg{iRow, iCol}(ddat.sag, ddat.cor, ddat.axi)));
-                    end
-                    
-                    % Add the currently selected voxel to the trajectory plot
-                    if ddat.trajectoryActive == 1
-                        plot_voxel_trajectory([ddat.sag, ddat.cor, ddat.axi])
-                    end
-                end
-            end
-        end
-        
-        % This is to update the axes info text.
-        %set_number_of_brain_axes(0);
+%         for iRow = 1:nRow
+%             for iCol = 1:nCol
+%                 if ddat.viewTracker(iRow, iCol) > 0
+%                     axes(findobj('Tag', ['AxialAxes' num2str(iRow, iCol)]));
+%                     
+%                     for cl = 1:3
+%                         Saxi(:, :, cl) = squeeze(ddat.combinedImg{iRow, iCol}(cl).combound(:, :, ddat.axi))';
+%                     end
+%                     set(ddat.axial_image{iRow, iCol},'CData',Saxi);
+%                     set(ddat.coronal_xline{iRow, iCol},'Ydata',[ddat.axi ddat.axi]);
+%                     set(ddat.sagittal_xline{iRow, iCol},'Ydata',[ddat.axi ddat.axi]);
+%                     set(findobj('Tag','crosshairPos'),'String',...
+%                         sprintf('%7.0d %7.0d %7.0d',ddat.sag,ddat.cor, ddat.axi));
+%                     updateInfoText;
+%                     disp('move update info text for slider functions')
+%                     
+%                     
+%                     % Update axes-specific value at voxel text
+%                     if get(findobj('Tag', 'viewZScores'), 'Value') == 1
+%                         set(findobj('tag', ['VoxelValueBox' num2str(iRow) '_' num2str(iCol)]),...
+%                             'String', ...
+%                             sprintf('Z = %4.2f', ddat.oimg{iRow, iCol}(ddat.sag, ddat.cor, ddat.axi)));
+%                     else
+%                         set(findobj('tag', ['VoxelValueBox' num2str(iRow) '_' num2str(iCol)]),...
+%                             'String', ...
+%                             sprintf('Value at Voxel: %4.2f', ddat.oimg{iRow, iCol}(ddat.sag, ddat.cor, ddat.axi)));
+%                     end
+%                     
+%                     % Add the currently selected voxel to the trajectory plot
+%                     if ddat.trajectoryActive == 1
+%                         plot_voxel_trajectory([ddat.sag, ddat.cor, ddat.axi])
+%                     end
+%                 end
+%             end
+%         end
+%         
+%         % This is to update the axes info text.
+%         %set_number_of_brain_axes(0);
+
+        update_axes_image;
         
     end
 
