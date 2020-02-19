@@ -1533,6 +1533,7 @@ end
             generate_single_subject_map;
             set(findobj('Tag', 'selectSubject'), 'Visible', 'On');
             setupSubMenu;
+            ddat.maskingStatus{1, 1} = ~isnan(ddat.img{1, 1});
             
         elseif strcmp(ddat.type, 'icsel')
             ndata = load_nii([ddat.outdir '/_iniIC_1.nii']);
@@ -2184,8 +2185,11 @@ end
         end
         
         % Update the position information text
-       %position_information_update;
-       disp('get position info text update fixed!')
+       position_information_update((findobj('Tag', ['SagittalAxes' num2str(1) '_' num2str(1)] )))
+       
+       % Update the crosshair information text
+       set(findobj('Tag', 'crosshairPos'),'String',...
+           sprintf('%7.0d %7.0d %7.0d',ddat.sag,ddat.cor, ddat.axi));
         
     end
 
