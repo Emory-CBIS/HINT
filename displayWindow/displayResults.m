@@ -875,10 +875,10 @@ end
                 
                 % TODO remove below two lines; they are from old system
                 %editThreshold;
-                %update_brain_maps('updateCombinedImage', [selected_pop, visit_number]);
+                update_brain_maps('updateCombinedImage', [selected_pop, visit_number]);
                 
                 % Stack the update chain at step 1
-                update_brain_data;
+                %update_brain_data;
                 
             else
                 
@@ -1789,103 +1789,6 @@ end
     end
 
 
-% Function to load a new IC - called when the user changes ICs.
-%     function updateIC(hObject, callbackdata)
-%         % Turn off contrast
-%         ddat.viewingContrast = 0;
-%         % IC to load
-%         newIC = get(findobj('Tag', 'ICselect'), 'val');
-%         % file based on current viewer
-%         if strcmp(ddat.type, 'grp')
-%             
-%             % Load each visit
-%             for iVisit = 1:ddat.nVisit
-%                 newFile = [ddat.outdir '/' ddat.outpre '_aggregateIC_' num2str(newIC) '_visit' num2str(iVisit) '.nii'];
-%                 newData = load_nii(newFile);
-%                 ddat.img{1, iVisit} = newData.img; ddat.oimg{1, iVisit} = newData.img;
-%             end
-%             
-%         elseif strcmp(ddat.type, 'subpop')
-%             newFile = [ddat.outdir '/' ddat.outpre '_S0_IC_' num2str(newIC) '.nii'];
-%             updateSubPopulation;
-%             
-%         elseif strcmp(ddat.type, 'beta')
-%             
-%             for p = 1:ddat.p
-%                 for iVisit = 1:ddat.nVisit
-%                     
-%                     % File name
-%                     ndata = load_nii([ddat.outdir '/' ddat.outpre...
-%                         '_beta_cov' num2str(p) '_IC' num2str(newIC) '_visit'...
-%                         num2str(iVisit) '.nii']);
-%                     
-%                     ddat.img{p, iVisit} = ndata.img; ddat.oimg{p, iVisit} = ndata.img;
-%                     ddat.maskingStatus{p, iVisit} = ~isnan(ddat.img{p, iVisit});
-%                 end
-%             end
-%             
-%         elseif strcmp(ddat.type, 'subj')
-%             generate_single_subject_map;
-%             set_number_of_brain_axes(0);
-%         elseif strcmp(ddat.type, 'icsel')
-%             ndata = load_nii([ddat.outdir '/' ddat.outpre '_iniIC_' num2str(newIC) '.nii']);
-%             % need to turn the 0's into NaN values
-%             zeroImg = ndata.img; zeroImg(find(ndata.img == 0)) = nan;
-%             ddat.img{1} = zeroImg; ddat.oimg{1} = zeroImg;
-%             % get if the checkbox should be selected
-%             isSelected = get(findobj('Tag', 'icSelRef'), 'Data');
-%             if strcmp(isSelected{newIC,2}, 'x')
-%                 set(findobj('Tag', 'keepIC'), 'Value', 1);
-%             else
-%                 set(findobj('Tag', 'keepIC'), 'Value', 0);
-%             end
-%         elseif strcmp(ddat.type, 'reEst')
-%             ndata = load_nii([ddat.outdir '/' ddat.outpre '_iniguess/' ddat.outpre '_reducedIniGuess_GroupMap_IC_' num2str(newIC) '.nii']);
-%             % need to turn the 0's into NaN values
-%             zeroImg = ndata.img; zeroImg(find(ndata.img == 0)) = nan;
-%             ddat.img{1} = zeroImg; ddat.oimg{1} = zeroImg;
-%         elseif strcmp(ddat.type, 'subPopCompare')
-%             % Read in the data for the sub population in this panel
-%             covariateSettings = get(findobj('Tag', 'subPopDisplay'),'Data');
-%             newFile = strcat(ddat.outdir,'/',ddat.outpre,'_S0_IC_',num2str(newIC),'.nii');
-%             newDat = load_nii(newFile);
-%             for subPop = 1:ddat.nCompare
-%                 newFunc = newDat.img;
-%                 for xi = 1:ddat.p
-%                     beta = load_nii([ddat.outdir '/' ddat.outpre '_beta_cov' num2str(xi) '_IC' num2str(newIC) '.nii']);
-%                     xb = beta.img * str2double(covariateSettings( subPop , xi));
-%                     newFunc = newFunc + xb;
-%                 end
-%                 ddat.img{subPop} = newFunc; ddat.oimg{subPop} = newFunc;
-%             end
-%         end
-%         
-%         % Convert the image to a z-score if that option is selected
-%         disp('figure out which of the three below need to run')
-%         %updateZImg;
-%         %maskSearch;
-%         %editThreshold;
-%         
-%         
-%         
-%         set( findobj('Tag', 'thresholdSlider'), 'value', 0);
-%         editThreshold;
-%         
-%         [rowInd, colInd] = find(ddat.viewTracker > 0);
-%         update_brain_maps('updateCombinedImage', [rowInd', colInd']);
-%         
-%         
-%         % If viewing a single subject and a mask is currently selected,
-%         % then apply that mask to the new subect's data;
-%         if strcmp(ddat.type, 'subj')
-%             applyMask;
-%         end
-%         
-%         % Update the trajectory viewer
-%         update_all_traj_fields;
-%         
-%     end
-
 % update_viewed_component - function to load a new IC, should only be called by
 % update_brain_data
 
@@ -2069,15 +1972,6 @@ end
             %TODO for maskingStatus, Irow and icol might be flipped!
             maskedFunc = ddat.scaledFunc{iRow, iCol} .* ddat.mask .* ddat.maskingStatus{iRow, iCol};
             maskedFunc(maskedFunc == 0) = 1;
-            
-%             % check if a mask should be applied
-%             if ~isempty(mask)
-%                 ddat.scaledFunc{iRow, iCol} = scale_in(tempImage, minVal2, maxVal1, 63);
-%                 maskedFunc = ddat.scaledFunc{iRow, iCol} .* mask.img;
-%                 maskedFunc(maskedFunc == 0) = 1;
-%             else
-%                 maskedFunc = ddat.scaledFunc{iRow, iCol};
-%             end
             
             newColormap = [(gray(191));zeros(1, 3); ddat.highcolor];%%index 192 is not used, just for seperate the base and top colormap;
             
@@ -2391,89 +2285,8 @@ end
     end
 
 
-%% Old Viewing Functions
 
-% Function to combine the anatomical image and the functional image.
-% Taken from bs-mac viewer.
-    function createCombinedImage(hObject,callbackdata)
-        
-        ddat.scaledFunc  = cell(ddat.nCompare, ddat.nVisit);
-        ddat.combinedImg = cell(ddat.nCompare, ddat.nVisit);
-        
-        % Find the min and max value of each image.
-        minVal1 = min(min(min(cat(1,ddat.img{:}))));
-        maxVal1 = max(max(max(cat(1,ddat.img{:}))));
-        
-        %         % Loop over each sub-population to compare and create the combined
-        %         % image.
-        %         for iPop = 1:ddat.nCompare
-        %
-        %             % Loop over each visit
-        %             for iVisit = 1:ddat.nVisit
-        %                 % Scale the functional image
-        %                 tempImage = ddat.img{iPop, iVisit};
-        %                 tempImage(isnan(ddat.img{iPop, iVisit})) = minVal1 - 1;
-        %                 minVal2 = minVal1 - 1;
-        %                 ddat.scaledFunc{iPop, iVisit} = scale_in(tempImage, minVal2, maxVal1, 63);
-        %                 newColormap = [(gray(191));zeros(1, 3); ddat.highcolor];%%index 192 is not used, just for seperate the base and top colormap;
-        %                 ddat.color_map = newColormap;
-        %                 ddat.combinedImg{iPop, iVisit} = overlay_w_transparency(uint16(ddat.scaledImg),...
-        %                     uint16(ddat.scaledFunc{iPop, iVisit}),1, 0.6, newColormap, ddat.highcolor);
-        %             end% end loop over visits
-        %
-        %         end % end loop over sub-populations
-        
-        
-        
-        
-    end
-
-
-
-
-
-
-% Function to replace the brain images on the viewer.
-    function redisplay(hObject,callbackdata)
-        
-        % Get the number of visits actively being viewed
-        nVisitViewed = numel(ddat.nActiveMaps);
-        
-        % Loop over the number of subgroups currently being viewed.
-        for iInd = 1:ddat.nCompare
-            
-            % Loop over the active visits, note this might not be in
-            % numerical order
-            for iVisit = 1:nVisitViewed
-                currentVisitIndex = ddat.nActiveMaps(iVisit);
-                
-                % Grab the data for the selected slices and update axes obj.
-                for cl = 1:3
-                    Saxi(:, :, cl) = squeeze(ddat.combinedImg{iInd, currentVisitIndex}(cl).combound(:, :, ddat.axi))';
-                    Scor(:, :, cl) = squeeze(ddat.combinedImg{iInd, currentVisitIndex}(cl).combound(:,ddat.cor,:))';
-                    Ssag(:, :, cl) = squeeze(ddat.combinedImg{iInd, currentVisitIndex}(cl).combound(ddat.sag,:,:))';
-                end
-                ddat.cor_mm = (ddat.cor-ddat.origin(2))*ddat.pixdim(2);
-                axesC = (findobj('Tag', ['CoronalAxes' num2str(iInd) '_' num2str(iVisit)] ));
-                set(ddat.coronal_image{iInd, currentVisitIndex},'CData',Scor);
-                axesC = (findobj('Tag', ['AxialAxes' num2str(iInd) '_' num2str(iVisit)] ));
-                set(ddat.axial_image{iInd, currentVisitIndex},'CData',Saxi);
-                axesC = (findobj('Tag', ['SagittalAxes' num2str(iInd) '_' num2str(iVisit)] ));
-                set(ddat.sagittal_image{iInd, currentVisitIndex},'CData',Ssag);
-            end % end of loop over viewed visits
-            
-        end % end of loop over sub-populations
-        
-        % Update the colormap (here as a safety precaution).
-        axesC = findobj('Tag', 'colorMap');
-        updateColorbar;
-        
-    end
-
-
-% Callback for the create mask function
-% last edited 12/4/19
-    function create_mask(hObject, callbackdata)
+  function create_mask(hObject, callbackdata)
         
         % hs.fig
         
@@ -2546,64 +2359,66 @@ end
 
 
 
-% Function to apply a user created mask to the data.
-% edited for longitudinal data on 12/4/19
-    function applyMask(hObject, callbackdata)
-        
-        % Find what mask has been selected
-        maskOptions = findobj('Tag', 'maskSelect');
-        
-        % When a mask has been selected
-        if maskOptions.Value > 1
-            mask = load_nii( fullfile( ddat.outdir, fileparts(ddat.outpre), maskOptions.String{maskOptions.Value}) );
-            
-            [rowInd, colInd] = find(ddat.viewTracker > 0);
-            update_brain_maps('updateCombinedImage', [rowInd', colInd'],...
-                'updateMasking', mask);
-            
-            % Loop over each sub-population being viewed
-            %             for iPop = 1:ddat.nCompare
-            %                 % Loop over each visit
-            %                 for iVisit = 1:ddat.nVisit
-            %                     maskedFunc = ddat.scaledFunc{iPop, iVisit} .* mask.img;
-            %                     maskedFunc(maskedFunc == 0) = 1;
-            %                     % this is original that im having issues with
-            %                     %ddat.combinedImg{iPop, iVisit} =...
-            %                     %    overlay_w_transparency( uint16(ddat.scaledImg),...
-            %                     %    uint16(maskedFunc),...
-            %                     %    1, 0.6, ddat.color_map, ddat.hot3);
-            %                     % this is me trying to fix it
-            %                     ddat.combinedImg{iPop, iVisit} =...
-            %                         overlay_w_transparency( uint16(ddat.scaledImg),...
-            %                         uint16(maskedFunc),...
-            %                         1, 0.6, ddat.basecolor, ddat.hot3);
-            %                 end
-            %             end
-            %
-            set(findobj('Tag', 'thresholdSlider'), 'Value', 0);
-            set(findobj('Tag', 'manualThreshold'), 'String', '0');
-            
-            % When no mask is selected
-        else
-            
-            %             % Loop over each sub-population being viewed
-            %             for iPop = 1:ddat.nCompare
-            %                 % Loop over each visit
-            %                 for iVisit = 1:ddat.nVisit
-            %                     ddat.combinedImg{iPop, iVisit} = overlay_w_transparency(uint16(ddat.scaledImg{iPop, iVisit}),...
-            %                         uint16(ddat.scaledFunc{iPop, iVisit}),1, 0.6, ddat.color_map, ddat.hot3);
-            %                 end
-            %             end
-            [rowInd, colInd] = find(ddat.viewTracker > 0);
-            update_brain_maps('updateCombinedImage', [rowInd', colInd']);
-            set(findobj('Tag', 'thresholdSlider'), 'Value', 0);
-            set(findobj('Tag', 'manualThreshold'), 'String', '0');
-            
-        end
-        redisplay;
-    end
+% % Function to apply a user created mask to the data.
+% % edited for longitudinal data on 12/4/19
+%     function applyMask(hObject, callbackdata)
+%         
+%         % Find what mask has been selected
+%         maskOptions = findobj('Tag', 'maskSelect');
+%         
+%         % When a mask has been selected
+%         if maskOptions.Value > 1
+%             mask = load_nii( fullfile( ddat.outdir, fileparts(ddat.outpre), maskOptions.String{maskOptions.Value}) );
+%             
+%             [rowInd, colInd] = find(ddat.viewTracker > 0);
+%             update_brain_maps('updateCombinedImage', [rowInd', colInd'],...
+%                 'updateMasking', mask);
+%             
+%             % Loop over each sub-population being viewed
+%             %             for iPop = 1:ddat.nCompare
+%             %                 % Loop over each visit
+%             %                 for iVisit = 1:ddat.nVisit
+%             %                     maskedFunc = ddat.scaledFunc{iPop, iVisit} .* mask.img;
+%             %                     maskedFunc(maskedFunc == 0) = 1;
+%             %                     % this is original that im having issues with
+%             %                     %ddat.combinedImg{iPop, iVisit} =...
+%             %                     %    overlay_w_transparency( uint16(ddat.scaledImg),...
+%             %                     %    uint16(maskedFunc),...
+%             %                     %    1, 0.6, ddat.color_map, ddat.hot3);
+%             %                     % this is me trying to fix it
+%             %                     ddat.combinedImg{iPop, iVisit} =...
+%             %                         overlay_w_transparency( uint16(ddat.scaledImg),...
+%             %                         uint16(maskedFunc),...
+%             %                         1, 0.6, ddat.basecolor, ddat.hot3);
+%             %                 end
+%             %             end
+%             %
+%             set(findobj('Tag', 'thresholdSlider'), 'Value', 0);
+%             set(findobj('Tag', 'manualThreshold'), 'String', '0');
+%             
+%             % When no mask is selected
+%         else
+%             
+%             %             % Loop over each sub-population being viewed
+%             %             for iPop = 1:ddat.nCompare
+%             %                 % Loop over each visit
+%             %                 for iVisit = 1:ddat.nVisit
+%             %                     ddat.combinedImg{iPop, iVisit} = overlay_w_transparency(uint16(ddat.scaledImg{iPop, iVisit}),...
+%             %                         uint16(ddat.scaledFunc{iPop, iVisit}),1, 0.6, ddat.color_map, ddat.hot3);
+%             %                 end
+%             %             end
+%             [rowInd, colInd] = find(ddat.viewTracker > 0);
+%             update_brain_maps('updateCombinedImage', [rowInd', colInd']);
+%             set(findobj('Tag', 'thresholdSlider'), 'Value', 0);
+%             set(findobj('Tag', 'manualThreshold'), 'String', '0');
+%             
+%         end
+%         redisplay;
+%     end
 
 
+
+%% Old Viewing Functions
 
 
 % Function called when the user selected a button from the
