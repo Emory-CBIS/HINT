@@ -69,6 +69,12 @@ ddat.trajPreviousTag = ''; % string value of previously added line. used to clea
 ddat.viewTracker = zeros(1, ddat.nVisit);
 ddat.viewTracker(1, 1) = 1;
 
+% Keep track of what sub-populations/contrasts have been specified
+% variable name is specified linear combinations
+ddat.LC_contrasts = zeros(0, ddat.p + size(ddat.interactions, 1));
+ddat.LC_subpops = zeros(0, ddat.p + size(ddat.interactions, 1));
+
+
 ddat.tileType = 'vertical';
 
 % Check if an instance of displayResults already running
@@ -210,50 +216,50 @@ end
             'BackgroundColor',[224/256,224/256,224/256], ...
             'Tag', 'locPanel', ...
             'units', 'normalized',...
-            'Position',[0.01, 0.01 .32 .98]);
+            'Position',[0.01, 0.01 .32 .98]); %#ok<NASGU>
         curInfo = uicontrol('Parent', locPanel, ...
             'Style', 'Text', ...
             'Units', 'Normalized', ...
             'Position', [0.01, 0.74, 0.98, 0.25], ...
-            'Tag', 'curInfo', 'BackgroundColor', 'Black');
+            'Tag', 'curInfo', 'BackgroundColor', 'Black');%#ok<NASGU>
         crosshairPosText = uicontrol('Parent', locPanel, ...
             'Style', 'Text', 'String', 'Crosshair Position: ', ...
             'Units', 'Normalized', ...
-            'Position', [0.01, 0.49, 0.49, 0.25]);
+            'Position', [0.01, 0.49, 0.49, 0.25]);%#ok<NASGU>
         crosshairPos = uicontrol('Parent', locPanel, ...
             'Style', 'Text', ...
             'Units', 'Normalized', ...
             'Position', [0.50, 0.49, 0.49, 0.25], ...
-            'Tag', 'crosshairPos');
+            'Tag', 'crosshairPos');%#ok<NASGU>
         crosshairValText = uicontrol('Parent', locPanel, ...
             'Style', 'Text', 'String', 'Crosshair Value: ', ...
             'Units', 'Normalized', ...
             'Position', [0.01, 0.50, 0.49, 0.1],...
-            'visible', 'off');
+            'visible', 'off');%#ok<NASGU>
         crosshairVal = uicontrol('Parent', locPanel, ...
             'Style', 'Text', ...
             'Units', 'Normalized', ...
             'Position', [0.50, 0.50, 0.49, 0.1], ...
             'visible', 'off',...
-            'Tag', 'crosshairVal1');
+            'Tag', 'crosshairVal1');%#ok<NASGU>
         originalPosText = uicontrol('Parent', locPanel, ...
             'Style', 'Text', 'String', '[X Y Z] Origin Position', ...
             'Units', 'Normalized', ...
-            'Position', [0.01, 0.25, 0.49, 0.23]);
+            'Position', [0.01, 0.25, 0.49, 0.23]);%#ok<NASGU>
         originalPos = uicontrol('Parent', locPanel, ...
             'Style', 'Text', ...
             'Units', 'Normalized', ...
             'Position', [0.50, 0.25, 0.49, 0.23], ...
-            'Tag', 'originalPos');
+            'Tag', 'originalPos');%#ok<NASGU>
         dimensionText = uicontrol('Parent', locPanel, ...
             'Style', 'Text', 'String', '[X Y Z] Dimension', ...
             'Units', 'Normalized', ...
-            'Position', [0.01, 0.01, 0.49, 0.23]);
+            'Position', [0.01, 0.01, 0.49, 0.23]);%#ok<NASGU>
         dimension = uicontrol('Parent', locPanel, ...
             'Style', 'Text', ...
             'Units', 'Normalized', ...
             'Position', [0.50, 0.01, 0.49, 0.23], ...
-            'Tag', 'dimension');
+            'Tag', 'dimension');%#ok<NASGU>
         
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         % Component Selection & Masking
@@ -271,32 +277,32 @@ end
             'Position', [0.01, 0.83, 0.48, 0.1], ...
             'Tag', 'ICselect', 'Callback',...
             @(src, event)update_brain_data('setICMap', 1), ...
-            'String', 'Select IC');
+            'String', 'Select IC'); %#ok<NASGU>
         viewZScores = uicontrol('Parent', icPanel,...
             'Style', 'checkbox', ...
             'Units', 'Normalized', ...
             'Position', [0.53, 0.46, 0.42, 0.15], ...
             'Tag', 'viewZScores', 'String', 'View Z-Scores', ...
-            'Callback', @(src, event)update_brain_data() );
+            'Callback', @(src, event)update_brain_data() ); %#ok<NASGU>
         maskSelect = uicontrol('Parent', icPanel,...
             'Style', 'popupmenu', ...
             'Units', 'Normalized', ...
             'Position', [0.51, 0.83, 0.48, 0.1], ...
             'Tag', 'maskSelect', 'Callback', @(src, event)update_brain_maps('updateMasking', 1), ...
-            'String', 'No Mask');
+            'String', 'No Mask'); %#ok<NASGU>
         viewerInfo = uicontrol('Parent', icPanel, ...
             'Style', 'Text', ...
             'Units', 'Normalized', ...
             'Position', [0.01, 0.02, 0.98, 0.3], ...
             'Tag', 'viewerInfo', 'BackgroundColor', 'Black', ...
             'ForegroundColor', 'white', ...
-            'HorizontalAlignment', 'Left');
+            'HorizontalAlignment', 'Left'); %#ok<NASGU>
         selectCovariate = uicontrol('Parent', icPanel,...
             'Style', 'popupmenu', ...
             'Units', 'Normalized', ...
             'Position', [0.01, 0.51, 0.48, 0.1], ...
             'Tag', 'selectCovariate', 'Callback', @updateIC, ...
-            'String', 'Select Covariate', 'Visible', 'Off');
+            'String', 'Select Covariate', 'Visible', 'Off'); %#ok<NASGU>
         
         EffectViewButtonGroup = uibuttongroup('Parent',icPanel,...
             'units', 'normalized',...
@@ -308,36 +314,28 @@ end
             'style', 'radiobutton',...
             'units', 'normalized',...
             'Position',[0.1 0.6 0.9 0.3],...
-            'callback', @beta_typeof_view_select);
+            'callback', @beta_typeof_view_select); %#ok<NASGU>
         SelectContrastView = uicontrol(EffectViewButtonGroup,...
             'style', 'radiobutton',...
             'string', 'Contrast View',...
             'units', 'normalized',...
-            'Position',[0.1 0.2 0.9 0.3]);
-        
-        %         viewEffectOrContrast = uicontrol('Parent', icPanel,...
-        %             'Style', 'checkbox',...
-        %             'units', 'normalized',...
-        %             'visible', 'off',...
-        %             'position', [0.01, 0.46, 0.42, 0.15], ...
-        %             'tag', 'viewEffectOrContrast',...
-        %             'String', 'View Contrasts', ...
-        %             'value', 0);
-        
+            'tag', 'SelectContrastView',...
+            'callback', @beta_typeof_view_select,...
+            'Position',[0.1 0.2 0.9 0.3]); %#ok<NASGU>
         
         selectSubject = uicontrol('Parent', icPanel,...
             'Style', 'popupmenu', ...
             'Units', 'Normalized', ...
             'Position', [0.01, 0.51, 0.48, 0.1], ...
             'Tag', 'selectSubject', 'Callback', @updateIC, ...
-            'String', 'Select Subject', 'Visible', 'Off');
+            'String', 'Select Subject', 'Visible', 'Off'); %#ok<NASGU>
         keepIC = uicontrol('Parent', icPanel,...
             'Style', 'checkbox', ...
             'Units', 'Normalized', ...
             'visible', 'off', ...
             'Position', [0.01, 0.46, 0.42, 0.15], ...
             'Tag', 'keepIC', 'String', 'Use IC for hc-ICA', ...
-            'Value', 1, 'Callback', @updateICSelMenu);
+            'Value', 1, 'Callback', @updateICSelMenu); %#ok<NASGU>
         
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         % Thresholding and Mask Creation
@@ -355,26 +353,22 @@ end
             'Position', [0.01, 0.85, 0.98, 0.1], ...
             'Tag', 'thresholdSlider', ...
             'min', 0, 'max', 4, 'sliderstep', [0.01, 0.1], ...
-            'callback', @editThreshold);
+            'callback', @editThreshold); %#ok<NASGU>
         manualThreshold = uicontrol('Parent', thresholdPanel, ...
             'Style', 'Edit', ...
             'Units', 'Normalized', ...
             'Position', [0.24, 0.30, 0.49, 0.35], ...
             'Tag', 'manualThreshold', ...
             'BackgroundColor','white',...
-            'callback', @manualThreshold);
-        %         t2edit1 = uicontrol('Parent',t2p1,'Style','edit',...
-        %             'units', 'normalized','Position',[0.65 0.55 0.3 0.1],...
-        %             'FontSize',myfont,'String','100','HorizontalAlignment',textalign,...
-        %             'Tag','maxIter',...
-        %             'BackgroundColor','white'); %#ok<NASGU>
+            'callback', @manualThreshold); %#ok<NASGU>
+ 
         createMask = uicontrol('Parent', thresholdPanel, ...
             'Style', 'pushbutton', ...
             'String', 'Create Mask', ...
             'Units', 'Normalized', ...
             'Position', [0.24, 0.01, 0.49, 0.25], ...
             'Tag', 'createMask', 'callback', @create_mask, ...
-            'Visible', 'Off');
+            'Visible', 'Off'); %#ok<NASGU>
         useEmpiricalVar = uicontrol('Parent', thresholdPanel,...
             'Style', 'checkbox', ...
             'Units', 'Normalized', ...
@@ -383,7 +377,7 @@ end
             'Tag', 'useEmpiricalVar',...
             'String', 'Use empirical variance estimate', ...
             'Value', 1, 'Callback', @updateICSelMenu,...
-            'Visible', 'Off');
+            'Visible', 'Off'); %#ok<NASGU>
         
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         % Viewer Select Options
@@ -407,7 +401,7 @@ end
             'Units', 'Normalized', ...
             'Position', [0.1, 0.1, 0.8, 0.8], ...
             'Tag', 'ViewSelectTable', ...
-            'CellSelectionCallback', @ViewSelectTable_cell_select);
+            'CellSelectionCallback', @ViewSelectTable_cell_select); %#ok<NASGU>
         
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         % Subpopulation Information
@@ -425,22 +419,22 @@ end
             'Units', 'Normalized', ...
             'Position', [0.255, 0.85, 0.49, 0.1], ...
             'Tag', 'subPopSelect1', 'Callback', @updateSubPopulation, ...
-            'String', 'No Sub-Population Created');
+            'String', 'No Sub-Population Created'); %#ok<NASGU>
         subPopDisplay = uitable('Parent', subPopPanel, ...
             'Units', 'Normalized', ...
             'Position', [0.1, 0.3, 0.8, 0.5], ...
             'Tag', 'subPopDisplay', ...
-            'CellEditCallback', @newPopCellEdit);
+            'CellEditCallback', @update_linear_combination); %#ok<NASGU>
         newSubPop = uicontrol('Parent', subPopPanel, ...
             'Units', 'Normalized', ...
             'String', 'Add New Sub-Population', ...
             'Position', [0.15, 0.15, 0.7, 0.15], ...
-            'Tag', 'newSubPop', 'Callback', @addNewSubPop);
+            'Tag', 'newSubPop', 'Callback', @addNewSubPop); %#ok<NASGU>
         comparesubPop = uicontrol('Parent', subPopPanel, ...
             'Units', 'Normalized', ...
             'String', 'Compare Sub-Populations', ...
             'Position', [0.15, 0.01, 0.7, 0.15], ...
-            'Tag', 'compareSubPops', 'Callback', @compareSubPopulations);
+            'Tag', 'compareSubPops', 'Callback', @compareSubPopulations); %#ok<NASGU>
         
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         % Beta Contrast Information
@@ -459,22 +453,22 @@ end
             'Position', [0.255, 0.85, 0.49, 0.1], ...
             'Tag', 'contrastSelect1', 'Callback', @updateContrastDisp, ...
             'visible', 'off',...
-            'String', 'No Contrast Created');
+            'String', 'No Contrast Created'); %#ok<NASGU>
         contrastDisplay = uitable('Parent', betaContrastPanel, ...
             'Units', 'Normalized', ...
             'Position', [0.1, 0.17, 0.8, 0.8], ...
             'Tag', 'contrastDisplay', ...
-            'CellEditCallback', @newPopCellEdit);
+            'CellEditCallback', @update_linear_combination); %#ok<NASGU>
         newContrast = uicontrol('Parent', betaContrastPanel, ...
             'Units', 'Normalized', ...
             'String', 'Add New Contrast', ...
             'Position', [0.01, 0.01, 0.49, 0.15], ...
-            'Tag', 'newContrast', 'Callback', @addNewContrast);
+            'Tag', 'newContrast', 'Callback', @addNewContrast); %#ok<NASGU>
         removeContrastButton = uicontrol('Parent', betaContrastPanel, ...
             'Units', 'Normalized', ...
             'String', 'Remove A Contrast', ...
             'Position', [0.51, 0.01, 0.49, 0.15], ...
-            'Tag', 'newContrast', 'Callback', @removeContrast);
+            'Tag', 'newContrast', 'Callback', @removeContrast); %#ok<NASGU>
         
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         % IC Selection
@@ -489,14 +483,14 @@ end
         icSelRef = uitable('Parent', icSelPanel, ...
             'Units', 'Normalized', ...
             'Position', [0.01, 0.01, 0.9, 0.95], ...
-            'Tag', 'icSelRef', 'RowName', '');
+            'Tag', 'icSelRef', 'RowName', ''); %#ok<NASGU>
         icSelCloseButton = uicontrol('style', 'pushbutton',...
             'units', 'normalized', ...
             'Position', [0.93, 0.01, 0.05, 0.05],...
             'String', 'Close', ...
             'tag', 'icSelectCloseButton', ...
             'visible', 'off', ...
-            'Callback', @closeICSelect);
+            'Callback', @closeICSelect); %#ok<NASGU>
         
         
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -518,7 +512,7 @@ end
         TrajAxes = axes('Parent', ViewTrajPanel, ...
             'units', 'normalized',...
             'Position',[.1 .6 0.8 .35],...
-            'Tag', 'TrajAxes' );
+            'Tag', 'TrajAxes' ); %#ok<NASGU>
         TrajControlPanel = uipanel('FontSize',12,...
             'Title', 'Voxel Controls', ...
             'Tag', 'TrajControlPanel', ...
@@ -531,7 +525,7 @@ end
             'Tag', 'TrajTable', 'RowName', '',...
             'ColumnWidth', {30,30,30},...
             'ColumnName', {'Sag','Cor','Axi'}, ...
-            'CellSelectionCallback', @traj_box_cell_select);
+            'CellSelectionCallback', @traj_box_cell_select); %#ok<NASGU>
         TrajAddCurrent = uicontrol('style', 'pushbutton',...
             'units', 'normalized', ...
             'Parent', TrajControlPanel,...
@@ -539,7 +533,7 @@ end
             'String', 'Save current voxel', ...
             'tag', 'TrajAddCurrent', ...
             'visible', 'on', ...
-            'Callback', @traj_add_voxel_to_list);
+            'Callback', @traj_add_voxel_to_list); %#ok<NASGU>
         
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %     Map Property Panel
@@ -792,7 +786,9 @@ end
             % contrast view
             
             % Setup for Effect view
-            if strcmp(get(get(findobj('tag', 'EffectTypeButtonGroup'), 'SelectedObject'), 'String'), 'Effect View')
+            if strcmp(get(get(findobj('tag', 'EffectTypeButtonGroup'),...
+                    'SelectedObject'), 'String'), 'Effect View')
+                
                 for k=1:ddat.nVisit; for p=1:ddat.p; table_data{k, p} = 'no'; end; end;
                 table_data{1, 1} = 'yes';
                 
@@ -814,6 +810,7 @@ end
                 contrasts = get(findobj('tag', 'contrastDisplay'), 'data');
                 contrast_names = get(findobj('tag', 'contrastDisplay'), 'RowName');
                 n_contrast = size(contrasts, 2);
+                
                 for k=1:ddat.nVisit; for p=1:n_contrast; table_data{k, p} = 'no'; end; end;
                 
                 set(findobj('tag', 'ViewSelectTable'), 'Data', table_data);
@@ -2240,45 +2237,6 @@ end
         [nRow, nCol] = size(ddat.img);
         
         ddat.axi = round(get(hObject, 'Value'));
-        % Loop over populations and visits
-%         for iRow = 1:nRow
-%             for iCol = 1:nCol
-%                 if ddat.viewTracker(iRow, iCol) > 0
-%                     axes(findobj('Tag', ['AxialAxes' num2str(iRow, iCol)]));
-%                     
-%                     for cl = 1:3
-%                         Saxi(:, :, cl) = squeeze(ddat.combinedImg{iRow, iCol}(cl).combound(:, :, ddat.axi))';
-%                     end
-%                     set(ddat.axial_image{iRow, iCol},'CData',Saxi);
-%                     set(ddat.coronal_xline{iRow, iCol},'Ydata',[ddat.axi ddat.axi]);
-%                     set(ddat.sagittal_xline{iRow, iCol},'Ydata',[ddat.axi ddat.axi]);
-%                     set(findobj('Tag','crosshairPos'),'String',...
-%                         sprintf('%7.0d %7.0d %7.0d',ddat.sag,ddat.cor, ddat.axi));
-%                     updateInfoText;
-%                     disp('move update info text for slider functions')
-%                     
-%                     
-%                     % Update axes-specific value at voxel text
-%                     if get(findobj('Tag', 'viewZScores'), 'Value') == 1
-%                         set(findobj('tag', ['VoxelValueBox' num2str(iRow) '_' num2str(iCol)]),...
-%                             'String', ...
-%                             sprintf('Z = %4.2f', ddat.oimg{iRow, iCol}(ddat.sag, ddat.cor, ddat.axi)));
-%                     else
-%                         set(findobj('tag', ['VoxelValueBox' num2str(iRow) '_' num2str(iCol)]),...
-%                             'String', ...
-%                             sprintf('Value at Voxel: %4.2f', ddat.oimg{iRow, iCol}(ddat.sag, ddat.cor, ddat.axi)));
-%                     end
-%                     
-%                     % Add the currently selected voxel to the trajectory plot
-%                     if ddat.trajectoryActive == 1
-%                         plot_voxel_trajectory([ddat.sag, ddat.cor, ddat.axi])
-%                     end
-%                 end
-%             end
-%         end
-%         
-%         % This is to update the axes info text.
-%         %set_number_of_brain_axes(0);
 
         update_axes_image;
         
@@ -2286,10 +2244,7 @@ end
 
 
 
-  function create_mask(hObject, callbackdata)
-        
-        % hs.fig
-        
+  function create_mask(hObject, callbackdata)        
         
         % Open the mask creation window and get:
         %   1. The type of mask to be created (single, union, intersect, cancel)
@@ -2358,66 +2313,6 @@ end
     end
 
 
-
-% % Function to apply a user created mask to the data.
-% % edited for longitudinal data on 12/4/19
-%     function applyMask(hObject, callbackdata)
-%         
-%         % Find what mask has been selected
-%         maskOptions = findobj('Tag', 'maskSelect');
-%         
-%         % When a mask has been selected
-%         if maskOptions.Value > 1
-%             mask = load_nii( fullfile( ddat.outdir, fileparts(ddat.outpre), maskOptions.String{maskOptions.Value}) );
-%             
-%             [rowInd, colInd] = find(ddat.viewTracker > 0);
-%             update_brain_maps('updateCombinedImage', [rowInd', colInd'],...
-%                 'updateMasking', mask);
-%             
-%             % Loop over each sub-population being viewed
-%             %             for iPop = 1:ddat.nCompare
-%             %                 % Loop over each visit
-%             %                 for iVisit = 1:ddat.nVisit
-%             %                     maskedFunc = ddat.scaledFunc{iPop, iVisit} .* mask.img;
-%             %                     maskedFunc(maskedFunc == 0) = 1;
-%             %                     % this is original that im having issues with
-%             %                     %ddat.combinedImg{iPop, iVisit} =...
-%             %                     %    overlay_w_transparency( uint16(ddat.scaledImg),...
-%             %                     %    uint16(maskedFunc),...
-%             %                     %    1, 0.6, ddat.color_map, ddat.hot3);
-%             %                     % this is me trying to fix it
-%             %                     ddat.combinedImg{iPop, iVisit} =...
-%             %                         overlay_w_transparency( uint16(ddat.scaledImg),...
-%             %                         uint16(maskedFunc),...
-%             %                         1, 0.6, ddat.basecolor, ddat.hot3);
-%             %                 end
-%             %             end
-%             %
-%             set(findobj('Tag', 'thresholdSlider'), 'Value', 0);
-%             set(findobj('Tag', 'manualThreshold'), 'String', '0');
-%             
-%             % When no mask is selected
-%         else
-%             
-%             %             % Loop over each sub-population being viewed
-%             %             for iPop = 1:ddat.nCompare
-%             %                 % Loop over each visit
-%             %                 for iVisit = 1:ddat.nVisit
-%             %                     ddat.combinedImg{iPop, iVisit} = overlay_w_transparency(uint16(ddat.scaledImg{iPop, iVisit}),...
-%             %                         uint16(ddat.scaledFunc{iPop, iVisit}),1, 0.6, ddat.color_map, ddat.hot3);
-%             %                 end
-%             %             end
-%             [rowInd, colInd] = find(ddat.viewTracker > 0);
-%             update_brain_maps('updateCombinedImage', [rowInd', colInd']);
-%             set(findobj('Tag', 'thresholdSlider'), 'Value', 0);
-%             set(findobj('Tag', 'manualThreshold'), 'String', '0');
-%             
-%         end
-%         redisplay;
-%     end
-
-
-
 %% Old Viewing Functions
 
 
@@ -2449,15 +2344,15 @@ end
         else
             
             % Check the number of valid contrasts
+            
             disp('set this!')
-            n_valid_contrast = 1;
             
             % If an archived view table is present, then load it, otherwise
             % setup a default view table based on the number of contrasts.
-            ddat.viewTable
+            %ddat.viewTable
             
             % Create each specified contrast
-            generate_img_linear_combination();
+            %generate_img_linear_combination();
             
         end
         
@@ -2566,6 +2461,144 @@ end
         
     end
 
+   % Function updating user-specific linear combinations (contrasts or sub
+   % populations. Replaces newPopCellEdit from previous version of the
+   % toolbox.
+   function update_linear_combination(hObject, callbackdata)
+        
+        % When the user edits a cell, need to make sure that it is a valid level
+        valid = check_valid_covariate_value(callbackdata);
+        
+        disp('add valid check before proceeding.')
+        
+        [nsubpop ign] = size( get(findobj('Tag', 'subPopSelect'),'String'));
+        
+        % Check if all main effects are now filled out. If so, update the
+        % interactions, otherwise set them to zero
+        rowIndex = callbackdata.Indices(1);
+        allFilledOut = ~any(cellfun(@isempty,...
+            callbackdata.Source.Data(rowIndex, :)));
+        
+        % If all factors are filled out, then update the interactions
+        if allFilledOut == 1
+            [nInt, nCov] = size(ddat.interactions);
+            for iInt = 1:nInt
+                interactionValue = 1;
+                for iCov = 1:nCov
+                    if ddat.interactions(iInt, iCov) == 1
+                        interactionValue = interactionValue *...
+                            str2double(callbackdata.Source.Data{callbackdata.Indices(1), iCov});
+                    end
+                end
+                callbackdata.Source.Data{callbackdata.Indices(1), nCov+iInt} = num2str(interactionValue);
+            end
+            
+            % Update appropriate LC list, note this is different from
+            % viewtable, which only gets updated to match this if currently
+            % viewing that type. These variables are stored in the
+            % background, even if we switch viewer types
+            LC = cellfun(@str2num, callbackdata.Source.Data(callbackdata.Indices(1), :));
+            if strcmp(ddat.type, 'beta')
+                ddat.LC_contrasts(rowIndex, :) = LC; 
+            else
+                ddat.LC_subpops(rowIndex, :) = LC;
+            end
+            
+            contrast_selected = strcmp(get(get(findobj('tag',...
+                'EffectTypeButtonGroup'), 'SelectedObject'),...
+                'String'), 'Contrast View');
+            
+            % Update the size of viewtable
+            if (strcmp(ddat.type, 'beta') && contrast_selected )...
+                    || strcmp(ddat.type, 'subpop')
+                
+                setup_ViewSelectTable;
+                
+            end
+            
+
+        
+        end
+        
+
+        
+        % Check if we are currently in a mode where LCs are being viewed.
+        % If so, update oimg 
+        
+        
+        
+        
+        
+        
+        % TODO this is where I am with editing this function
+        
+        % TODO this + below should be replaced by a check if the currently edited sub
+        % population is also being viewed. I think the "updateSubPopulation"
+        % call can be removed entirely.
+        if (nsubpop == 1)
+            for iPop = 1:ddat.nCompare
+                updateSubPopulation(findobj('Tag', ['subPopSelect' num2str(iPop)]));
+            end
+        end
+        ddat.subPopExists = 1;
+        
+        % If the data are all filled out AND the current selection is the
+        % one that was edited, update the display image
+        updatedViewing = 0;
+        updatedRow = callbackdata.Indices(1);
+        if updatedRow == get(findobj('tag',  ['subPopSelect' num2str(1)]), 'value')
+            updatedViewing = 1;
+        end
+        if updatedViewing && allFilledOut
+            if strcmp(ddat.type, 'beta')
+                if ddat.viewingContrast == 1
+                    updateContrastDisp;
+                end
+            else
+                updateSubPopulation;
+            end
+        end
+        
+   end
+
+    % Function to test that a user-specified covariate value is valid.
+    % Called by update_linear_combination after the user updates a cell.
+    function [valid] = check_valid_covariate_value(callbackdata)
+        
+        coledit = callbackdata.Indices(2);
+        
+        valid = true;
+        
+        % Make sure input value is a number and not a string
+        %if all(ismember(callbackdata.NewData, '0123456789+-.eEdD')) & ~isempty(callbackdata.NewData)
+        if all(ismember(callbackdata.NewData, '0123456789.-')) & ~isempty(callbackdata.NewData)
+            % check if the edited cell is categorical, should be binary
+            if length(unique(ddat.X(:, coledit))) == 2
+                if ~(str2num(callbackdata.NewData) == 1 || str2num(callbackdata.NewData) == 0)
+                    warndlg('Categorical covariates should be set to either 0 or 1', 'Data input error');
+                    newTable = get(findobj('Tag', 'subPopDisplay'), 'Data');
+                    newTable(callbackdata.Indices(1), coledit) = {''};
+                    set(findobj('Tag', 'subPopDisplay'), 'Data', newTable);
+                    valid = false;
+                end
+            else
+                % make sure it is in the range of values recorded before
+                minval = min(ddat.X(:,coledit));
+                maxval = max(ddat.X(:,coledit));
+                if (str2num(callbackdata.NewData) < minval || str2num(callbackdata.NewData) > maxval)
+                    warndlg('The value input is more extreme than any value for this covariate in the data set', 'Warning');
+                end
+            end
+        else
+            warndlg('Please input a number, see covariate table for examples', 'Warning');
+            newTable = get(findobj('Tag', 'subPopDisplay'), 'Data');
+            newTable(callbackdata.Indices(1), coledit) = {[]};
+            set(findobj('Tag', 'subPopDisplay'), 'Data', newTable);
+            valid = false;
+        end
+        
+    end
+
 
 
 
@@ -2651,25 +2684,10 @@ end
         
         if sum(ddat.viewTracker(:) > 0) > 0
             
-            % Get range of all included images
-            %         for iPop = 1:size(ddat.viewTracker, 1)
-            %             for iVisit = 1:size(ddat.viewTracker, 2)
-            %                 if ddat.viewTracker(iPop, iVisit) > 0
-            %                     max_val = max(ddat.img{iPop, iVisit}(:));
-            %                     min_val = min(ddat.img{iPop, iVisit}(:));
-            %                     if max_val > maxval1
-            %                         maxval1 = max_val;
-            %                     end
-            %                     if min_val < minval1
-            %                         minval1 = min_val;
-            %                     end
-            %                 end
-            %             end
-            %         end
             minval1 = min(min(min(cat(1,ddat.img{:}))));
             maxval1 = max(max(max(cat(1,ddat.img{:}))));
             
-            % Handle case where no maps are being viewed
+        % Handle case where no maps are being viewed
         else
             minval1 = 0; maxval1 = 0;
         end
@@ -2753,7 +2771,7 @@ end
         
         for iPop = 1:size(ddat.viewTracker, 1)
             for iVisit = 1:size(ddat.viewTracker, 2)
-                if ddat.viewTracker(iPop, iVisit) > 0
+                %if ddat.viewTracker(iPop, iVisit) > 0
                     
                     % Turn on Z-scores
                     if Z_enabled == 1
@@ -2802,117 +2820,11 @@ end
                         set(findobj('Tag', 'manualThreshold'), 'Value', 0);
                     end
                     
-                end
+                %end
             end
         end
         
     end
-
-
-% Check if user has selected Z-scores or not and update corresponding
-% GUI elements.
-%     function updateZImg(hObject, callbackdata)
-%         
-%         % Find out if should be looking at Z-scores
-%         current_Z = get(findobj('Tag', 'viewZScores'), 'Value');
-%         
-%         % If looking at effect/contrast maps, go ahead and load all of the
-%         % variances for the currently selected IC and visits, this way we do not keep
-%         % reloading them during the loop
-%         current_vars = {};
-%         current_IC = get(findobj('Tag', 'ICselect'), 'val');
-%         if strcmp('beta', ddat.type)
-%             
-%             for iVisit = 1:size(ddat.viewTracker, 2)
-%                 
-%                 newMap = load(fullfile(ddat.outdir, [ddat.outpre '_BetaVarEst_IC'...
-%                     num2str(current_IC) '_visit' num2str(iVisit) '.mat']));
-%                 
-%                 current_vars{iVisit} = newMap.betaVarEst;
-%                 
-%             end
-%             
-%         end
-%         
-%         %for subPop = 1:ddat.nCompare
-%         for iPop = 1:size(ddat.viewTracker, 1)
-%             for iVisit = 1:size(ddat.viewTracker, 2)
-%                 if ddat.viewTracker(iPop, iVisit) > 0
-%                     
-%                     if current_Z == 1
-%                         
-%                         if strcmp('beta', ddat.type)
-%                             
-%                             if (ddat.viewingContrast == 0)
-%                                 
-%                                 % TODO preallcoate and stop re-doing this
-%                                 % using above current vars
-%                                 current_var_est = current_vars{iVisit};
-%                                 
-%                                 % Scale using the theoretical variance estimate
-%                                 % theoretical estimate is q(p+1) * q(p+1)
-%                                 ddat.img{iPop, iVisit} = ddat.oimg{iPop, iVisit} ./...
-%                                     sqrt(squeeze( current_var_est( iPop, iPop, :,:,: )));
-%                                 
-%                                 
-%                             end
-%                             
-%                             if (ddat.viewingContrast == 1)
-%                                 contrastSettings = get(findobj('Tag', 'contrastDisplay'), 'Data');
-%                                 % Load the contrast
-%                                 c = zeros(ddat.p,1);
-%                                 for xi = 1:ddat.p
-%                                     c(xi) = str2double(contrastSettings( get(findobj('Tag',...
-%                                         ['contrastSelect' num2str(1)]), 'Value') , xi));
-%                                 end
-%                                 % Get the variance estimate; loop over each voxel
-%                                 seContrast = sqrt(squeeze(mtimesx(mtimesx(c', ddat.betaVarEst), c)));
-%                                 ddat.img{subPop} = ddat.oimg{subPop} ./...
-%                                     squeeze(seContrast);
-%                             end
-%                         else
-%                             ddat.img{iPop, iVisit} = ddat.oimg{iPop, iVisit} /...
-%                                 std(ddat.oimg{iPop, iVisit}(:), 'omitnan');
-%                             set(findobj('Tag', 'manualThreshold'), 'max',1);
-%                             editThreshold;
-%                         end
-%                     else
-%                         ddat.img{iPop, iVisit} = ddat.oimg{iPop, iVisit};
-%                         set(findobj('Tag', 'thresholdSlider'), 'Value', 0);
-%                         set(findobj('Tag', 'manualThreshold'), 'String', '');
-%                         set(findobj('Tag', 'manualThreshold'), 'Value', 0);
-%                     end
-%                     
-%                 end
-%             end
-%         end
-%         
-%         
-%         
-%         
-%         %end
-%         
-%         
-%         
-%         % Redisplay the new image
-%         disp('figure out what I need from here. All 4 were enabled')
-%         %createCombinedImage;
-%         %redisplay;
-%         %updateCrosshairValue;
-%         %updateInfoText;
-%         
-%         [rowInd, colInd] = find(ddat.viewTracker > 0);
-%         %disp('Added updateColorbar to two update_brain_maps commands below. Make sure this is needed. currently not doing anything.')
-%         if length(rowInd) == 1
-%             update_brain_maps('updateCombinedImage', [rowInd', colInd']);
-%         else
-%             update_brain_maps('updateCombinedImage', [rowInd, colInd]);
-%         end
-%         
-%         
-%     end
-% This is the end of the old updateZ function. Replcaed with
-% "update_Z_maps"
 
 % Function to let the user know where in the brain they have clicked.
     function updateInfoText(hObject, callbackdata)
