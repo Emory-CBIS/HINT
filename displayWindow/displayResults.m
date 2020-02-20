@@ -897,12 +897,11 @@ end
                 % Update axes existence
                 set_number_of_brain_axes(0);
                 
-                % Refresh the display window - remove the row from img,
-                % oimg, scaled image
-                
-                %editThreshold;
-                %update_brain_maps('updateCombinedImage', [selected_pop, visit_number]);
-                update_brain_data;
+                % Check to make sure something is being viewed before
+                % updating the view tracker
+                if sum(ddat.viewTracker > 0)
+                    update_brain_data;
+                end
                 
             end
             
@@ -2076,7 +2075,8 @@ end
         end
         
         % Update the position information text
-       position_information_update((findobj('Tag', ['SagittalAxes' num2str(1) '_' num2str(1)] )))
+        [validRow, validCol] = find(ddat.viewTracker > 0);
+       position_information_update((findobj('Tag', ['SagittalAxes' num2str(validRow(1)) '_' num2str(validCol(1))] )))
        
        % Update the crosshair information text
        set(findobj('Tag', 'crosshairPos'),'String',...
@@ -2805,6 +2805,8 @@ end
                                 ddat.img{subPop} = ddat.oimg{subPop} ./...
                                     squeeze(seContrast);
                             end
+                        
+                        % Z-update for population or subject level
                         else
                             ddat.img{iPop, iVisit} = ddat.oimg{iPop, iVisit} /...
                                 std(ddat.oimg{iPop, iVisit}(:), 'omitnan');
