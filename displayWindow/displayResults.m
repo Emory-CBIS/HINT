@@ -2032,6 +2032,16 @@ end
 
     function load_functional_images(indices)
         
+        % This is a check in case we forgot to provide the indices argument
+        % needed for some cases where this is called from a button press
+        if ~exist('indices', 'var')
+            [rowInd, colInd] = find(ddat.viewTracker > -999);
+            if size([rowInd, colInd], 2) ~= 2
+                rowInd = rowInd(:); colInd = colInd(:);
+            end
+            indices = [rowInd, colInd];
+        end
+        
         % Determine the currently selected component
         sel_IC = get(findobj('tag', 'ICselect'), 'value');
         
@@ -2189,6 +2199,9 @@ end
         
         % Set correct number of axes
         set_number_of_brain_axes(1)
+        
+        % Check mask status
+        maskSearch;
         
         % Now that oimg has been updated, need to carry out the rest of the
         % steps:
