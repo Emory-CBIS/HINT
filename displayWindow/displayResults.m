@@ -661,6 +661,8 @@ end
         %        3+ maps - 70/30
         nMapsViewed = sum(ddat.viewTracker(:) > 0);
         switch nMapsViewed
+            case 0
+                y_use = 0.2;
             case 1
                 y_use = 0.5;
             case 2
@@ -843,10 +845,11 @@ end
                 
                 % Default to showing contrast 1, visit 1
                 if all(ddat.viewTracker(:) == 0)
-                    ddat.viewTracker(1, 1) = 1;
+                    %ddat.viewTracker(1, 1) = 1;
                 end
                 
                 % Fill out the selection table
+                table_data = cell(ddat.nVisit, 0);
                 for k=1:ddat.nVisit
                     for p=1:n_contrast
                         if ddat.viewTracker(p, k) > 0
@@ -868,7 +871,9 @@ end
                 end
                 
                 % set the column names (contrasts)
-                set(findobj('tag', 'ViewSelectTable'), 'ColumnName', contrast_names');
+                if n_contrast > 0
+                    set(findobj('tag', 'ViewSelectTable'), 'ColumnName', contrast_names');
+                end
                 
 %                 disp('currently this resets the view tracker...')
 %                 ddat.viewTracker = zeros(n_contrast, ddat.nVisit);
@@ -2063,7 +2068,9 @@ end
                     
                     % Fill out each linear combination based on indices
                     nUpdate = size(indices, 1); 
-        
+                    
+                    % Check to make sure a contrast has been specified
+                    if size(ddat.LC_contrasts, 1) > 0
                     for iUpdate = 1:nUpdate
                         disp('add random intercept')
                         disp('check for interactions')
@@ -2080,6 +2087,7 @@ end
                             ddat.oimg{iRow, iCol} = ddat.oimg{iRow, iCol} + ...
                                 str2double(ddat.LC_contrasts{iRow, xi}) .* beta_raw{xi, iCol};
                         end
+                    end
                     end
                     
                 else
@@ -2107,8 +2115,10 @@ end
         end
         
         % Reset the mask?
-        ddat.mask = ones(size(ddat.oimg{1,1}));
-        disp('reset mask selection?')
+        if numel(ddat.oimg) > 0
+            ddat.mask = ones(size(ddat.oimg{1,1}));
+            dim = size(ddat.oimg{1, 1});
+        end
         
         % Check if all of the anatomical image/dimension bookkeeping needs
         % to be performed. This should only need to happen upon first
@@ -2117,7 +2127,6 @@ end
        
               
         % Get the size of each dimension.
-        dim = size(ddat.oimg{1, 1});
         if ~isfield(ddat, 'xdim')
             ddat.xdim = dim(1); ddat.ydim = dim(2); ddat.zdim = dim(3);
             ddat.betaVarEst = zeros(ddat.p, ddat.p, ddat.xdim, ddat.ydim, ddat.zdim);
@@ -2519,7 +2528,6 @@ end
             % Contrast View
         else
             
-            % Check the number of valid contrasts
             setup_ViewSelectTable;
             disp('set this!')
             
