@@ -860,6 +860,7 @@ end
                     end
                 end
                 set(findobj('tag', 'ViewSelectTable'), 'Data', table_data);
+                set(findobj('tag', 'ViewSelectTable'), 'ColumnName', {});
                
                 
                 % Set the visit names (rows)
