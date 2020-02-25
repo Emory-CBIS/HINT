@@ -71,8 +71,10 @@ ddat.viewTracker(1, 1) = 1;
 
 % Keep track of what sub-populations/contrasts have been specified
 % variable name is specified linear combinations
-ddat.LC_contrasts = zeros(0, ddat.p + size(ddat.interactions, 1));
-ddat.LC_subpops = zeros(0, ddat.p + size(ddat.interactions, 1));
+ddat.valid_LC_contrast = zeros(0);
+ddat.LC_contrasts = zeros(0, ddat.p);
+ddat.valid_LC_subpop = zeros(0);
+ddat.LC_subpops = zeros(0, ddat.p);
 
 
 ddat.tileType = 'vertical';
@@ -276,8 +278,9 @@ end
             'Units', 'Normalized', ...
             'Position', [0.01, 0.83, 0.48, 0.1], ...
             'Tag', 'ICselect', 'Callback',...
-            @(src, event)update_brain_data('setICMap', 1), ...
+            @(src, event)load_functional_images, ...
             'String', 'Select IC'); %#ok<NASGU>
+            %@(src, event)update_brain_data('setICMap', 1), ...
         viewZScores = uicontrol('Parent', icPanel,...
             'Style', 'checkbox', ...
             'Units', 'Normalized', ...
@@ -802,26 +805,37 @@ end
                 for p=1:ddat.p; column_names{p} = ddat.varNamesX{p}; end;
                 set(findobj('tag', 'ViewSelectTable'), 'ColumnName', column_names');
                 
+                disp('currently this switch to betas resets the view tracker...')
+                ddat.viewTracker = zeros(ddat.p, ddat.nVisit);
+                
                 % Contrast View Table Setup
             else
                 
                 % Check the contrast table to find how many contrasts have
                 % been created. This will be the number of columns
-                contrasts = get(findobj('tag', 'contrastDisplay'), 'data');
+                contrasts = ddat.LC_contrasts;
                 contrast_names = get(findobj('tag', 'contrastDisplay'), 'RowName');
-                n_contrast = size(contrasts, 2);
+                n_contrast = size(contrasts, 1);
+                
+                disp('create LC_contrast_names and load from it!')
                 
                 for k=1:ddat.nVisit; for p=1:n_contrast; table_data{k, p} = 'no'; end; end;
-                
                 set(findobj('tag', 'ViewSelectTable'), 'Data', table_data);
+               
                 
                 % Set the visit names (rows)
                 for k=1:ddat.nVisit; visit_names{k} = ['Visit ' num2str(k)]; end
                 set(findobj('tag', 'ViewSelectTable'), 'RowName', visit_names');
                 
+                if size(contrasts, 1) == 1
+                    contrast_names = {contrast_names};
+                end
+                
                 % set the column names (contrasts)
-                %for p=1:ddat.p; column_names{p} = ddat.varNamesX{p}; end;
                 set(findobj('tag', 'ViewSelectTable'), 'ColumnName', contrast_names');
+                
+                disp('currently this resets the view tracker...')
+                ddat.viewTracker = zeros(n_contrast, ddat.nVisit);
                 
             end
             
@@ -1432,11 +1446,11 @@ end
             set( findobj('Tag', 'locPanel'), 'Position',[.12, 0.01 .32 .98]);
             
             % load the aggregate map for each visit
-            for iVisit = 1:ddat.nVisit
-                ndata = load_nii([ddat.outdir '/' ddat.outpre '_aggregate' 'IC_1_visit' num2str(iVisit) '.nii']);
-                ddat.img{1, iVisit} = ndata.img; ddat.oimg{1, iVisit} = ndata.img;
-                ddat.maskingStatus{1, iVisit} = ~isnan(ddat.img{1, iVisit});
-            end
+%             for iVisit = 1:ddat.nVisit
+%                 ndata = load_nii([ddat.outdir '/' ddat.outpre '_aggregate' 'IC_1_visit' num2str(iVisit) '.nii']);
+%                 ddat.img{1, iVisit} = ndata.img; ddat.oimg{1, iVisit} = ndata.img;
+%                 ddat.maskingStatus{1, iVisit} = ~isnan(ddat.img{1, iVisit});
+%             end
             
         elseif strcmp(ddat.type, 'subpop')
             set(findobj('Tag', 'useEmpiricalVar'), 'Visible', 'Off');
@@ -1486,18 +1500,18 @@ end
             end
             
             % load each beta map for each visit
-            for p = 1:ddat.p
-                for iVisit = 1:ddat.nVisit
-                    
-                    % File name
-                    ndata = load_nii([ddat.outdir '/' ddat.outpre...
-                        '_beta_cov' num2str(p) '_IC1_visit'...
-                        num2str(iVisit) '.nii']);
-                    
-                    ddat.img{p, iVisit} = ndata.img; ddat.oimg{p, iVisit} = ndata.img;
-                    ddat.maskingStatus{p, iVisit} = ~isnan(ddat.img{p, iVisit});
-                end
-            end
+%             for p = 1:ddat.p
+%                 for iVisit = 1:ddat.nVisit
+%                     
+%                     % File name
+%                     ndata = load_nii([ddat.outdir '/' ddat.outpre...
+%                         '_beta_cov' num2str(p) '_IC1_visit'...
+%                         num2str(iVisit) '.nii']);
+%                     
+%                     ddat.img{p, iVisit} = ndata.img; ddat.oimg{p, iVisit} = ndata.img;
+%                     ddat.maskingStatus{p, iVisit} = ~isnan(ddat.img{p, iVisit});
+%                 end
+%             end
             
             % load the data
             %ndata = load_nii([ddat.outdir '/' ddat.outpre '_beta_cov1_IC1_visit1.nii']);
@@ -1589,52 +1603,6 @@ end
         set(findobj('Tag', 'viewZScores'), 'Value', 0);
         ddat.isZ = 0;
         
-        % Look for an appropriately sized mask file.
-        maskSearch;
-        
-        % Get the size of each dimension.
-        dim = size(ddat.img{1, 1});
-        ddat.xdim = dim(1); ddat.ydim = dim(2); ddat.zdim = dim(3);
-        
-        % Load the Variance Estimates for the regression coefficients
-        if strcmp(ddat.type, 'beta')
-            
-            % Create the beta variance estimate map
-            ddat.betaVarEst = zeros(ddat.p, ddat.p, ddat.xdim, ddat.ydim, ddat.zdim);
-            
-            % Fill out the beta map for the current IC
-            currentIC = get(findobj('Tag', 'ICselect'), 'val');
-            
-            % TODO check the selected visit here just in case
-            iVisit = 1;
-            
-            % Load the map
-            newMap = load(fullfile(ddat.outdir,...
-                [ddat.outpre '_BetaVarEst_IC' num2str(currentIC)...
-                '_visit' num2str(iVisit) '.mat']));
-            ddat.betaVarEst = newMap.betaVarEst;
-            
-        end
-        
-        % Load the brain region information
-        brodmannMap = load('templates/BrodmannRegionMap.mat');
-        RegionMap = load_nii('templates/brodmann_RPI_MNI_2mm.nii');
-        % Load the correct Region Map if not in 2mm space
-        if ddat.xdim == 182 && ddat.ydim == 218 && ddat.zdim == 182
-            RegionMap = load_nii('templates/brodmann_RPI_MNI_1mm.nii');
-        elseif ddat.xdim == 61 && ddat.ydim == 73 && ddat.zdim == 61
-            RegionMap = load_nii('templates/brodmann_RPI_MNI_3mm.nii');
-        elseif ddat.xdim == 45 && ddat.ydim == 54 && ddat.zdim == 45
-            RegionMap = load_nii('templates/brodmann_RPI_MNI_4mm.nii');
-        end
-        
-        RegionName = brodmannMap.brodmann(:, 1:2);
-        ddat.total_region_name = RegionName;
-        ddat.region_struct = RegionMap;
-        
-        % Set up the anatomical image.
-        setupAnatomical;
-        
         % Set up the initial colorbar.
         jet2=jet(64); jet2(38:end, :)=[];
         hot2=hot(64); hot2(end-5:end, :)=[]; hot2(1:4, :)=[];
@@ -1645,33 +1613,49 @@ end
         ddat.basecolor = gray(191);
         ddat.colorlevel = 256;
         
-        % Get the crosshair origin information.
-        ddat.pixdim = double(ddat.mri_struct.hdr.dime.pixdim(2:4));
-        if any(ddat.pixdim <= 0)
-            ddat.pixdim(find(ddat.pixdim <= 0)) = 1;
-        end
-        origin = abs(ddat.mri_struct.hdr.hist.originator(1:3));
-        if isempty(origin) || all(origin == 0)		% according to SPM
-            origin = (dim+1)/2;
-        end
-        origin = round(origin);
-        if any(origin > dim)				% simulate fMRI
-            origin(find(origin > dim)) = dim(find(origin > dim));
-        end
-        if any(origin <= 0)
-            origin(find(origin <= 0)) = 1;
-        end
-        ddat.daspect = ddat.pixdim ./ min(ddat.pixdim);
-        ddat.origin = origin; ddat.sag = origin(1); ddat.cor = origin(2);
-        ddat.axi = origin(3);
-        ddat.roi_voxel = 0.1;
+        % Look for an appropriately sized mask file.
+        maskSearch;
+        
+        
+%         % Load the Variance Estimates for the regression coefficients
+%         if strcmp(ddat.type, 'beta')
+%             
+%             % Create the beta variance estimate map
+%             ddat.betaVarEst = zeros(ddat.p, ddat.p, ddat.xdim, ddat.ydim, ddat.zdim);
+%             
+%             % Fill out the beta map for the current IC
+%             currentIC = get(findobj('Tag', 'ICselect'), 'val');
+%             
+%             % TODO check the selected visit here just in case
+%             iVisit = 1;
+%             
+%             % Load the map
+%             newMap = load(fullfile(ddat.outdir,...
+%                 [ddat.outpre '_BetaVarEst_IC' num2str(currentIC)...
+%                 '_visit' num2str(iVisit) '.mat']));
+%             ddat.betaVarEst = newMap.betaVarEst;
+%             
+%         end
+        
+        load_functional_images;
+        
+        % Set up the anatomical image.
+        %setupAnatomical;
+        
+        % Load the functional images and display
+        
+        % Get the size of each dimension.
+        %dim = size(ddat.img{1, 1});
+        %ddat.xdim = dim(1); ddat.ydim = dim(2); ddat.zdim = dim(3);
+       
         
         % create the combined images
         %createCombinedImage;
+       
         
         %% Using the new function in INITIAL DISP
         set_number_of_brain_axes(1)
-        update_brain_maps('updateCombinedImage', [1, 1], 'updateMasking', 1)
+        %update_brain_maps('updateCombinedImage', [1, 1], 'updateMasking', 1)
         
         updateColorbar;
         
@@ -1696,12 +1680,15 @@ end
             'SliderStep',zslider_step,'Value',ddat.axi);
         
         % Info for the text box.
-        set(findobj('Tag', 'originalPos'),'String',sprintf('%7.0d %7.0d %7.0d',origin(1),origin(2),origin(3)));
-        set(findobj('Tag', 'crosshairPos'),'String',sprintf('%7.0d %7.0d %7.0d',ddat.sag,ddat.cor, ddat.axi));
-        set(findobj('Tag', 'dimension'),'String',sprintf('%7.0d %7.0d %7.0d',ddat.xdim,ddat.ydim,ddat.zdim));
+        set(findobj('Tag', 'originalPos'),'String',...
+            sprintf('%7.0d %7.0d %7.0d',ddat.origin(1),ddat.origin(2),ddat.origin(3)));
+        set(findobj('Tag', 'crosshairPos'),'String',...
+            sprintf('%7.0d %7.0d %7.0d',ddat.sag,ddat.cor, ddat.axi));
+        set(findobj('Tag', 'dimension'),'String',...
+            sprintf('%7.0d %7.0d %7.0d',ddat.xdim,ddat.ydim,ddat.zdim));
         
         %updateZImg;
-        maskSearch;
+        %maskSearch;
         
         if ~strcmp(ddat.type, 'subpop')
             %editThreshold;
@@ -1788,80 +1775,80 @@ end
 % update_viewed_component - function to load a new IC, should only be called by
 % update_brain_data
 
-    function update_viewed_component(hObject, callbackdata)
-        
-        % IC to load
-        newIC = get(findobj('Tag', 'ICselect'), 'val');
-        
-        if strcmp(ddat.type, 'grp')
-            
-            % Load each visit
-            for iVisit = 1:ddat.nVisit
-                newFile = [ddat.outdir '/' ddat.outpre '_aggregateIC_'...
-                    num2str(newIC) '_visit' num2str(iVisit) '.nii'];
-                newData = load_nii(newFile);
-                ddat.img{1, iVisit} = newData.img;
-                ddat.oimg{1, iVisit} = newData.img;
-            end
-            
-        elseif strcmp(ddat.type, 'subpop')
-            newFile = [ddat.outdir '/' ddat.outpre '_S0_IC_' num2str(newIC) '.nii'];
-            updateSubPopulation;
-            
-        elseif strcmp(ddat.type, 'beta')
-            
-            for p = 1:ddat.p
-                for iVisit = 1:ddat.nVisit
-                    % File name
-                    ndata = load_nii([ddat.outdir '/' ddat.outpre...
-                        '_beta_cov' num2str(p) '_IC' num2str(newIC) '_visit'...
-                        num2str(iVisit) '.nii']);
-                    
-                    ddat.img{p, iVisit} = ndata.img; ddat.oimg{p, iVisit} = ndata.img;
-                    ddat.maskingStatus{p, iVisit} = ~isnan(ddat.img{p, iVisit});
-                end
-            end
-            
-        elseif strcmp(ddat.type, 'subj')
-            
-            generate_single_subject_map;
-            set_number_of_brain_axes(0);
-            
-        elseif strcmp(ddat.type, 'icsel')
-            ndata = load_nii([ddat.outdir '/' ddat.outpre '_iniIC_' num2str(newIC) '.nii']);
-            % need to turn the 0's into NaN values
-            zeroImg = ndata.img; zeroImg(find(ndata.img == 0)) = nan;
-            ddat.img{1} = zeroImg; ddat.oimg{1} = zeroImg;
-            % get if the checkbox should be selected
-            isSelected = get(findobj('Tag', 'icSelRef'), 'Data');
-            if strcmp(isSelected{newIC,2}, 'x')
-                set(findobj('Tag', 'keepIC'), 'Value', 1);
-            else
-                set(findobj('Tag', 'keepIC'), 'Value', 0);
-            end
-        elseif strcmp(ddat.type, 'reEst')
-            ndata = load_nii([ddat.outdir '/' ddat.outpre '_iniguess/' ddat.outpre '_reducedIniGuess_GroupMap_IC_' num2str(newIC) '.nii']);
-            % need to turn the 0's into NaN values
-            zeroImg = ndata.img; zeroImg(find(ndata.img == 0)) = nan;
-            ddat.img{1} = zeroImg; ddat.oimg{1} = zeroImg;
-        elseif strcmp(ddat.type, 'subPopCompare')
-            % Read in the data for the sub population in this panel
-            covariateSettings = get(findobj('Tag', 'subPopDisplay'),'Data');
-            newFile = strcat(ddat.outdir,'/',ddat.outpre,'_S0_IC_',num2str(newIC),'.nii');
-            newDat = load_nii(newFile);
-            for subPop = 1:ddat.nCompare
-                newFunc = newDat.img;
-                for xi = 1:ddat.p
-                    beta = load_nii([ddat.outdir '/' ddat.outpre '_beta_cov' num2str(xi) '_IC' num2str(newIC) '.nii']);
-                    xb = beta.img * str2double(covariateSettings( subPop , xi));
-                    newFunc = newFunc + xb;
-                end
-                ddat.img{subPop} = newFunc; ddat.oimg{subPop} = newFunc;
-            end
-        end
-        
-        
-    end
+%     function update_viewed_component(hObject, callbackdata)
+%         
+%         % IC to load
+%         newIC = get(findobj('Tag', 'ICselect'), 'val');
+%         
+%         if strcmp(ddat.type, 'grp')
+%             
+%             % Load each visit
+%             for iVisit = 1:ddat.nVisit
+%                 newFile = [ddat.outdir '/' ddat.outpre '_aggregateIC_'...
+%                     num2str(newIC) '_visit' num2str(iVisit) '.nii'];
+%                 newData = load_nii(newFile);
+%                 ddat.img{1, iVisit} = newData.img;
+%                 ddat.oimg{1, iVisit} = newData.img;
+%             end
+%             
+%         elseif strcmp(ddat.type, 'subpop')
+%             newFile = [ddat.outdir '/' ddat.outpre '_S0_IC_' num2str(newIC) '.nii'];
+%             updateSubPopulation;
+%             
+%         elseif strcmp(ddat.type, 'beta')
+%             
+%             for p = 1:ddat.p
+%                 for iVisit = 1:ddat.nVisit
+%                     % File name
+%                     ndata = load_nii([ddat.outdir '/' ddat.outpre...
+%                         '_beta_cov' num2str(p) '_IC' num2str(newIC) '_visit'...
+%                         num2str(iVisit) '.nii']);
+%                     
+%                     ddat.img{p, iVisit} = ndata.img; ddat.oimg{p, iVisit} = ndata.img;
+%                     ddat.maskingStatus{p, iVisit} = ~isnan(ddat.img{p, iVisit});
+%                 end
+%             end
+%             
+%         elseif strcmp(ddat.type, 'subj')
+%             
+%             generate_single_subject_map;
+%             set_number_of_brain_axes(0);
+%             
+%         elseif strcmp(ddat.type, 'icsel')
+%             ndata = load_nii([ddat.outdir '/' ddat.outpre '_iniIC_' num2str(newIC) '.nii']);
+%             % need to turn the 0's into NaN values
+%             zeroImg = ndata.img; zeroImg(find(ndata.img == 0)) = nan;
+%             ddat.img{1} = zeroImg; ddat.oimg{1} = zeroImg;
+%             % get if the checkbox should be selected
+%             isSelected = get(findobj('Tag', 'icSelRef'), 'Data');
+%             if strcmp(isSelected{newIC,2}, 'x')
+%                 set(findobj('Tag', 'keepIC'), 'Value', 1);
+%             else
+%                 set(findobj('Tag', 'keepIC'), 'Value', 0);
+%             end
+%         elseif strcmp(ddat.type, 'reEst')
+%             ndata = load_nii([ddat.outdir '/' ddat.outpre '_iniguess/' ddat.outpre '_reducedIniGuess_GroupMap_IC_' num2str(newIC) '.nii']);
+%             % need to turn the 0's into NaN values
+%             zeroImg = ndata.img; zeroImg(find(ndata.img == 0)) = nan;
+%             ddat.img{1} = zeroImg; ddat.oimg{1} = zeroImg;
+%         elseif strcmp(ddat.type, 'subPopCompare')
+%             % Read in the data for the sub population in this panel
+%             covariateSettings = get(findobj('Tag', 'subPopDisplay'),'Data');
+%             newFile = strcat(ddat.outdir,'/',ddat.outpre,'_S0_IC_',num2str(newIC),'.nii');
+%             newDat = load_nii(newFile);
+%             for subPop = 1:ddat.nCompare
+%                 newFunc = newDat.img;
+%                 for xi = 1:ddat.p
+%                     beta = load_nii([ddat.outdir '/' ddat.outpre '_beta_cov' num2str(xi) '_IC' num2str(newIC) '.nii']);
+%                     xb = beta.img * str2double(covariateSettings( subPop , xi));
+%                     newFunc = newFunc + xb;
+%                 end
+%                 ddat.img{subPop} = newFunc; ddat.oimg{subPop} = newFunc;
+%             end
+%         end
+%         
+%         
+%     end
 
 
 
@@ -1941,6 +1928,172 @@ end
         
     end
 
+% Function to load functional data. This is the oimg attribute stored in
+% ddat. Generally this function will only be called on when:
+%    1. Opening the viewer 
+%    2. Loading a new IC
+%    3. Changing the specified sub-populations or contrasts
+%
+%Arguments:
+%    indices - elements of viewTable that are to be loaded.
+%
+
+    function load_functional_images(indices)
+        
+        % Determine the currently selected component
+        sel_IC = get(findobj('tag', 'ICselect'), 'value');
+        
+        % Clear out the images
+        ddat.oimg = {};
+        ddat.img = {};
+        
+        switch ddat.type
+            
+            % Load the group aggregate map
+            case 'grp'
+                
+                % Load each visit
+                for iVisit = 1:ddat.nVisit
+                    
+                    newFile = [ddat.outdir '/' ddat.outpre '_aggregateIC_'...
+                        num2str(sel_IC) '_visit' num2str(iVisit) '.nii'];
+                    newData = load_nii(newFile);
+                    %ddat.img{1, iVisit} = newData.img;
+                    ddat.oimg{1, iVisit} = newData.img;
+                    ddat.maskingStatus{1, iVisit} = ~isnan(ddat.oimg{1, iVisit});
+                    
+                end
+               
+            case 'beta'
+                                
+                % Load each of the betas
+                beta_raw = {};
+                for p = 1:ddat.p
+                    for iVisit = 1:ddat.nVisit
+                        
+                        % File name
+                        ndata = load_nii([ddat.outdir '/' ddat.outpre...
+                            '_beta_cov' num2str(p) '_IC' num2str(sel_IC) '_visit'...
+                            num2str(iVisit) '.nii']);
+
+                        beta_raw{p, iVisit} = ndata.img;
+                        ddat.maskingStatus{p, iVisit} = ~isnan(beta_raw{p, iVisit});
+                        
+                    end
+                end
+                
+                % Check if currently using the contrast view
+                contrast_selected = strcmp(get(get(findobj('tag',...
+                'EffectTypeButtonGroup'), 'SelectedObject'),...
+                'String'), 'Contrast View');
+                
+                if contrast_selected
+                    
+                    % Fill out each linear combination based on indices
+                    nUpdate = size(indices, 1); 
+        
+                    for iUpdate = 1:nUpdate
+                        disp('add random intercept')
+                        disp('check for interactions')
+            
+                        % Cell to update
+                        iRow = indices(iUpdate, 1); iCol = indices(iUpdate, 2);
+                        
+                        % The column of the contrast is the linear
+                        % combination currently viewing
+                        ddat.oimg{iRow, iCol} = zeros(size(beta_raw{1, 1}));
+                        % Main Effects
+                        for xi = 1:ddat.p
+                            ddat.oimg{iRow, iCol} = ddat.oimg{iRow, iCol} + ...
+                                str2double(ddat.LC_contrasts{iRow, xi}) .* beta_raw{xi, iCol};
+                        end
+                    end
+                    
+                else
+                    
+                    % If currently viewing the raw beta values, then assign all
+                    % of them
+                    for p = 1:ddat.p
+                        for iVisit = 1:ddat.nVisit
+                            ddat.oimg{p, iVisit} = beta_raw{p, iVisit};
+                            ddat.maskingStatus{p, iVisit} = ~isnan(ddat.oimg{p, iVisit});
+                        end
+                    end
+                    
+                end             
+                
+            case 'subpop'
+                updateColorbarFlag = varargin{index+1};
+            case 'subject'
+                updateMasking = varargin{index+1};
+            case 'iniguess'
+                updateMasking = varargin{index+1};    
+            otherwise
+                disp('CHECK VIEWTYPE SPECIFICATION')
+                
+        end
+        
+        % Reset the mask?
+        ddat.mask = ones(size(ddat.oimg{1,1}));
+        disp('reset mask selection?')
+              
+        % Get the size of each dimension.
+        dim = size(ddat.oimg{1, 1});
+        ddat.xdim = dim(1); ddat.ydim = dim(2); ddat.zdim = dim(3);
+        ddat.betaVarEst = zeros(ddat.p, ddat.p, ddat.xdim, ddat.ydim, ddat.zdim);
+        
+        % Make sure the anatomial image matches
+        setupAnatomical;
+        
+        % Update the crosshair information
+                % Get the crosshair origin information.
+        ddat.pixdim = double(ddat.mri_struct.hdr.dime.pixdim(2:4));
+        if any(ddat.pixdim <= 0)
+            ddat.pixdim(find(ddat.pixdim <= 0)) = 1;
+        end
+        origin = abs(ddat.mri_struct.hdr.hist.originator(1:3));
+        if isempty(origin) || all(origin == 0)		% according to SPM
+            origin = (dim+1)/2;
+        end
+        origin = round(origin);
+        if any(origin > dim)				% simulate fMRI
+            origin(find(origin > dim)) = dim(find(origin > dim));
+        end
+        if any(origin <= 0)
+            origin(find(origin <= 0)) = 1;
+        end
+        ddat.daspect = ddat.pixdim ./ min(ddat.pixdim);
+        ddat.origin = origin; ddat.sag = origin(1); ddat.cor = origin(2);
+        ddat.axi = origin(3);
+        ddat.roi_voxel = 0.1;
+        
+        % Load the brain region information
+        brodmannMap = load('templates/BrodmannRegionMap.mat');
+        RegionMap = load_nii('templates/brodmann_RPI_MNI_2mm.nii');
+        % Load the correct Region Map if not in 2mm space
+        if ddat.xdim == 182 && ddat.ydim == 218 && ddat.zdim == 182
+            RegionMap = load_nii('templates/brodmann_RPI_MNI_1mm.nii');
+        elseif ddat.xdim == 61 && ddat.ydim == 73 && ddat.zdim == 61
+            RegionMap = load_nii('templates/brodmann_RPI_MNI_3mm.nii');
+        elseif ddat.xdim == 45 && ddat.ydim == 54 && ddat.zdim == 45
+            RegionMap = load_nii('templates/brodmann_RPI_MNI_4mm.nii');
+        end
+        RegionName = brodmannMap.brodmann(:, 1:2);
+        ddat.total_region_name = RegionName;
+        ddat.region_struct = RegionMap;
+        
+        
+        % Now that oimg has been updated, need to carry out the rest of the
+        % steps:
+        disp('figure out args here')
+        update_brain_data();
+        
+    end
+
+
+
+
+
 % New version of the create combined image function
 % issue is with what to scale by... XXXXX
     function create_combined_image(indices)
@@ -1984,7 +2137,7 @@ end
 % ViewTracker for this! - gives which axes each belongs to
     function update_axes_image(varargin)
         
-        [nRow, nCol] = size(ddat.img);
+        [nRow, nCol] = size(ddat.oimg);
         
         aspect = 1./ddat.daspect;
         
@@ -2076,11 +2229,13 @@ end
         
         % Update the position information text
         [validRow, validCol] = find(ddat.viewTracker > 0);
-       position_information_update((findobj('Tag', ['SagittalAxes' num2str(validRow(1)) '_' num2str(validCol(1))] )))
-       
-       % Update the crosshair information text
-       set(findobj('Tag', 'crosshairPos'),'String',...
-           sprintf('%7.0d %7.0d %7.0d',ddat.sag,ddat.cor, ddat.axi));
+        if ~isempty(validRow)
+            position_information_update((findobj('Tag', ['SagittalAxes' num2str(validRow(1)) '_' num2str(validCol(1))] )))
+            
+            % Update the crosshair information text
+            set(findobj('Tag', 'crosshairPos'),'String',...
+            sprintf('%7.0d %7.0d %7.0d',ddat.sag,ddat.cor, ddat.axi));
+        end
         
     end
 
@@ -2093,9 +2248,13 @@ end
         
         % Default values
         setICMap = -1;
+        updateImg = -1;
+        indices = [];
         
         % Determine which steps are required based on user input
         narg = length(varargin)/2;
+        
+        disp('get rid of setICmap argument..., now handled earlier in chain')
         
         % Make sure an actual argument was provided
         if narg > 0
@@ -2115,15 +2274,17 @@ end
             update_viewed_component;
         end
         
+
         % Update the Z-score status, always done if this function triggers
-        update_Z_maps;
-        
-        % TODO thresholding
-       
+        update_Z_maps;       
         
         % Move chain on to UPDATE_BRAIN_MAPS
         [rowInd, colInd] = find(ddat.viewTracker > 0);
-        update_brain_maps('updateCombinedImage', [rowInd', colInd']);
+        if ~isempty(rowInd)
+            update_brain_maps('updateCombinedImage', [rowInd', colInd']);
+        else
+            update_brain_maps;
+        end
         
     end
 
@@ -2137,50 +2298,7 @@ end
         
         ddat.sag = round(get(hObject, 'Value'));
         disp('sag slider moved')
-        
-%         % Loop over populations and visits
-%         for iRow = 1:nRow
-%             for iCol = 1:nCol
-%                 
-%                 if ddat.viewTracker(iRow, iCol) > 0
-%                     
-%                     axes(findobj('Tag', ['SagittalAxes' num2str(iRow) '_' num2str(iCol)]));
-%                     for cl = 1:3
-%                         Ssag(:, :, cl) = squeeze(ddat.combinedImg{iRow, iCol}(cl).combound(ddat.sag, :, :))';
-%                     end
-%                     set(ddat.sagittal_image{iRow, iCol},'CData',Ssag);
-%                     set(ddat.axial_yline{iRow, iCol},'Xdata',[ddat.sag ddat.sag]);
-%                     set(ddat.coronal_yline{iRow, iCol},'Xdata',[ddat.sag ddat.sag]);
-%                     set(findobj('Tag','crosshairPos'),'String',...
-%                         sprintf('%7.0d %7.0d %7.0d',ddat.sag,ddat.cor, ddat.axi));
-%                     updateInfoText;
-%                     
-%                     % Update value at voxel text
-%                     
-%                     % Update axes-specific value at voxel text
-%                     if get(findobj('Tag', 'viewZScores'), 'Value') == 1
-%                         set(findobj('tag', ['VoxelValueBox' num2str(iRow) '_' num2str(iCol)]),...
-%                             'String', ...
-%                             sprintf('Z = %4.2f', ddat.oimg{iRow, iCol}(ddat.sag, ddat.cor, ddat.axi)));
-%                     else
-%                         set(findobj('tag', ['VoxelValueBox' num2str(iRow) '_' num2str(iCol)]),...
-%                             'String', ...
-%                             sprintf('Value at Voxel: %4.2f', ddat.oimg{iRow, iCol}(ddat.sag, ddat.cor, ddat.axi)));
-%                     end
-%                     
-%                     
-%                     % Add the currently selected voxel to the trajectory plot
-%                     if ddat.trajectoryActive == 1
-%                         plot_voxel_trajectory([ddat.sag, ddat.cor, ddat.axi])
-%                     end
-%                     
-%                 end
-%             end
-%             
-%             % This is to update the axes info text.
-%             %set_number_of_brain_axes(0);
-%             
-%         end
+  
         update_axes_image;
     end
 
@@ -2190,42 +2308,6 @@ end
         
         [nRow, nCol] = size(ddat.img);
         
-        % Loop over populations and visits
-%         for iRow = 1:nRow
-%             for iCol = 1:nCol
-%                 
-%                 if ddat.viewTracker(iRow, iCol) > 0
-%                     axes(findobj('Tag', ['CoronalAxes' num2str(iRow) '_' num2str(iCol)]));
-%                     for cl = 1:3
-%                         Scor(:, :, cl) = squeeze(ddat.combinedImg{iRow, iCol}(cl).combound(:,ddat.cor,:))';
-%                     end
-%                     set(ddat.coronal_image{iRow, iCol},'CData',Scor);
-%                     set(ddat.axial_xline{iRow, iCol},'Ydata',[ddat.cor ddat.cor]);
-%                     set(ddat.sagittal_yline{iRow, iCol},'Xdata',[ddat.cor ddat.cor]);
-%                     set(findobj('Tag','crosshairPos'),'String',...
-%                         sprintf('%7.0d %7.0d %7.0d',ddat.sag,ddat.cor, ddat.axi));
-%                     updateInfoText;
-%                     
-%                     
-%                     % Update axes-specific value at voxel text
-%                     if get(findobj('Tag', 'viewZScores'), 'Value') == 1
-%                         set(findobj('tag', ['VoxelValueBox' num2str(iRow) '_' num2str(iCol)]),...
-%                             'String', ...
-%                             sprintf('Z = %4.2f', ddat.oimg{iRow, iCol}(ddat.sag, ddat.cor, ddat.axi)));
-%                     else
-%                         set(findobj('tag', ['VoxelValueBox' num2str(iRow) '_' num2str(iCol)]),...
-%                             'String', ...
-%                             sprintf('Value at Voxel: %4.2f', ddat.oimg{iRow, iCol}(ddat.sag, ddat.cor, ddat.axi)));
-%                     end
-%                     
-%                     % Add the currently selected voxel to the trajectory plot
-%                     if ddat.trajectoryActive == 1
-%                         plot_voxel_trajectory([ddat.sag, ddat.cor, ddat.axi])
-%                     end
-%                 end
-%             end
-%         end
-%         
         % This is to update the axes info text.
         %set_number_of_brain_axes(0);
         update_axes_image;
@@ -2325,10 +2407,14 @@ end
         % Effect view was selected -> load corresponding betas
         if strcmp(callbackdata.Source.String, 'Effect View')
             
+            % Edit the view selection table
+            setup_ViewSelectTable;
+            
             % load each beta map for each visit
             for p = 1:ddat.p
                 for iVisit = 1:ddat.nVisit
                     
+                    disp('this needs to call load_functional_image!!!')
                     % File name
                     ndata = load_nii([ddat.outdir '/' ddat.outpre...
                         '_beta_cov' num2str(p) '_IC1_visit'...
@@ -2344,7 +2430,7 @@ end
         else
             
             % Check the number of valid contrasts
-            
+            setup_ViewSelectTable;
             disp('set this!')
             
             % If an archived view table is present, then load it, otherwise
@@ -2357,7 +2443,9 @@ end
         end
         
         % Update the brain display to reflect the new images
-        
+        disp('is this really the right indexing to use, I think "yes" for contrasts??')
+        [rowInd, colInd] = find( ones(size(ddat.viewTracker)) > 0);
+        load_functional_images( [rowInd(:), colInd(:)] );
         
     end
 
@@ -2497,11 +2585,13 @@ end
             % viewtable, which only gets updated to match this if currently
             % viewing that type. These variables are stored in the
             % background, even if we switch viewer types
-            LC = cellfun(@str2num, callbackdata.Source.Data(callbackdata.Indices(1), :));
+            %LC = cellfun(@str2num, callbackdata.Source.Data(callbackdata.Indices(1), :));
             if strcmp(ddat.type, 'beta')
-                ddat.LC_contrasts(rowIndex, :) = LC; 
+                ddat.LC_contrasts = callbackdata.Source.Data; 
+                ddat.valid_LC_contrast(callbackdata.Indices(1)) = 1; 
             else
-                ddat.LC_subpops(rowIndex, :) = LC;
+                ddat.LC_subpops = callbackdata.Source.Data;
+                ddat.valid_LC_subpop(callbackdata.Indices(1)) = 1; 
             end
             
             contrast_selected = strcmp(get(get(findobj('tag',...
@@ -2512,52 +2602,28 @@ end
             if (strcmp(ddat.type, 'beta') && contrast_selected )...
                     || strcmp(ddat.type, 'subpop')
                 
+                % Update the view table appropriately
                 setup_ViewSelectTable;
                 
+                [rowInd, colInd] = find( ones(size(ddat.viewTracker)) > 0);
+                load_functional_images( [rowInd(:), colInd(:)] );                
             end
             
-
-        
-        end
-        
-
-        
-        % Check if we are currently in a mode where LCs are being viewed.
-        % If so, update oimg 
-        
-        
-        
-        
-        
-        
-        % TODO this is where I am with editing this function
-        
-        % TODO this + below should be replaced by a check if the currently edited sub
-        % population is also being viewed. I think the "updateSubPopulation"
-        % call can be removed entirely.
-        if (nsubpop == 1)
-            for iPop = 1:ddat.nCompare
-                updateSubPopulation(findobj('Tag', ['subPopSelect' num2str(iPop)]));
-            end
-        end
-        ddat.subPopExists = 1;
-        
-        % If the data are all filled out AND the current selection is the
-        % one that was edited, update the display image
-        updatedViewing = 0;
-        updatedRow = callbackdata.Indices(1);
-        if updatedRow == get(findobj('tag',  ['subPopSelect' num2str(1)]), 'value')
-            updatedViewing = 1;
-        end
-        if updatedViewing && allFilledOut
+        % If the entire row is not filled out, be sure to disable contrast    
+        else
+            
             if strcmp(ddat.type, 'beta')
-                if ddat.viewingContrast == 1
-                    updateContrastDisp;
-                end
+                ddat.valid_LC_contrast(callbackdata.Indices(1)) = 0; 
             else
-                updateSubPopulation;
+                ddat.valid_LC_subpop(callbackdata.Indices(1)) = 0; 
             end
+            
+            % TODO remove from view table
+        
         end
+        
+        % TODO check whether need to update view table, if a LC is now
+        % invalid, corresponding row of view table needs to be turned off
         
    end
 

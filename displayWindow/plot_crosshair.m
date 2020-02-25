@@ -83,9 +83,7 @@ if ~isempty(crosshair)
 else
     
  % Grab the parent object
- %figure(get(get(h_ax,'parent'), 'parent'));
  figure(get(get(get(h_ax,'parent'), 'parent'), 'parent'));
- %figure(get(get(get(get(h_ax,'parent'), 'parent'), 'parent'), 'parent'));
  axes(h_ax);
 
  % add the crosshair line coordinates
