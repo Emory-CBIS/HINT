@@ -2211,6 +2211,10 @@ end
         minVal1 = min(min(min(cat(1,ddat.img{:}))));
         maxVal1 = max(max(max(cat(1,ddat.img{:}))));
         
+        % Get user selected cutoff
+        cutoff = get( findobj('Tag', 'thresholdSlider'), 'value');
+        set( findobj('Tag', 'manualThreshold'), 'string', num2str(cutoff) );
+        
         for iUpdate = 1:nUpdate
             
             % Cell to update
@@ -2221,8 +2225,12 @@ end
             tempImage(ddat.maskingStatus{iRow, iCol} == 0 ) = nan;
             tempImage(isnan(tempImage)) = minVal1 - 1;
             minVal2 = minVal1 - 1;
-            
             ddat.scaledFunc{iRow, iCol} = scale_in(tempImage, minVal2, maxVal1, 63);
+            
+        
+            % Loop over sub populations and update threshold.
+            ddat.maskingStatus{iRow, iCol} = (abs(ddat.img{iRow, iCol}) >= cutoff);
+    
             
             % Apply the Mask and then the slider based threshold
             %TODO for maskingStatus, Irow and icol might be flipped!
@@ -3083,18 +3091,18 @@ end
 % Function to edit the z-threshold required to view on brain image.
     function editThreshold(hObject, callbackdata)
         
-        % Get user selected cutoff
-        cutoff = get( findobj('Tag', 'thresholdSlider'), 'value');
-        set( findobj('Tag', 'manualThreshold'), 'string', num2str(cutoff) );
-        
-        % Loop over sub populations and update threshold.
-        for iPop = 1:size(ddat.viewTracker, 1)
-            for iVisit = 1:size(ddat.viewTracker, 2)
-                if ddat.viewTracker(iPop, iVisit) > 0
-                    ddat.maskingStatus{iPop, iVisit} = (abs(ddat.img{iPop, iVisit}) >= cutoff);
-                end
-            end
-        end
+%         % Get user selected cutoff
+%         cutoff = get( findobj('Tag', 'thresholdSlider'), 'value');
+%         set( findobj('Tag', 'manualThreshold'), 'string', num2str(cutoff) );
+%         
+%         % Loop over sub populations and update threshold.
+%         for iPop = 1:size(ddat.viewTracker, 1)
+%             for iVisit = 1:size(ddat.viewTracker, 2)
+%                 if ddat.viewTracker(iPop, iVisit) > 0
+%                     ddat.maskingStatus{iPop, iVisit} = (abs(ddat.img{iPop, iVisit}) >= cutoff);
+%                 end
+%             end
+%         end
         
         [rowInd, colInd] = find(ddat.viewTracker > 0);
         if size([rowInd, colInd], 2) ~= 2
