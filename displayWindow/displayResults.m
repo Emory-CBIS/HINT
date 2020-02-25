@@ -69,6 +69,14 @@ ddat.trajPreviousTag = ''; % string value of previously added line. used to clea
 ddat.viewTracker = zeros(1, ddat.nVisit);
 ddat.viewTracker(1, 1) = 1;
 
+% Keep track of user's previous settings for viewTracker (for switching
+% back and forth between viewers)
+ddat.saved_grp_viewTracker = zeros(1, ddat.nVisit);
+ddat.saved_beta_viewTracker = zeros(ddat.p, ddat.nVisit);
+ddat.saved_contrast_viewTracker = zeros(0, ddat.nVisit);
+ddat.saved_subpop_viewTracker = zeros(0, ddat.nVisit);
+ddat.saved_subj_viewTracker = zeros(0, ddat.nVisit);
+
 % Keep track of what sub-populations/contrasts have been specified
 % variable name is specified linear combinations
 ddat.valid_LC_contrast = zeros(0);
@@ -76,7 +84,7 @@ ddat.LC_contrasts = zeros(0, ddat.p);
 ddat.valid_LC_subpop = zeros(0);
 ddat.LC_subpops = zeros(0, ddat.p);
 
-
+% Keep tracker of the user's preferred settings
 ddat.tileType = 'vertical';
 
 % Check if an instance of displayResults already running
@@ -792,8 +800,21 @@ end
             if strcmp(get(get(findobj('tag', 'EffectTypeButtonGroup'),...
                     'SelectedObject'), 'String'), 'Effect View')
                 
-                for k=1:ddat.nVisit; for p=1:ddat.p; table_data{k, p} = 'no'; end; end;
-                table_data{1, 1} = 'yes';
+                ddat.viewTracker = ddat.saved_beta_viewTracker;
+                % Default to showing contrast 1, visit 1
+                if all(ddat.viewTracker(:) == 0)
+                    ddat.viewTracker(1, 1) = 1;
+                end
+                
+                for k=1:ddat.nVisit
+                    for p=1:ddat.p
+                        if ddat.viewTracker(p, k) > 0
+                            table_data{k, p} = 'yes';
+                        else
+                            table_data{k, p} = 'no';
+                        end
+                    end
+                end
                 
                 set(findobj('tag', 'ViewSelectTable'), 'Data', table_data);
                 
@@ -805,8 +826,6 @@ end
                 for p=1:ddat.p; column_names{p} = ddat.varNamesX{p}; end;
                 set(findobj('tag', 'ViewSelectTable'), 'ColumnName', column_names');
                 
-                disp('currently this switch to betas resets the view tracker...')
-                ddat.viewTracker = zeros(ddat.p, ddat.nVisit);
                 
                 % Contrast View Table Setup
             else
@@ -819,7 +838,24 @@ end
                 
                 disp('create LC_contrast_names and load from it!')
                 
-                for k=1:ddat.nVisit; for p=1:n_contrast; table_data{k, p} = 'no'; end; end;
+                % Load saved viewTracker information
+                ddat.viewTracker = ddat.saved_contrast_viewTracker;
+                
+                % Default to showing contrast 1, visit 1
+                if all(ddat.viewTracker(:) == 0)
+                    ddat.viewTracker(1, 1) = 1;
+                end
+                
+                % Fill out the selection table
+                for k=1:ddat.nVisit
+                    for p=1:n_contrast
+                        if ddat.viewTracker(p, k) > 0
+                            table_data{k, p} = 'yes';
+                        else
+                            table_data{k, p} = 'no';
+                        end
+                    end
+                end
                 set(findobj('tag', 'ViewSelectTable'), 'Data', table_data);
                
                 
@@ -827,15 +863,18 @@ end
                 for k=1:ddat.nVisit; visit_names{k} = ['Visit ' num2str(k)]; end
                 set(findobj('tag', 'ViewSelectTable'), 'RowName', visit_names');
                 
-                if size(contrasts, 1) == 1
+                if prod(size(contrast_names, 1)) == 1
                     contrast_names = {contrast_names};
                 end
                 
                 % set the column names (contrasts)
                 set(findobj('tag', 'ViewSelectTable'), 'ColumnName', contrast_names');
                 
-                disp('currently this resets the view tracker...')
-                ddat.viewTracker = zeros(n_contrast, ddat.nVisit);
+%                 disp('currently this resets the view tracker...')
+%                 ddat.viewTracker = zeros(n_contrast, ddat.nVisit);
+%                 
+%                 disp('add contrast management tracking what was being viewed')
+%                 ddat.viewTracker(1, 1) = 1;
                 
             end
             
@@ -870,6 +909,7 @@ end
                 % Add to tracker
                 ddat.viewTracker(selected_pop, visit_number) = 1;
                 ddat.viewTracker( ddat.viewTracker > 0 ) = cumsum( ddat.viewTracker(ddat.viewTracker > 0)); % renumber
+                
                 
                 % Update axes visibility
                 %                 set(findobj('Tag', ['CoronalAxes'  num2str(selected_pop) '_'...
@@ -919,6 +959,29 @@ end
                 
             end
             
+            % Update stored view tracker
+            switch ddat.type
+                case 'grp'
+                    ddat.saved_grp_viewTracker = ddat.viewTracker;
+                case 'beta'
+                    
+                    contrast_selected = strcmp(get(get(findobj('tag',...
+                        'EffectTypeButtonGroup'), 'SelectedObject'),...
+                        'String'), 'Contrast View');
+                    if contrast_selected
+                        ddat.saved_contrast_viewTracker = ddat.viewTracker;
+                    else
+                        ddat.saved_beta_viewTracker = ddat.viewTracker;
+                    end
+
+                case 'subject'
+                    ddat.saved_subject_viewTracker = ddat.viewTracker;
+                case 'subpop'
+                    ddat.saved_subpop_viewTracker = ddat.viewTracker;
+                otherwise
+                    disp('Error updating view table, check strings')
+            end
+            
             
         end
         
@@ -938,6 +1001,10 @@ end
         % TODO might be able to simplify the tracking and figuing out what
         % should be deleted XXX
         
+        % Figure out the number of axes. It is possible that this
+        % number is different than view tracker, since a contrast/subpop could
+        % have been deleted. Should never be more than 1 more
+
         % Get current number of displayed axes
         current_n_maps = 0;
         for iPop = 1:size(ddat.viewTracker, 1)
@@ -1328,7 +1395,10 @@ end
             
             % New loop over population/visit
             [rowInd, colInd] = find(ddat.viewTracker > 0);
-            indices = [rowInd', colInd'];
+            if size([rowInd, colInd], 2) ~= 2
+                rowInd = rowInd(:); colInd = colInd(:);
+            end
+            indices = [rowInd, colInd];
             nUpdate = size(indices, 1);
             
             for iUpdate = 1:nUpdate
@@ -1908,7 +1978,10 @@ end
             % Force image update since new mask has been loaded
             updateCombinedImage = 1;
             [rowInd, colInd] = find(ddat.viewTracker > 0);
-            updateCombinedImageElements = [rowInd', colInd'];
+            if size([rowInd, colInd], 2) ~= 2
+                rowInd = rowInd(:); colInd = colInd(:);
+            end
+            updateCombinedImageElements = [rowInd, colInd];
         end
         
         
@@ -1977,7 +2050,6 @@ end
                             num2str(iVisit) '.nii']);
 
                         beta_raw{p, iVisit} = ndata.img;
-                        ddat.maskingStatus{p, iVisit} = ~isnan(beta_raw{p, iVisit});
                         
                     end
                 end
@@ -2002,6 +2074,7 @@ end
                         % The column of the contrast is the linear
                         % combination currently viewing
                         ddat.oimg{iRow, iCol} = zeros(size(beta_raw{1, 1}));
+                        ddat.maskingStatus{iRow, iCol} = ~isnan(beta_raw{1, 1});
                         % Main Effects
                         for xi = 1:ddat.p
                             ddat.oimg{iRow, iCol} = ddat.oimg{iRow, iCol} + ...
@@ -2036,52 +2109,62 @@ end
         % Reset the mask?
         ddat.mask = ones(size(ddat.oimg{1,1}));
         disp('reset mask selection?')
+        
+        % Check if all of the anatomical image/dimension bookkeeping needs
+        % to be performed. This should only need to happen upon first
+        % opening the view window.
+        
+       
               
         % Get the size of each dimension.
         dim = size(ddat.oimg{1, 1});
-        ddat.xdim = dim(1); ddat.ydim = dim(2); ddat.zdim = dim(3);
-        ddat.betaVarEst = zeros(ddat.p, ddat.p, ddat.xdim, ddat.ydim, ddat.zdim);
+        if ~isfield(ddat, 'xdim')
+            ddat.xdim = dim(1); ddat.ydim = dim(2); ddat.zdim = dim(3);
+            ddat.betaVarEst = zeros(ddat.p, ddat.p, ddat.xdim, ddat.ydim, ddat.zdim);
+
+            % Make sure the anatomial image matches
+            setupAnatomical;
+
+            % Update the crosshair information
+                    % Get the crosshair origin information.
+            ddat.pixdim = double(ddat.mri_struct.hdr.dime.pixdim(2:4));
+            if any(ddat.pixdim <= 0)
+                ddat.pixdim(find(ddat.pixdim <= 0)) = 1;
+            end
+            origin = abs(ddat.mri_struct.hdr.hist.originator(1:3));
+            if isempty(origin) || all(origin == 0)		% according to SPM
+                origin = (dim+1)/2;
+            end
+            origin = round(origin);
+            if any(origin > dim)				% simulate fMRI
+                origin(find(origin > dim)) = dim(find(origin > dim));
+            end
+            if any(origin <= 0)
+                origin(find(origin <= 0)) = 1;
+            end
+            ddat.daspect = ddat.pixdim ./ min(ddat.pixdim);
+            ddat.origin = origin; ddat.sag = origin(1); ddat.cor = origin(2);
+            ddat.axi = origin(3);
+            ddat.roi_voxel = 0.1;
+
+            % Load the brain region information
+            brodmannMap = load('templates/BrodmannRegionMap.mat');
+            RegionMap = load_nii('templates/brodmann_RPI_MNI_2mm.nii');
+            % Load the correct Region Map if not in 2mm space
+            if ddat.xdim == 182 && ddat.ydim == 218 && ddat.zdim == 182
+                RegionMap = load_nii('templates/brodmann_RPI_MNI_1mm.nii');
+            elseif ddat.xdim == 61 && ddat.ydim == 73 && ddat.zdim == 61
+                RegionMap = load_nii('templates/brodmann_RPI_MNI_3mm.nii');
+            elseif ddat.xdim == 45 && ddat.ydim == 54 && ddat.zdim == 45
+                RegionMap = load_nii('templates/brodmann_RPI_MNI_4mm.nii');
+            end
+            RegionName = brodmannMap.brodmann(:, 1:2);
+            ddat.total_region_name = RegionName;
+            ddat.region_struct = RegionMap;
+        end
         
-        % Make sure the anatomial image matches
-        setupAnatomical;
-        
-        % Update the crosshair information
-                % Get the crosshair origin information.
-        ddat.pixdim = double(ddat.mri_struct.hdr.dime.pixdim(2:4));
-        if any(ddat.pixdim <= 0)
-            ddat.pixdim(find(ddat.pixdim <= 0)) = 1;
-        end
-        origin = abs(ddat.mri_struct.hdr.hist.originator(1:3));
-        if isempty(origin) || all(origin == 0)		% according to SPM
-            origin = (dim+1)/2;
-        end
-        origin = round(origin);
-        if any(origin > dim)				% simulate fMRI
-            origin(find(origin > dim)) = dim(find(origin > dim));
-        end
-        if any(origin <= 0)
-            origin(find(origin <= 0)) = 1;
-        end
-        ddat.daspect = ddat.pixdim ./ min(ddat.pixdim);
-        ddat.origin = origin; ddat.sag = origin(1); ddat.cor = origin(2);
-        ddat.axi = origin(3);
-        ddat.roi_voxel = 0.1;
-        
-        % Load the brain region information
-        brodmannMap = load('templates/BrodmannRegionMap.mat');
-        RegionMap = load_nii('templates/brodmann_RPI_MNI_2mm.nii');
-        % Load the correct Region Map if not in 2mm space
-        if ddat.xdim == 182 && ddat.ydim == 218 && ddat.zdim == 182
-            RegionMap = load_nii('templates/brodmann_RPI_MNI_1mm.nii');
-        elseif ddat.xdim == 61 && ddat.ydim == 73 && ddat.zdim == 61
-            RegionMap = load_nii('templates/brodmann_RPI_MNI_3mm.nii');
-        elseif ddat.xdim == 45 && ddat.ydim == 54 && ddat.zdim == 45
-            RegionMap = load_nii('templates/brodmann_RPI_MNI_4mm.nii');
-        end
-        RegionName = brodmannMap.brodmann(:, 1:2);
-        ddat.total_region_name = RegionName;
-        ddat.region_struct = RegionMap;
-        
+        % Set correct number of axes
+        set_number_of_brain_axes(1)
         
         % Now that oimg has been updated, need to carry out the rest of the
         % steps:
@@ -2228,7 +2311,7 @@ end
         end
         
         % Update the position information text
-        [validRow, validCol] = find(ddat.viewTracker > 0);
+        [validRow, validCol] = find(ddat.viewTracker > 0);       
         if ~isempty(validRow)
             position_information_update((findobj('Tag', ['SagittalAxes' num2str(validRow(1)) '_' num2str(validCol(1))] )))
             
@@ -2280,8 +2363,13 @@ end
         
         % Move chain on to UPDATE_BRAIN_MAPS
         [rowInd, colInd] = find(ddat.viewTracker > 0);
+        
+        if size([rowInd, colInd], 2) ~= 2
+            rowInd = rowInd(:); colInd = colInd(:);
+        end
+        
         if ~isempty(rowInd)
-            update_brain_maps('updateCombinedImage', [rowInd', colInd']);
+            update_brain_maps('updateCombinedImage', [rowInd, colInd]);
         else
             update_brain_maps;
         end
@@ -2404,27 +2492,29 @@ end
 % TODO check if this is what is already being viewed?
     function beta_typeof_view_select(hObject, callbackdata)
         
+        %disp('REMOVE THE LOADING HERE, IT SHOULD BE HAPPENING ON FN CALL')
+        
         % Effect view was selected -> load corresponding betas
         if strcmp(callbackdata.Source.String, 'Effect View')
             
             % Edit the view selection table
             setup_ViewSelectTable;
             
-            % load each beta map for each visit
-            for p = 1:ddat.p
-                for iVisit = 1:ddat.nVisit
-                    
-                    disp('this needs to call load_functional_image!!!')
-                    % File name
-                    ndata = load_nii([ddat.outdir '/' ddat.outpre...
-                        '_beta_cov' num2str(p) '_IC1_visit'...
-                        num2str(iVisit) '.nii']);
-                    
-                    ddat.img{p, iVisit} = ndata.img; ddat.oimg{p, iVisit} = ndata.img;
-                    ddat.maskingStatus{p, iVisit} = ~isnan(ddat.img{p, iVisit});
-                    
-                end
-            end
+%             % load each beta map for each visit
+%             for p = 1:ddat.p
+%                 for iVisit = 1:ddat.nVisit
+%                     
+%                     disp('this needs to call load_functional_image!!!')
+%                     % File name
+%                     ndata = load_nii([ddat.outdir '/' ddat.outpre...
+%                         '_beta_cov' num2str(p) '_IC1_visit'...
+%                         num2str(iVisit) '.nii']);
+%                     
+%                     ddat.img{p, iVisit} = ndata.img; ddat.oimg{p, iVisit} = ndata.img;
+%                     ddat.maskingStatus{p, iVisit} = ~isnan(ddat.img{p, iVisit});
+%                     
+%                 end
+%             end
             
             % Contrast View
         else
@@ -2445,12 +2535,14 @@ end
         % Update the brain display to reflect the new images
         disp('is this really the right indexing to use, I think "yes" for contrasts??')
         [rowInd, colInd] = find( ones(size(ddat.viewTracker)) > 0);
-        load_functional_images( [rowInd(:), colInd(:)] );
+        
+        if size([rowInd, colInd], 2) ~= 2
+            rowInd = rowInd(:); colInd = colInd(:);
+        end
+        
+        load_functional_images( [rowInd, colInd] );
         
     end
-
-
-
 
 
 
@@ -2589,9 +2681,21 @@ end
             if strcmp(ddat.type, 'beta')
                 ddat.LC_contrasts = callbackdata.Source.Data; 
                 ddat.valid_LC_contrast(callbackdata.Indices(1)) = 1; 
+                
+                % Update the size of saved viewTracker
+                if size(callbackdata.Source.Data, 1) > size(ddat.saved_contrast_viewTracker, 1)
+                    ddat.saved_contrast_viewTracker = [ddat.saved_contrast_viewTracker; zeros(1, ddat.nVisit)];
+                end
+                
             else
                 ddat.LC_subpops = callbackdata.Source.Data;
                 ddat.valid_LC_subpop(callbackdata.Indices(1)) = 1; 
+                
+                % Update the size of saved viewTracker
+                if size(callbackdata.Source.Data, 1) > size(ddat.saved_subpop_viewTracker, 1)
+                    ddat.saved_subpop_viewTracker = [ddat.saved_subpop_viewTracker; zeros(1, ddat.nVisit)];
+                end
+                
             end
             
             contrast_selected = strcmp(get(get(findobj('tag',...
@@ -2606,7 +2710,12 @@ end
                 setup_ViewSelectTable;
                 
                 [rowInd, colInd] = find( ones(size(ddat.viewTracker)) > 0);
-                load_functional_images( [rowInd(:), colInd(:)] );                
+                
+                if size([rowInd, colInd], 2) ~= 2
+                    rowInd = rowInd(:); colInd = colInd(:);
+                end
+                
+                load_functional_images( [rowInd, colInd] );                
             end
             
         % If the entire row is not filled out, be sure to disable contrast    
@@ -2965,7 +3074,10 @@ end
         end
         
         [rowInd, colInd] = find(ddat.viewTracker > 0);
-        update_brain_maps('updateCombinedImage', [rowInd', colInd'], 'updateColorbar', 0);
+        if size([rowInd, colInd], 2) ~= 2
+            rowInd = rowInd(:); colInd = colInd(:);
+        end
+        update_brain_maps('updateCombinedImage', [rowInd, colInd], 'updateColorbar', 0);
         
     end
 
@@ -3237,12 +3349,20 @@ end
         ddat.contrastExists = 1;
     end
 
+    %removeContrast
+    %
+    % This function removes a specified contrast. If that contrast was also
+    % a "valid" contrast (fully filled out) then it is also removed from
+    % ddat.LC_contrasts and ddat.valid_LC_contrast
     function removeContrast(hObject, callbackdata)
+         
         % Check that a contrast exists
         if ddat.contrastExists == 1
+            
             % Keep track of if a contrast should be removed (vs user enter
             % cancel)
-            removeContrast = 0;
+            %removeContrast = 0;
+            
             % open a window asking which contrast to remove
             waitingForResponse = 1;
             while waitingForResponse
@@ -3275,6 +3395,18 @@ end
                     if removeIndex > 0
                         waitingForResponse = 0;
                         
+                        % Remove this contrast from the viewTable and from
+                        % the viewTracker
+                        if ddat.valid_LC_contrast(removeIndex) == 1
+                            
+                            % Clear out variables
+                            ddat.LC_contrasts(removeIndex, :) = []; 
+                            ddat.valid_LC_contrast(removeIndex) = [];
+                            ddat.saved_contrast_viewTracker(removeIndex, :) = [];
+                            disp('remove from contrast names') %TODO
+                            
+                        end
+                        
                         olddata = findobj('Tag', 'contrastDisplay'); olddim = size(olddata.Data);
                         oldrownames = olddata.RowName;
                         newTable = cell(olddim(1) - 1, ddat.p);
@@ -3288,7 +3420,7 @@ end
                                 end
                             end
                         end
-                        
+                                                
                         % reassign the row names for the table
                         if olddim(1) == 2
                             newRowNames = ['C' num2str(1)];
@@ -3304,53 +3436,78 @@ end
                         ceditable(1:size(ddat.interactions,2)) = 1;
                         set(findobj('Tag', 'contrastDisplay'), 'ColumnEditable', ceditable);
                         
-                        % change the drop down menu
-                        newString = cell(olddim(1)-1, 1);
-                        oldstring = get(findobj('Tag', 'contrastSelect1'), 'String');
-                        for i=1:olddim(1)-1
-                            if (olddim(1) > 1)
-                                newString(i) = {oldstring{i}};
-                            else
-                                newString(i) = {oldstring(:)'};
+                        % Handle additional required changes if
+                        % contrasts were what was currently being
+                        % viewed
+                        if strcmp(get(get(findobj('tag', 'EffectTypeButtonGroup'),...
+                            'SelectedObject'), 'String'), 'Contrast View')
+                        
+                            % First need this intermediate step to delete
+                            % any axes corresponding to deleted axes
+                            ddat.viewTracker(removeIndex, :) = zeros(1, ddat.nVisit);
+                            set_number_of_brain_axes(0);
+                        
+                            % Now update viewTracker
+                            ddat.viewTracker = ddat.saved_contrast_viewTracker;
+
+                            setup_ViewSelectTable;
+
+                            [rowInd, colInd] = find( ones(size(ddat.viewTracker)) > 0);
+
+                            if size([rowInd, colInd], 2) ~= 2
+                                rowInd = rowInd(:); colInd = colInd(:);
                             end
+
+                            load_functional_images( [rowInd, colInd] );
                         end
+                        
+%                         % change the drop down menu
+%                         newString = cell(olddim(1)-1, 1);
+%                         oldstring = get(findobj('Tag', 'contrastSelect1'), 'String');
+%                         for i=1:olddim(1)-1
+%                             if (olddim(1) > 1)
+%                                 newString(i) = {oldstring{i}};
+%                             else
+%                                 newString(i) = {oldstring(:)'};
+%                             end
+%                         end
                         %newString(olddim(1) + 1) = {['C' num2str(olddim(1)+1)]};
                         
                         % Finally, update what is being viewed.
                         % Only have to do this if currently viewing a
                         % contrast
-                        if ddat.viewingContrast
-                            currentSelection = get(findobj('Tag', ['contrastSelect' num2str(1)]),'Value');
-                            % If removed something above the current
-                            % selection, do nothing.
-                            % If removed current selection, switch to
-                            % regular cov viewer and tell user
-                            if currentSelection == removeIndex
-                                % turn off viewing contrast
-                                ddat.viewingContrast = 0;
-                                % switch the the selected covariate instead
-                                updateIC;
-                                set(findobj('Tag', ['contrastSelect' num2str(1)]),'Value', 1);
-                            end
-                            % If removed above current selection, just
-                            % switch the dropdown menu to reflect this
-                            if currentSelection > removeIndex
-                                set(findobj('Tag', ['contrastSelect' num2str(1)]),'Value', currentSelection - 1);
-                                updateContrastDisp;
-                            end
-                        end
+%                         if ddat.viewingContrast
+%                             currentSelection = get(findobj('Tag', ['contrastSelect' num2str(1)]),'Value');
+%                             % If removed something above the current
+%                             % selection, do nothing.
+%                             % If removed current selection, switch to
+%                             % regular cov viewer and tell user
+%                             if currentSelection == removeIndex
+%                                 % turn off viewing contrast
+%                                 ddat.viewingContrast = 0;
+%                                 % switch the the selected covariate instead
+%                                 updateIC;
+%                                 set(findobj('Tag', ['contrastSelect' num2str(1)]),'Value', 1);
+%                             end
+%                             % If removed above current selection, just
+%                             % switch the dropdown menu to reflect this
+%                             if currentSelection > removeIndex
+%                                 set(findobj('Tag', ['contrastSelect' num2str(1)]),'Value', currentSelection - 1);
+%                                 updateContrastDisp;
+%                             end
+%                         end
                         
-                        if olddim(1) - 1 == 0
-                            newString = 'No Contrast Created';
-                            ddat.contrastExists = 0;
-                            ddat.viewingContrast = 0;
-                            set(findobj('Tag', 'contrastDisplay'), 'RowName', {});
-                        end
+%                         if olddim(1) - 1 == 0
+%                             newString = 'No Contrast Created';
+%                             ddat.contrastExists = 0;
+%                             ddat.viewingContrast = 0;
+%                             set(findobj('Tag', 'contrastDisplay'), 'RowName', {});
+%                         end
                         
-                        % Update all sub population selection viewers
-                        for iPop = 1:ddat.nCompare
-                            set(findobj('Tag', ['contrastSelect' num2str(iPop)]),'String', newString);
-                        end
+%                         % Update all sub population selection viewers
+%                         for iPop = 1:ddat.nCompare
+%                             set(findobj('Tag', ['contrastSelect' num2str(iPop)]),'String', newString);
+%                         end
                         
                         
                     end
