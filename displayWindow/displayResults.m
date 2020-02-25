@@ -662,7 +662,7 @@ end
         nMapsViewed = sum(ddat.viewTracker(:) > 0);
         switch nMapsViewed
             case 0
-                y_use = 0.2;
+                y_use = 0.5;
             case 1
                 y_use = 0.5;
             case 2
@@ -1025,9 +1025,22 @@ end
         % thsi uses viewTrackers size because this is axes
         % creation/deletion NOT placement of maps
         
+        
+        % Find the maximum number of axes that exists. This is done in case
+        % we switch from one viewer to another, might miss somethnig in
+        % cleanup stage
+        maxAxes = size(ddat.viewTracker, 1);
+        for i = maxAxes:(maxAxes+10)
+            for iVisit = 1:size(ddat.viewTracker, 2)
+                if ~isempty(findobj('tag', ['CoronalAxes' num2str(i) '_' num2str(iVisit)]))
+                    maxAxes = i;
+                end
+            end
+        end
+        
         % Loop through possibilities and remove things that shouldnt be
-        % there
-        for iPop = 1:size(ddat.viewTracker, 1)
+        % there        
+        for iPop = 1:maxAxes
             for iVisit = 1:size(ddat.viewTracker, 2)
                 
                 % Check removal criteria
