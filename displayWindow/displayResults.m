@@ -2066,11 +2066,12 @@ end
                 
                 if contrast_selected
                     
+                    % Check to make sure a contrast has been specified
+                    if size(ddat.LC_contrasts, 1) > 0
+                    
                     % Fill out each linear combination based on indices
                     nUpdate = size(indices, 1); 
                     
-                    % Check to make sure a contrast has been specified
-                    if size(ddat.LC_contrasts, 1) > 0
                     for iUpdate = 1:nUpdate
                         disp('add random intercept')
                         disp('check for interactions')
