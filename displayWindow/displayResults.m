@@ -1986,7 +1986,7 @@ end
         if updateMasking == 1
             selected_mask = get(findobj('tag', 'maskSelect'), 'string');
             selected_str = get(findobj('tag', 'maskSelect'), 'value');
-            if ~strcmp(selected_mask{selected_str}, 'No Mask')
+            if selected_str ~= 1
                 fname = fullfile(ddat.outdir, fileparts(ddat.outpre), selected_mask{selected_str});
                 mask_temp = load_nii(fname);
                 ddat.mask = (mask_temp.img > 0);
@@ -2140,19 +2140,19 @@ end
         end
         
         % Reset the mask?
-        if numel(ddat.oimg) > 0
-            ddat.mask = ones(size(ddat.oimg{1,1}));
-            dim = size(ddat.oimg{1, 1});
-        end
+%         if numel(ddat.oimg) > 0
+%             ddat.mask = ones(size(ddat.oimg{1,1}));
+%             dim = size(ddat.oimg{1, 1});
+%         end
         
         % Check if all of the anatomical image/dimension bookkeeping needs
         % to be performed. This should only need to happen upon first
         % opening the view window.
-        
-       
+
               
         % Get the size of each dimension.
         if ~isfield(ddat, 'xdim')
+            dim = size(ddat.oimg{1, 1});
             ddat.xdim = dim(1); ddat.ydim = dim(2); ddat.zdim = dim(3);
             ddat.betaVarEst = zeros(ddat.p, ddat.p, ddat.xdim, ddat.ydim, ddat.zdim);
 
@@ -2206,7 +2206,7 @@ end
         % Now that oimg has been updated, need to carry out the rest of the
         % steps:
         disp('figure out args here')
-        update_brain_data();
+        update_brain_data('updateMasking', 1);
         
     end
 
@@ -2372,12 +2372,15 @@ end
 % update_brain_data
 % Arguments
 % setZStatus '0' for raw values '1' for zscores
+% updateMasking tells this function to tell THE NEXT function to reload the
+% mask. This is required if we are switching images back and forth
     function update_brain_data(varargin)
         
         % Default values
         setICMap = -1;
         updateImg = -1;
         indices = [];
+        updateMasking = 0;
         
         % Determine which steps are required based on user input
         narg = length(varargin)/2;
@@ -2391,6 +2394,8 @@ end
             switch varargin{index}
                 case 'setICMap'
                     setICMap  = varargin{index+1};
+                case 'updateMasking'
+                    updateMasking = varargin{index+1};
                 otherwise
                     disp(['Invalid Argument: ', varargin{index}])
             end
@@ -2414,9 +2419,10 @@ end
         end
         
         if ~isempty(rowInd)
-            update_brain_maps('updateCombinedImage', [rowInd, colInd]);
+            update_brain_maps('updateCombinedImage', [rowInd, colInd],...
+                'updateMasking', updateMasking);
         else
-            update_brain_maps;
+            update_brain_maps('updateMasking', updateMasking);
         end
         
     end
