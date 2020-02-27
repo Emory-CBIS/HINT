@@ -8,7 +8,7 @@ function [ map_fields, visit_fields ] = generate_info_box_fields( viewerType, vi
 
 % Storage for map names
 map_fields = cell(size(viewTracker, 1), size(viewTracker, 2));
-visit_fields = cell(size(viewTracker, 1), size(viewTracker, 2));
+visit_fields = cell(size(viewTracker, 1), size(viewTracker, 2)); 
 
 switch viewerType
     case 'grp'
@@ -19,7 +19,27 @@ switch viewerType
             visit_fields{1, iVisit} = ['Visit ' num2str(iVisit)];
         end
     case 'beta'
-        %% Case 2: Beta Viewer
+        %% Case 2: Beta Viewer - Depends on whether contrast is being viewed
+        contrast_selected = strcmp(get(get(findobj('tag',...
+                'EffectTypeButtonGroup'), 'SelectedObject'),...
+                'String'), 'Contrast View');
+        display_names = get(findobj('tag', 'ViewSelectTable'), 'ColumnName');
+        if contrast_selected == 1
+            for iContrast = 1:size(viewTracker, 1)
+                for iVisit = 1:size(viewTracker, 2)
+                    map_fields{iContrast, iVisit} = ['Contrast: ' display_names{iContrast}];
+                    visit_fields{iContrast, iVisit} = ['Visit ' num2str(iVisit)];
+                end
+            end
+        else
+            for iCovariate = 1:size(viewTracker, 1)
+                for iVisit = 1:size(viewTracker, 2)
+                    map_fields{iCovariate, iVisit} = ['Effect of: '  display_names{iCovariate}];
+                    visit_fields{iCovariate, iVisit} = ['Visit ' num2str(iVisit)];
+                end
+            end
+        end
+        
     case 'subpop'
         %% Case 3: Sub-population Viewer
     case 'subj'
