@@ -1743,7 +1743,7 @@ end
        
         
         %% Using the new function in INITIAL DISP
-        set_number_of_brain_axes(1)
+        %set_number_of_brain_axes(1)
         %update_brain_maps('updateCombinedImage', [1, 1], 'updateMasking', 1)
         
         updateColorbar;
@@ -1991,7 +1991,10 @@ end
                 mask_temp = load_nii(fname);
                 ddat.mask = (mask_temp.img > 0);
             else
-                ddat.mask = ones(size(ddat.img{1,1}));
+                % check that something is being viewed
+                if sum(ddat.viewTracker(:)) > 0
+                    ddat.mask = ones(size(ddat.oimg{1,1}));
+                end
             end
             
             % Force image update since new mask has been loaded
