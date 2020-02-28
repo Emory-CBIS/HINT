@@ -663,6 +663,21 @@ end
             set( findobj('tag', 'subPopSelect1'), 'visible', 'off');
         end
         
+        if strcmp(ddat.type, 'icsel')
+            set( findobj('Tag', 'thresholdPanel'), 'Position',[.34, 0.01 .31 .39]);
+            set( findobj('Tag', 'icPanel'), 'Position',[.34, 0.42 .31 .57]);
+            set( findobj('Tag', 'locPanel'), 'Position',[.01, 0.01 .31 .98]);
+            %set( findobj('Tag', 'ViewSelectionPanel'), 'Position',[.67, 0.51 .31 .48]);
+            %set( findobj('Tag', 'SubpopulationControl'), 'Position',[.67, 0.01 .31 .48]);
+            set( findobj('tag', 'EffectTypeButtonGroup'), 'visible', 'off' );
+            set( findobj('tag', 'subPopSelect1'), 'visible', 'off');
+            set(findobj('Tag', 'icSelectionPanel'), 'Visible', 'On');
+            set(findobj('Tag', 'icSelectionPanel'), 'Position', [0.67 0.11 0.31 0.88]);
+            % Close Button
+            set(findobj('Tag', 'icSelectCloseButton'), 'Visible', 'On');
+            set(findobj('Tag', 'icSelectCloseButton'), 'Position', [0.67 0.01 0.31 0.05]);
+        end
+        
         % Third, based on the number of brain maps being viewed, determine
         % the relative amount to real estate to give the brain maps over
         % the controls panel.
@@ -1678,14 +1693,16 @@ end
             ddat.maskingStatus{1, 1} = ~isnan(ddat.img{1, 1});
             
         elseif strcmp(ddat.type, 'icsel')
-            ndata = load_nii([ddat.outdir '/_iniIC_1.nii']);
-            % need to turn the 0's into NaN values
-            zeroImg = ndata.img; zeroImg(find(ndata.img == 0)) = nan;
-            ddat.img{1} = zeroImg; ddat.oimg{1} = zeroImg;
+            % TODO check 4 lines below for removal
             set(findobj('Tag', 'icSelectionPanel'), 'Visible', 'On');
             set(findobj('Tag', 'keepIC'), 'Visible', 'On');
             set(findobj('Tag', 'viewerMenu'), 'Visible', 'Off');
             set(findobj('Tag', 'icSelectCloseButton'), 'Visible', 'On');
+            % Place the boxes in the correct locations
+            set( findobj('Tag', 'thresholdPanel'), 'Position',[.35, 0.01 .32 .19]);
+            set( findobj('Tag', 'icPanel'), 'Position',[.35, 0.21 .32 .25]);
+            set( findobj('Tag', 'locPanel'), 'Position',[.01, 0.01 .32 .45]);
+            set( findobj('Tag', 'ViewSelectionPanel'), 'Visible', 'off');
             setupICMenu;
             
             % setup display window for the reduced dimension estimates
@@ -2112,6 +2129,13 @@ end
                     ddat.maskingStatus{1, iVisit} = ~isnan(ddat.oimg{1, iVisit});
                     
                 end
+                
+            % IC Selection Window
+            case 'icsel'
+                                    
+                newData = load_nii([ddat.outdir '/_iniIC_' num2str(sel_IC) '.nii']);
+                ddat.oimg{1, 1} = newData.img;
+                ddat.maskingStatus{1, 1} = ~isnan(ddat.oimg{1, 1});
                
             case 'beta'
                                 
@@ -3551,7 +3575,7 @@ end
             % update "viewing contrast" as well
             % check that whatever is on screen is valid BE CAREFUL HERE!!
         else
-            warnbox = warndlg('No contrasts have been specified')
+            warnbox = warndlg('No contrasts have been specified');
         end
     end
 
@@ -3672,7 +3696,7 @@ end
             % update "viewing contrast" as well
             % check that whatever is on screen is valid BE CAREFUL HERE!!
         else
-            warnbox = warndlg('No Sub-Populations have been specified')
+            warnbox = warndlg('No Sub-Populations have been specified');
         end
     end
 
