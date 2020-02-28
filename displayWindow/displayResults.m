@@ -425,6 +425,7 @@ end
             'Visible', 'Off', ...
             'BackgroundColor',[224/256,224/256,224/256], ...
             'Position',[.69, 0.01 .30 .45]);
+        % TODO delete
         subPopSelect = uicontrol('Parent', subPopPanel,...
             'Style', 'popupmenu', ...
             'Units', 'Normalized', ...
@@ -438,7 +439,7 @@ end
             'CellEditCallback', @update_linear_combination); %#ok<NASGU>
         newSubPop = uicontrol('Parent', subPopPanel, ...
             'Units', 'Normalized', ...
-            'String', 'Add New Sub-Population', ...
+            'String', 'Add Sub-Population', ...
             'Position', [0.15, 0.15, 0.7, 0.15], ...
             'Tag', 'newSubPop', 'Callback', @addNewSubPop); %#ok<NASGU>
         comparesubPop = uicontrol('Parent', subPopPanel, ...
@@ -649,8 +650,17 @@ end
             set( findobj('Tag', 'locPanel'), 'Position',[.01, 0.01 .31 .98]);
             set( findobj('Tag', 'ViewSelectionPanel'), 'Position',[.67, 0.51 .31 .48]);
             set( findobj('Tag', 'covariateContrastControl'), 'Position',[.67, 0.01 .31 .48]);
-            
             set( findobj('tag', 'EffectTypeButtonGroup'), 'visible', 'on' );
+        end
+        
+        if strcmp(ddat.type, 'subpop')
+            set( findobj('Tag', 'thresholdPanel'), 'Position',[.34, 0.01 .31 .39]);
+            set( findobj('Tag', 'icPanel'), 'Position',[.34, 0.42 .31 .57]);
+            set( findobj('Tag', 'locPanel'), 'Position',[.01, 0.01 .31 .98]);
+            set( findobj('Tag', 'ViewSelectionPanel'), 'Position',[.67, 0.51 .31 .48]);
+            set( findobj('Tag', 'SubpopulationControl'), 'Position',[.67, 0.01 .31 .48]);
+            set( findobj('tag', 'EffectTypeButtonGroup'), 'visible', 'off' );
+            set( findobj('tag', 'subPopSelect1'), 'visible', 'off');
         end
         
         % Third, based on the number of brain maps being viewed, determine
@@ -790,6 +800,52 @@ end
             for k=1:ddat.nVisit; visit_names{k} = ['Visit ' num2str(k)]; end
             set(findobj('tag', 'ViewSelectTable'), 'RowName', visit_names');
             set(findobj('tag', 'ViewSelectTable'), 'ColumnName', {'Viewing'});
+        end
+        
+        if strcmp(ddat.type, 'subpop')
+            
+            subpops = ddat.LC_subpops;
+            subpop_names = get(findobj('tag', 'subPopDisplay'), 'RowName');
+            n_subpop = size(subpops, 1);
+
+            disp('create LC_subpop_names and load from it!')
+
+            % Load saved viewTracker information
+            ddat.viewTracker = ddat.saved_subpop_viewTracker;
+
+            % Default to showing contrast 1, visit 1
+            if all(ddat.viewTracker(:) == 0)
+                %ddat.viewTracker(1, 1) = 1;
+            end
+
+            % Fill out the selection table
+            table_data = cell(ddat.nVisit, 0);
+            for k=1:ddat.nVisit
+                for p=1:n_subpop
+                    if ddat.viewTracker(p, k) > 0
+                        table_data{k, p} = 'yes';
+                    else
+                        table_data{k, p} = 'no';
+                    end
+                end
+            end
+            set(findobj('tag', 'ViewSelectTable'), 'Data', table_data);
+            set(findobj('tag', 'ViewSelectTable'), 'ColumnName', {});
+
+
+            % Set the visit names (rows)
+            for k=1:ddat.nVisit; visit_names{k} = ['Visit ' num2str(k)]; end
+            set(findobj('tag', 'ViewSelectTable'), 'RowName', visit_names');
+
+            if prod(size(subpop_names, 1)) == 1
+                subpop_names = {subpop_names};
+            end
+
+            % set the column names (contrasts)
+            if n_subpop > 0
+                set(findobj('tag', 'ViewSelectTable'), 'ColumnName', subpop_names');
+            end
+            
         end
         
         % If Effect maps, then box is nVisit x P (or P+1)
@@ -1548,9 +1604,9 @@ end
             set(findobj('Tag', 'SubpopulationControl'), 'Visible', 'On');
             set(findobj('Tag', 'covariateContrastControl'), 'Visible', 'Off');
             % Place the boxes in the correct locations
-            set( findobj('Tag', 'thresholdPanel'), 'Position',[.35, 0.01 .32 .19]);
-            set( findobj('Tag', 'icPanel'), 'Position',[.35, 0.21 .32 .25]);
-            set( findobj('Tag', 'locPanel'), 'Position',[.01, 0.01 .32 .45]);
+            %set( findobj('Tag', 'thresholdPanel'), 'Position',[.35, 0.01 .32 .19]);
+            %5set( findobj('Tag', 'icPanel'), 'Position',[.35, 0.21 .32 .25]);
+            %set( findobj('Tag', 'locPanel'), 'Position',[.01, 0.01 .32 .45]);
             set( findobj('Tag', 'selectSubject'), 'Visible', 'Off');
             % Set up the sub-population box
             if ddat.subPopExists == 0
@@ -1560,9 +1616,13 @@ end
                 set(findobj('Tag', 'subPopDisplay'), 'ColumnEditable', true);
                 %ddat.subPopExists = 1;
             end
+            % Place the boxes in the correct locations
+            set( findobj('Tag', 'thresholdPanel'), 'Position',[.35, 0.01 .32 .19]);
+            set( findobj('Tag', 'icPanel'), 'Position',[.35, 0.21 .32 .25]);
+            set( findobj('Tag', 'locPanel'), 'Position',[.01, 0.01 .32 .45]);
             % No data to display at first
-            tempImg = load_nii([ddat.outdir '/' ddat.outpre '_S0_' 'IC_1.nii']);
-            ddat.img{1} = zeros(size(tempImg.img)); ddat.oimg{1} = zeros(size(tempImg.img));
+            %tempImg = load_nii([ddat.outdir '/' ddat.outpre '_S0_' 'IC_1.nii']);
+            %ddat.img{1} = zeros(size(tempImg.img)); ddat.oimg{1} = zeros(size(tempImg.img));
             
         elseif strcmp(ddat.type, 'beta')
             
@@ -1588,23 +1648,6 @@ end
                 ddat.contrastExists = 0;
             end
             
-            % load each beta map for each visit
-%             for p = 1:ddat.p
-%                 for iVisit = 1:ddat.nVisit
-%                     
-%                     % File name
-%                     ndata = load_nii([ddat.outdir '/' ddat.outpre...
-%                         '_beta_cov' num2str(p) '_IC1_visit'...
-%                         num2str(iVisit) '.nii']);
-%                     
-%                     ddat.img{p, iVisit} = ndata.img; ddat.oimg{p, iVisit} = ndata.img;
-%                     ddat.maskingStatus{p, iVisit} = ~isnan(ddat.img{p, iVisit});
-%                 end
-%             end
-            
-            % load the data
-            %ndata = load_nii([ddat.outdir '/' ddat.outpre '_beta_cov1_IC1_visit1.nii']);
-            %ddat.img{1} = ndata.img; ddat.oimg{1} = ndata.img;
             set(findobj('Tag', 'selectCovariate'), 'Visible', 'On');
             setupCovMenu;
             
@@ -1783,7 +1826,7 @@ end
             %editThreshold;
         end
         
-        updateCrosshairValue;
+        %updateCrosshairValue;
         %redisplay;
         updateInfoText;
     end
@@ -1992,8 +2035,9 @@ end
                 ddat.mask = (mask_temp.img > 0);
             else
                 % check that something is being viewed
-                if sum(ddat.viewTracker(:)) > 0
-                    ddat.mask = ones(size(ddat.oimg{1,1}));
+                [rc, cc] = find(cellfun(@isempty, ddat.oimg) == 0)
+                if length(rc) > 0
+                    ddat.mask = ones(size(ddat.oimg{rc(1),cc(1)}));
                 end
             end
             
@@ -2132,7 +2176,53 @@ end
                 end             
                 
             case 'subpop'
-                updateColorbarFlag = varargin{index+1};
+                
+                % Load each of the betas and the S_0 maps
+                beta_raw = {};
+                for p = 1:ddat.p
+                    for iVisit = 1:ddat.nVisit
+                        
+                        % File name
+                        ndata = load_nii([ddat.outdir '/' ddat.outpre...
+                            '_beta_cov' num2str(p) '_IC' num2str(sel_IC) '_visit'...
+                            num2str(iVisit) '.nii']);
+
+                        beta_raw{p, iVisit} = ndata.img;                     
+                    end
+                end
+                
+                % File name for S0 Map
+                newFile = [ddat.outdir '/' ddat.outpre '_S0_IC_'...
+                    num2str(sel_IC) '.nii'];
+                newData = load_nii(newFile);
+                S0_maps = newData.img;
+                
+                % Check to make sure a subpopulation has been specified
+                if size(ddat.LC_subpops, 1) > 0
+
+                % Fill out each linear combination based on indices
+                nUpdate = size(indices, 1); 
+
+                for iUpdate = 1:nUpdate
+                    disp('add random intercept')
+                    disp('check for interactions')
+
+                    % Cell to update
+                    iRow = indices(iUpdate, 1); iCol = indices(iUpdate, 2);
+
+                    % The column of the contrast is the linear
+                    % combination currently viewing
+                    ddat.oimg{iRow, iCol} = S0_maps;
+                    ddat.maskingStatus{iRow, iCol} = ~isnan(S0_maps);
+                    
+                    % Main Effects
+                    for xi = 1:ddat.p
+                        ddat.oimg{iRow, iCol} = ddat.oimg{iRow, iCol} + ...
+                            str2double(ddat.LC_subpops{iRow, xi}) .* beta_raw{xi, iCol};
+                    end
+                end
+                end
+                
             case 'subject'
                 updateMasking = varargin{index+1};
             case 'iniguess'
@@ -2142,11 +2232,14 @@ end
                 
         end
         
-        % Reset the mask?
-%         if numel(ddat.oimg) > 0
-%             ddat.mask = ones(size(ddat.oimg{1,1}));
-%             dim = size(ddat.oimg{1, 1});
-%         end
+        % TODO Find a better way to do this. In most cases oimg will be filled
+        % out here. Exception is opening subpop viewer. Then we need
+        % something for the function to cehck for dimensions -> use s0 map
+        if strcmp(ddat.type, 'subpop')
+            refimg = S0_maps;
+        else
+            refimg = ddat.oimg{1, 1};
+        end
         
         % Check if all of the anatomical image/dimension bookkeeping needs
         % to be performed. This should only need to happen upon first
@@ -2155,7 +2248,7 @@ end
               
         % Get the size of each dimension.
         if ~isfield(ddat, 'xdim')
-            dim = size(ddat.oimg{1, 1});
+            dim = size(refimg);
             ddat.xdim = dim(1); ddat.ydim = dim(2); ddat.zdim = dim(3);
             ddat.betaVarEst = zeros(ddat.p, ddat.p, ddat.xdim, ddat.ydim, ddat.zdim);
 
@@ -3033,6 +3126,10 @@ end
                                 ddat.img{subPop} = ddat.oimg{subPop} ./...
                                     squeeze(seContrast);
                             end
+                        
+                        % Update for sub-population level
+                        %elseif
+                            
                         
                         % Z-update for population or subject level
                         else
