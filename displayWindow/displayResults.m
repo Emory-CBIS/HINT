@@ -442,11 +442,11 @@ end
             'String', 'Add Sub-Population', ...
             'Position', [0.15, 0.15, 0.7, 0.15], ...
             'Tag', 'newSubPop', 'Callback', @addNewSubPop); %#ok<NASGU>
-        comparesubPop = uicontrol('Parent', subPopPanel, ...
+        deleteSubPopButton = uicontrol('Parent', subPopPanel, ...
             'Units', 'Normalized', ...
-            'String', 'Compare Sub-Populations', ...
+            'String', 'Delete Sub-Population', ...
             'Position', [0.15, 0.01, 0.7, 0.15], ...
-            'Tag', 'compareSubPops', 'Callback', @compareSubPopulations); %#ok<NASGU>
+            'Tag', 'compareSubPops', 'Callback', @removeSubPop); %#ok<NASGU>
         
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         % Beta Contrast Information
@@ -3254,72 +3254,6 @@ end
 
 
 
-% Function to allow user to select sub populations to compare. Opens a
-% new window.
-    function compareSubPopulations(hObject, callbackdata)
-        newfig = figure('Units', 'normalized', ...,...
-            'position', [0.3 0.3 0.3 0.3],...
-            'MenuBar', 'none',...
-            'Tag','pickSubPops',...
-            'NumberTitle','off',...
-            'Name','Sub-Population Selection',...
-            'Resize','on',...
-            'Visible','on');%,...
-        subPopSelectDisplay = uitable('Parent', newfig, ...
-            'Units', 'Normalized', ...
-            'Position', [0.55, 0.3, 0.35, 0.5], ...
-            'Tag', 'subPopSelectDisplay'); %#ok<NASGU>
-        set(findobj('Tag', 'subPopSelectDisplay'), 'Data', get(findobj('Tag', 'subPopDisplay'), 'Data'));
-        set(findobj('Tag', 'subPopSelectDisplay'), 'RowName', get(findobj('Tag', 'subPopDisplay'), 'RowName'));
-        set(findobj('Tag', 'subPopSelectDisplay'), 'ColumnName', get(findobj('Tag', 'subPopDisplay'), 'ColumnName'));
-        subPopListBox = uicontrol('Style', 'listbox',...
-            'Parent', newfig, ...
-            'Units', 'Normalized', ...
-            'Position', [0.1, 0.3, 0.35, 0.5],...
-            'Tag', 'subPopListBox', 'Callback', @subPopSelectCall); %#ok<NASGU>
-        % set the list box to have the correct number of sub populations
-        set(findobj('Tag', 'subPopListBox'), 'String', get(findobj('Tag', 'subPopDisplay'), 'RowName') );
-        set(findobj('Tag', 'subPopListBox'), 'Max', 3);
-        numSelectedText = uicontrol('Parent', newfig, ...
-            'Style', 'Text', 'String', 'Number of selected sub-populations: ', ...
-            'Units', 'Normalized', ...
-            'Position', [0.10, 0.18, 0.4, 0.1]); %#ok<NASGU>
-        numSelected = uicontrol('Parent', newfig, ...
-            'Style', 'Text', ...
-            'Units', 'Normalized', ...
-            'Position', [0.50, 0.225, 0.05, 0.05], ...
-            'Tag', 'numSelected', 'BackgroundColor', 'white'); %#ok<NASGU>
-        runSubjCompare = uicontrol('Parent', newfig, ...
-            'Units', 'Normalized', ...
-            'String', 'Compare Selected Sub-Populations', ...
-            'Position', [0.3, 0.01, 0.4, 0.13], ...
-            'Tag', 'newSubPop', 'Callback', @launchCompareWindow); %#ok<NASGU>
-        movegui(newfig, 'center')
-    end
-
-% Function to launch a comparison window
-    function launchCompareWindow(hObject, callbackdata)
-        selectedSubPops = get(findobj('Tag', 'subPopListBox'), 'Value');
-        %close;
-        set(0,'CurrentFigure',hs.fig);
-        [~, ddat.nCompare] = size(selectedSubPops);
-        set(findobj('Tag', 'SubpopulationControl'), 'Visible', 'On');
-        set(findobj('Tag', 'SubpopulationControl'), 'BackgroundColor', 'White');
-        set(findobj('Tag', 'SubpopulationControl'), 'Position', [0.72, 0.70, 0.27, 0.29]);
-        set(findobj('Tag', 'subPopDisplay'), 'ColumnEditable', false);
-        set(findobj('Tag', 'newSubPop'), 'Visible', 'Off');
-        set(findobj('Tag', 'subPopSelect1'), 'Visible', 'Off');
-        set(findobj('Tag', 'compareSubPops'), 'Visible', 'Off');
-        expandSubPopulationPanel(selectedSubPops);
-        delete(hObject.Parent);
-    end
-
-% Counts the number of sub-populations selected.
-    function subPopSelectCall(hObject, callbackdata)
-        selectedPops = hObject.Value;
-        [nothing, numPop] = size(selectedPops);
-        set(findobj('Tag', 'numSelected'), 'String', num2str(numPop));
-    end
 
 % Function for the IC selection process. Creates the menu with all of
 % the ICs and whether or not they have been selected for the EM
@@ -3609,56 +3543,7 @@ end
                             end
 
                             load_functional_images( [rowInd, colInd] );
-                        end
-                        
-%                         % change the drop down menu
-%                         newString = cell(olddim(1)-1, 1);
-%                         oldstring = get(findobj('Tag', 'contrastSelect1'), 'String');
-%                         for i=1:olddim(1)-1
-%                             if (olddim(1) > 1)
-%                                 newString(i) = {oldstring{i}};
-%                             else
-%                                 newString(i) = {oldstring(:)'};
-%                             end
-%                         end
-                        %newString(olddim(1) + 1) = {['C' num2str(olddim(1)+1)]};
-                        
-                        % Finally, update what is being viewed.
-                        % Only have to do this if currently viewing a
-                        % contrast
-%                         if ddat.viewingContrast
-%                             currentSelection = get(findobj('Tag', ['contrastSelect' num2str(1)]),'Value');
-%                             % If removed something above the current
-%                             % selection, do nothing.
-%                             % If removed current selection, switch to
-%                             % regular cov viewer and tell user
-%                             if currentSelection == removeIndex
-%                                 % turn off viewing contrast
-%                                 ddat.viewingContrast = 0;
-%                                 % switch the the selected covariate instead
-%                                 updateIC;
-%                                 set(findobj('Tag', ['contrastSelect' num2str(1)]),'Value', 1);
-%                             end
-%                             % If removed above current selection, just
-%                             % switch the dropdown menu to reflect this
-%                             if currentSelection > removeIndex
-%                                 set(findobj('Tag', ['contrastSelect' num2str(1)]),'Value', currentSelection - 1);
-%                                 updateContrastDisp;
-%                             end
-%                         end
-                        
-%                         if olddim(1) - 1 == 0
-%                             newString = 'No Contrast Created';
-%                             ddat.contrastExists = 0;
-%                             ddat.viewingContrast = 0;
-%                             set(findobj('Tag', 'contrastDisplay'), 'RowName', {});
-%                         end
-                        
-%                         % Update all sub population selection viewers
-%                         for iPop = 1:ddat.nCompare
-%                             set(findobj('Tag', ['contrastSelect' num2str(iPop)]),'String', newString);
-%                         end
-                        
+                        end               
                         
                     end
                 end
@@ -3667,6 +3552,127 @@ end
             % check that whatever is on screen is valid BE CAREFUL HERE!!
         else
             warnbox = warndlg('No contrasts have been specified')
+        end
+    end
+
+%removeSubPop
+    %
+    % This function removes a specified sub-population. If that subpopualtion was also
+    % a "valid" sub-population (fully filled out) then it is also removed from
+    % ddat.LC_subpops and ddat.valid_LC_subpop
+    function removeSubPop(hObject, callbackdata)
+                 
+        % Check that a subpopulation exists
+        if numel(get(findobj('Tag', 'subPopDisplay'), 'Data')) > 0
+            
+            % Keep track of if a contrast should be removed (vs user enter
+            % cancel)
+            %removeContrast = 0;
+            
+            % open a window asking which contrast to remove
+            waitingForResponse = 1;
+            while waitingForResponse
+                answer = inputdlg('Please enter sub-population name to remove (SubPop1, SubPop2,...)')
+                if isempty(answer)
+                    waitingForResponse = 0;
+                    % if user input something, check that it is valid
+                else
+                    validSubpops = get(findobj('Tag', 'subPopDisplay'), 'RowName');
+                    matchedIndex = strfind(validSubpops, answer);
+                    % Reduce to just first match to guard against SubPop1 and
+                    % SubPop11
+                    removeIndex = 0;
+                    for iSubPop = 1:length(validSubpops)
+                        % handle more than one contrast
+                        if iscell(validSubpops)
+                            if matchedIndex{iSubPop} == 1
+                                removeIndex = iSubPop;
+                                break; % break out of the loop
+                            end
+                            % handle only one contrast
+                        else
+                            if matchedIndex == 1
+                                removeIndex = iSubPop;
+                                break; % break out of the loop
+                            end
+                        end
+                    end
+                    % If a valid subpopulation was entered, then proceed
+                    if removeIndex > 0
+                        waitingForResponse = 0;
+                        
+                        % Remove this contrast from the viewTable and from
+                        % the viewTracker
+                        if ddat.valid_LC_subpop(removeIndex) == 1
+                            
+                            % Clear out variables
+                            ddat.LC_subpops(removeIndex, :) = []; 
+                            ddat.valid_LC_subpop(removeIndex) = [];
+                            ddat.saved_subpop_viewTracker(removeIndex, :) = [];
+                            disp('remove from subpop names') %TODO
+                            
+                        end
+                        
+                        olddata = findobj('Tag', 'subPopDisplay'); olddim = size(olddata.Data);
+                        oldrownames = olddata.RowName;
+                        newTable = cell(olddim(1) - 1, ddat.p);
+                        % Fill in all the old information
+                        for column=1:olddim(2)
+                            incRow = 0;
+                            for row=1:olddim(1)
+                                if row ~= removeIndex
+                                    incRow = incRow + 1;
+                                    newTable(incRow, column) = olddata.Data(row,column);
+                                end
+                            end
+                        end
+                                                
+                        % reassign the row names for the table
+                        disp('make this based on user specified names')
+                        if olddim(1) == 2
+                            newRowNames = ['SubPop' num2str(1)];
+                        else
+                            newRowNames = oldrownames(1:olddim(1) - 1);
+                            newRowNames = cellstr(newRowNames);
+                        end
+                        
+                        set(findobj('Tag', 'subPopDisplay'), 'Data', newTable);
+                        set(findobj('Tag', 'subPopDisplay'), 'RowName', newRowNames);
+                        % Make it so that only the main effects can be edited
+                        ceditable = false(1, ddat.p);
+                        ceditable(1:size(ddat.interactions,2)) = 1;
+                        set(findobj('Tag', 'subPopDisplay'), 'ColumnEditable', ceditable);
+                        
+                        % Handle additional required changes if
+                        % subpop removed was currently being
+                        % viewed
+                        
+                        
+                        % First need this intermediate step to delete
+                        % any axes corresponding to deleted axes
+                        ddat.viewTracker(removeIndex, :) = zeros(1, ddat.nVisit);
+                        set_number_of_brain_axes(0);
+
+                        % Now update viewTracker
+                        ddat.viewTracker = ddat.saved_subpop_viewTracker;
+
+                        setup_ViewSelectTable;
+
+                        [rowInd, colInd] = find( ones(size(ddat.viewTracker)) > 0);
+
+                        if size([rowInd, colInd], 2) ~= 2
+                            rowInd = rowInd(:); colInd = colInd(:);
+                        end
+
+                        load_functional_images( [rowInd, colInd] );
+                        
+                    end
+                end
+            end
+            % update "viewing contrast" as well
+            % check that whatever is on screen is valid BE CAREFUL HERE!!
+        else
+            warnbox = warndlg('No Sub-Populations have been specified')
         end
     end
 
