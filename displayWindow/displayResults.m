@@ -2203,9 +2203,9 @@ end
                 
                 % Load each of the betas and the S_0 maps
                 beta_raw = {};
+                visit_effect = {};
                 for p = 1:ddat.p
                     for iVisit = 1:ddat.nVisit
-                        
                         % File name
                         ndata = load_nii([ddat.outdir '/' ddat.outpre...
                             '_beta_cov' num2str(p) '_IC' num2str(sel_IC) '_visit'...
@@ -2213,6 +2213,14 @@ end
 
                         beta_raw{p, iVisit} = ndata.img;                     
                     end
+                end
+                
+                % load the visit effects
+                for iVisit = 1:ddat.nVisit
+                    visit_effect_fname = [ddat.outdir '/' ddat.outpre '_visit_effect' '_IC'...
+                        num2str(sel_IC) '_visit' num2str(iVisit) '.nii'];
+                    ndata = load_nii(visit_effect_fname);
+                    visit_effect{iVisit} = ndata.img;
                 end
                 
                 % File name for S0 Map
@@ -2228,7 +2236,6 @@ end
                 nUpdate = size(indices, 1); 
 
                 for iUpdate = 1:nUpdate
-                    disp('add random intercept')
                     disp('check for interactions')
 
                     % Cell to update
@@ -2236,7 +2243,7 @@ end
 
                     % The column of the contrast is the linear
                     % combination currently viewing
-                    ddat.oimg{iRow, iCol} = S0_maps;
+                    ddat.oimg{iRow, iCol} = S0_maps + visit_effect{iCol};
                     ddat.maskingStatus{iRow, iCol} = ~isnan(S0_maps);
                     
                     % Main Effects

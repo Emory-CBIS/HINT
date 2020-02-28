@@ -55,6 +55,14 @@ for i=1:data.qstar
                 nii = make_nii(nmat);
                 save_nii(nii,strcat(path,bfilename));
             end
+            % Save the random intercept for this visit
+            ri_filename = [prefix '_visit_effect' '_IC'...
+                    num2str(i) '_visit' num2str(iVisit) '.nii'];
+            % Save the map
+            nmat = nan(vxl);
+            nmat(locs) = data.beta_est(i, 1, :, iVisit);
+            nii = make_nii(nmat);
+            save_nii(nii,strcat(path,ri_filename));
         end
     end
     
