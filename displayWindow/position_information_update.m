@@ -19,7 +19,7 @@ function ddat = position_information_update(command, varargin)
 % Modified by Joshua Lukemire to extend to multiple populations
 
 global ddat;
-disp(get(gcf,'CurrentAxes'))
+%disp(get(gcf,'CurrentAxes'))
 cp = get(get(gcf,'CurrentAxes'),'CurrentPoint');
 
 % If doing this programatically, have to change the point here

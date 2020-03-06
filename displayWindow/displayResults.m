@@ -821,7 +821,7 @@ end
             
             subpops = ddat.LC_subpops;
             subpop_names = get(findobj('tag', 'subPopDisplay'), 'RowName');
-            n_subpop = size(subpops, 1);
+            n_subpop = sum(ddat.valid_LC_subpop);
 
             disp('create LC_subpop_names and load from it!')
 
@@ -836,11 +836,17 @@ end
             % Fill out the selection table
             table_data = cell(ddat.nVisit, 0);
             for k=1:ddat.nVisit
-                for p=1:n_subpop
-                    if ddat.viewTracker(p, k) > 0
-                        table_data{k, p} = 'yes';
+                for p=1:length(ddat.valid_LC_subpop)
+                    if ddat.valid_LC_subpop(p) == 1
+                        % enable clicking on this cell and set yes/no
+                        if ddat.viewTracker(p, k) > 0
+                            table_data{k, p} = 'yes';
+                        else
+                            table_data{k, p} = 'no';
+                        end
                     else
-                        table_data{k, p} = 'no';
+                        % disable clicking on this cell
+                        
                     end
                 end
             end
@@ -907,7 +913,7 @@ end
                 % been created. This will be the number of columns
                 contrasts = ddat.LC_contrasts;
                 contrast_names = get(findobj('tag', 'contrastDisplay'), 'RowName');
-                n_contrast = size(contrasts, 1);
+                n_contrast = sum(ddat.valid_LC_contrast);
                 
                 disp('create LC_contrast_names and load from it!')
                 
@@ -922,11 +928,13 @@ end
                 % Fill out the selection table
                 table_data = cell(ddat.nVisit, 0);
                 for k=1:ddat.nVisit
-                    for p=1:n_contrast
-                        if ddat.viewTracker(p, k) > 0
-                            table_data{k, p} = 'yes';
-                        else
-                            table_data{k, p} = 'no';
+                    for p=1:length(ddat.valid_LC_contrast)
+                        if ddat.valid_LC_contrast(p) == 1
+                            if ddat.viewTracker(p, k) > 0
+                                table_data{k, p} = 'yes';
+                            else
+                                table_data{k, p} = 'no';
+                            end
                         end
                     end
                 end
@@ -2158,6 +2166,10 @@ end
                 contrast_selected = strcmp(get(get(findobj('tag',...
                 'EffectTypeButtonGroup'), 'SelectedObject'),...
                 'String'), 'Contrast View');
+            
+                % This is just here for dimension purposes later
+                refimg = zeros(size(beta_raw{1, 1}));
+                    
                 
                 if contrast_selected
                     
@@ -2264,11 +2276,11 @@ end
         end
         
         % TODO Find a better way to do this. In most cases oimg will be filled
-        % out here. Exception is opening subpop viewer. Then we need
+        % out here. Exception is opening subpop viewer or contrast viewer. Then we need
         % something for the function to cehck for dimensions -> use s0 map
         if strcmp(ddat.type, 'subpop')
             refimg = S0_maps;
-        else
+        elseif ~strcmp(ddat.type, 'beta')
             refimg = ddat.oimg{1, 1};
         end
         
@@ -2860,8 +2872,9 @@ end
                 ddat.valid_LC_contrast(callbackdata.Indices(1)) = 1; 
                 
                 % Update the size of saved viewTracker
-                if size(callbackdata.Source.Data, 1) > size(ddat.saved_contrast_viewTracker, 1)
-                    ddat.saved_contrast_viewTracker = [ddat.saved_contrast_viewTracker; zeros(1, ddat.nVisit)];
+                size_diff = size(callbackdata.Source.Data, 1) - size(ddat.saved_contrast_viewTracker, 1);
+                if size_diff > 0
+                    ddat.saved_contrast_viewTracker = [ddat.saved_contrast_viewTracker; zeros(size_diff, ddat.nVisit)];
                 end
                 
             else
@@ -2869,8 +2882,9 @@ end
                 ddat.valid_LC_subpop(callbackdata.Indices(1)) = 1; 
                 
                 % Update the size of saved viewTracker
-                if size(callbackdata.Source.Data, 1) > size(ddat.saved_subpop_viewTracker, 1)
-                    ddat.saved_subpop_viewTracker = [ddat.saved_subpop_viewTracker; zeros(1, ddat.nVisit)];
+                size_diff = size(callbackdata.Source.Data, 1) - size(ddat.saved_subpop_viewTracker, 1);
+                if size_diff > 0
+                    ddat.saved_subpop_viewTracker = [ddat.saved_subpop_viewTracker; zeros(size_diff, ddat.nVisit)];
                 end
                 
             end
@@ -3512,7 +3526,7 @@ end
                         
                         % Remove this contrast from the viewTable and from
                         % the viewTracker
-                        if ddat.valid_LC_contrast(removeIndex) == 1
+                        %if ddat.valid_LC_contrast(removeIndex) == 1
                             
                             % Clear out variables
                             ddat.LC_contrasts(removeIndex, :) = []; 
@@ -3520,7 +3534,7 @@ end
                             ddat.saved_contrast_viewTracker(removeIndex, :) = [];
                             disp('remove from contrast names') %TODO
                             
-                        end
+                        %end
                         
                         olddata = findobj('Tag', 'contrastDisplay'); olddim = size(olddata.Data);
                         oldrownames = olddata.RowName;
