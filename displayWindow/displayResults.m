@@ -81,6 +81,7 @@ ddat.saved_subj_viewTracker = zeros(0, ddat.nVisit);
 % variable name is specified linear combinations
 ddat.valid_LC_contrast = zeros(0);
 ddat.LC_contrasts = zeros(0, ddat.p);
+ddat.LC_contrast_names = {};
 ddat.valid_LC_subpop = zeros(0);
 ddat.LC_subpops = zeros(0, ddat.p);
 
@@ -984,6 +985,20 @@ end
             % of the img object we load in
             visit_number = str2double(eventdata.Source.RowName{selected_row}(end-1:end));
             
+            % Make sure that this column is valid. It will always be valid
+            % for group, subpop, or regular beta. However, it might not be
+            % filled out yet for a contrast or a sub-population
+            isValidColumn = 1;
+            contrast_selected = strcmp(get(get(findobj('tag',...
+                'EffectTypeButtonGroup'), 'SelectedObject'),...
+                'String'), 'Contrast View');
+            if strcmp(ddat.type, 'beta') & contrast_selected
+                isValidColumn = ddat.valid_LC_contrast(selected_pop);
+            elseif strcmp(ddat.type, 'subpop')
+                isValidColumn = ddat.valid_LC_subpop(selected_pop);
+            end
+            
+            if isValidColumn == 1
             
             % If not viewed, add to viewer, else remove
             if strcmp(eventdata.Source.Data{selected_row, selected_pop}, 'no')
@@ -1067,6 +1082,8 @@ end
                     disp('Error updating view table, check strings')
             end
             
+            
+            end % end of check for a valid column being selected
             
         end
         
@@ -3436,45 +3453,52 @@ end
 % Beta Panel Functions
 % Function to allow the user to add another contrast to the list
     function addNewContrast(hObject, callbackdata)
+        
         olddata = findobj('Tag', 'contrastDisplay'); olddim = size(olddata.Data);
-        oldrownames = olddata.RowName;
+        %oldrownames = olddata.RowName;
         newTable = cell(olddim(1) + 1, ddat.p);
+        
         % Fill in all the old information
         for column=1:olddim(2)
             for row=1:olddim(1)
                 newTable(row, column) = olddata.Data(row,column);
             end
         end
-        % reassign the row names for the table
-        if olddim(1) == 0
-            newRowNames = ['C' num2str(olddim(1)+1)];
-        else
-            newRowNames = [oldrownames; ['C' num2str(olddim(1)+1)]];
-            newRowNames = cellstr(newRowNames);
-        end
         
+        % reassign the row names for the table
+%         if olddim(1) == 0
+%             newRowNames = ['C' num2str(olddim(1)+1)];
+%         else
+%             newRowNames = [oldrownames; ['C' num2str(olddim(1)+1)]];
+%             newRowNames = cellstr(newRowNames);
+%         end
+
+        % Update the contrast names to include the new contrast
+        ddat.LC_contrast_names{olddim(1) + 1} = ['C' num2str(olddim(1)+1)];
+        
+
         set(findobj('Tag', 'contrastDisplay'), 'Data', newTable);
-        set(findobj('Tag', 'contrastDisplay'), 'RowName', newRowNames);
+        set(findobj('Tag', 'contrastDisplay'), 'RowName', ddat.LC_contrast_names);
         % Make it so that only the main effects can be edited
         ceditable = false(1, ddat.p);
         ceditable(1:size(ddat.interactions,2)) = 1;
         set(findobj('Tag', 'contrastDisplay'), 'ColumnEditable', ceditable);
         
         % change the drop down menu
-        newString = cell(olddim(1)+1,1);
-        oldstring = get(findobj('Tag', 'contrastSelect1'), 'String');
-        for i=1:olddim(1)
-            if (olddim(1) > 0)
-                newString(i) = {oldstring{i}};
-            else
-                newString(i) = {oldstring(:)'};
-            end
-        end
-        newString(olddim(1) + 1) = {['C' num2str(olddim(1)+1)]};
-        % Update all sub population selection viewers
-        for iPop = 1:ddat.nCompare
-            set(findobj('Tag', ['contrastSelect' num2str(iPop)]),'String', newString);
-        end
+%         newString = cell(olddim(1)+1,1);
+%         oldstring = get(findobj('Tag', 'contrastSelect1'), 'String');
+%         for i=1:olddim(1)
+%             if (olddim(1) > 0)
+%                 newString(i) = {oldstring{i}};
+%             else
+%                 newString(i) = {oldstring(:)'};
+%             end
+%         end
+%         newString(olddim(1) + 1) = {['C' num2str(olddim(1)+1)]};
+%         % Update all sub population selection viewers
+%         for iPop = 1:ddat.nCompare
+%             set(findobj('Tag', ['contrastSelect' num2str(iPop)]),'String', newString);
+%         end
         ddat.contrastExists = 1;
     end
 
