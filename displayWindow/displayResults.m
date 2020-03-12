@@ -980,9 +980,9 @@ end
                 for k=1:ddat.nVisit; visit_names{k} = ['Visit ' num2str(k)]; end
                 set(findobj('tag', 'ViewSelectTable'), 'RowName', visit_names');
                 
-                if prod(size(contrast_names, 1)) == 1
-                    contrast_names = {contrast_names};
-                end
+%                 if prod(size(contrast_names, 1)) == 1
+%                     contrast_names = {contrast_names};
+%                 end
                 
                 % set the column names (contrasts)
                 if n_contrast > 0
@@ -3233,7 +3233,7 @@ end
                                                 
                         % reassign the row names for the table
                         if olddim(1) == 2
-                            newRowNames = ['C' num2str(1)];
+                            newRowNames = cellstr(['C' num2str(1)]);
                         else
                             newRowNames = oldrownames(1:olddim(1) - 1);
                             newRowNames = cellstr(newRowNames);
@@ -3356,7 +3356,7 @@ end
                         % reassign the row names for the table
                         disp('make this based on user specified names')
                         if olddim(1) == 2
-                            newRowNames = ['SubPop' num2str(1)];
+                            newRowNames = cellstr(['SubPop' num2str(1)]);
                         else
                             newRowNames = oldrownames(1:olddim(1) - 1);
                             newRowNames = cellstr(newRowNames);
@@ -3468,9 +3468,9 @@ end
         end
         newString(olddim(1) + 1) = {['SubPop' num2str(olddim(1)+1)]};
         % Update all sub population selection viewers
-        for iPop = 1:ddat.nCompare
-            set(findobj('Tag', ['subPopSelect' num2str(iPop)]),'String', newString);
-        end
+%         for iPop = 1:ddat.nCompare
+%             set(findobj('Tag', ['subPopSelect' num2str(iPop)]),'String', newString);
+%         end
     end
 
 
