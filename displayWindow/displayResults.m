@@ -39,6 +39,8 @@ ddat.covTypes = varargin{8};
 ddat.betaVarEst = 0;
 ddat.interactions = varargin{9};
 ddat.nVisit = varargin{10};
+ddat.validVoxels = varargin{11};
+ddat.voxSize = varargin{12};
 ddat.color_map = parula;
 [~, ddat.p] = size(ddat.X);
 global keeplist;
@@ -154,14 +156,14 @@ end
             'units', 'normalized',...
             'Parent', DefaultPanel,...
             'Tag', 'colorbarPanel',...
-            'Position',[0.95, 0.5 0.05 0.5], ...;
+            'Position',[0.90, 0.5 0.09 0.5], ...;
             'BackgroundColor',get(hs.fig,'color'));
         
         displayPanel = uipanel('BackgroundColor','black',...
             'units', 'normalized',...
             'Parent', DefaultPanel,...
             'Tag', 'viewingPanelNormal',...
-            'Position',[0, 0.5 0.949 0.5], ...;
+            'Position',[0, 0.5 0.89 0.5], ...;
             'BackgroundColor','black');
         %'BackgroundColor',get(hs.fig,'color'));
         
@@ -339,7 +341,7 @@ end
             'Style', 'popupmenu', ...
             'Units', 'Normalized', ...
             'Position', [0.01, 0.51, 0.48, 0.1], ...
-            'Tag', 'selectSubject', 'Callback', @updateIC, ...
+            'Tag', 'selectSubject', 'Callback', @(src, event)load_functional_images, ...
             'String', 'Select Subject', 'Visible', 'Off'); %#ok<NASGU>
         keepIC = uicontrol('Parent', icPanel,...
             'Style', 'checkbox', ...
@@ -1074,7 +1076,7 @@ end
                         ddat.saved_beta_viewTracker = ddat.viewTracker;
                     end
 
-                case 'subject'
+                case 'subj'
                     ddat.saved_subject_viewTracker = ddat.viewTracker;
                 case 'subpop'
                     ddat.saved_subpop_viewTracker = ddat.viewTracker;
@@ -2077,8 +2079,8 @@ end
                 ddat.mask = (mask_temp.img > 0);
             else
                 % check that something is being viewed
-                [rc, cc] = find(cellfun(@isempty, ddat.oimg) == 0)
-                if length(rc) > 0
+                [rc, cc] = find(cellfun(@isempty, ddat.oimg) == 0);
+                if ~isempty(rc) > 0
                     ddat.mask = ones(size(ddat.oimg{rc(1),cc(1)}));
                 end
             end
@@ -2283,23 +2285,46 @@ end
                 end
                 end
                 
-            case 'subject'
-                updateMasking = varargin{index+1};
-            case 'iniguess'
-                updateMasking = varargin{index+1};    
+            case 'subj'
+                
+                disp('verify that order is correct. Should be same from saving function from EM alg')
+                
+                %disp('todo: move "loading a subject" into its own function, call it here')
+                
+%                 % Load the .mat file containing the subject maps
+%                 subj_results = load([ddat.outdir '/' ddat.outpre '_subject_IC_estimates.mat']);
+%                 
+%                 % Load the masking information
+%                 runinfo = load([ddat.outdir '/' ddat.outpre '_runinfo.mat']);
+%                 valid_voxels = runinfo.validVoxels;
+                
+                % Get the selected subject
+                iSubj = get(findobj('tag', 'selectSubject'), 'value'); 
+                
+                create_subject_image(iSubj, sel_IC)
+                
+                 % Load each visit
+%                 for iVisit = 1:ddat.nVisit
+%                     
+%                     j = iVisit - 1;
+%                     ij = j+1+(iSubj-1)*(ddat.nVisit);
+%                     allicsubj = subj_results.subICmean(((1+ddat.q*(ij-1)):(ddat.q*ij)),:);
+%                     
+%                     new_image = zeros(runinfo.voxSize);
+%                     new_image(valid_voxels) = allicsubj(1, :);
+%                     ddat.oimg{1, iVisit} = new_image;
+%                     ddat.maskingStatus{1, iVisit} = ~isnan(ddat.oimg{1, iVisit});
+%                     
+%                 end
+                
+            %case 'iniguess'
+            %    updateMasking = varargin{index+1};    
             otherwise
                 disp('CHECK VIEWTYPE SPECIFICATION')
                 
         end
         
-        % TODO Find a better way to do this. In most cases oimg will be filled
-        % out here. Exception is opening subpop viewer or contrast viewer. Then we need
-        % something for the function to cehck for dimensions -> use s0 map
-        if strcmp(ddat.type, 'subpop')
-            refimg = S0_maps;
-        elseif ~strcmp(ddat.type, 'beta')
-            refimg = ddat.oimg{1, 1};
-        end
+       
         
         % Check if all of the anatomical image/dimension bookkeeping needs
         % to be performed. This should only need to happen upon first
@@ -2308,8 +2333,8 @@ end
               
         % Get the size of each dimension.
         if ~isfield(ddat, 'xdim')
-            dim = size(refimg);
-            ddat.xdim = dim(1); ddat.ydim = dim(2); ddat.zdim = dim(3);
+            dim = ddat.voxSize;
+            ddat.xdim = ddat.voxSize(1); ddat.ydim = ddat.voxSize(2); ddat.zdim = ddat.voxSize(3);
             ddat.betaVarEst = zeros(ddat.p, ddat.p, ddat.xdim, ddat.ydim, ddat.zdim);
 
             % Make sure the anatomial image matches
@@ -2367,6 +2392,30 @@ end
     end
 
 
+% Function to load the requested IC for a single subject, all visits
+    function create_subject_image(iSubj, iIC)
+        
+        % Load the .mat file containing the subject maps
+        subj_results = load([ddat.outdir '/' ddat.outpre '_subject_IC_estimates.mat']);
+
+        % Load the masking information
+        runinfo = load([ddat.outdir '/' ddat.outpre '_runinfo.mat']);
+        valid_voxels = runinfo.validVoxels;
+
+         % Load each visit
+        for iVisit = 1:ddat.nVisit
+
+            j = iVisit - 1;
+            ij = j+1+(iSubj-1)*(ddat.nVisit);
+            allicsubj = subj_results.subICmean(((1+ddat.q*(ij-1)):(ddat.q*ij)),:);
+            new_image = zeros(runinfo.voxSize);
+            new_image(valid_voxels) = allicsubj(iIC, :);
+            ddat.oimg{1, iVisit} = new_image;
+            ddat.maskingStatus{1, iVisit} = ~isnan(ddat.oimg{1, iVisit});
+
+        end
+        
+    end
 
 
 
@@ -2391,7 +2440,7 @@ end
             
             % Scale the functional image
             tempImage = ddat.img{iRow, iCol};
-            tempImage(ddat.maskingStatus{iRow, iCol} == 0 ) = nan;
+            %tempImage(ddat.maskingStatus{iRow, iCol} == 0 ) = nan;
             tempImage(isnan(tempImage)) = minVal1 - 1;
             minVal2 = minVal1 - 1;
             ddat.scaledFunc{iRow, iCol} = scale_in(tempImage, minVal2, maxVal1, 63);
@@ -3195,8 +3244,13 @@ end
                         
                         % Z-update for population or subject level
                         else
-                            ddat.img{iPop, iVisit} = ddat.oimg{iPop, iVisit} /...
-                                std(ddat.oimg{iPop, iVisit}(:), 'omitnan');
+                            % Get the image restricted to the actual voxels
+                            tempImg = ddat.oimg{iPop, iVisit};
+                            FinalImg = nan(size(tempImg));
+                            % Calculate the Z-scores
+                            FinalImg(ddat.validVoxels) = (tempImg(ddat.validVoxels) - mean(tempImg(ddat.validVoxels))) /...
+                                std(tempImg(ddat.validVoxels), 'omitnan');
+                            ddat.img{iPop, iVisit} = FinalImg;
                             set(findobj('Tag', 'manualThreshold'), 'max',1);
                             %editThreshold;
                         end

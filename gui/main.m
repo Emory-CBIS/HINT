@@ -659,6 +659,12 @@ function varargout = main(varargin)
                 nfile = length(niifiles);
                 data.nVisit = fls{4};
                 
+                if data.nVisit > 1
+                    data.analysisType = 'Longitudinal';
+                else
+                    data.analysisType = 'Cross-Sectional';
+                end
+                
                 % Make sure there is something to load
                 if (nfile > 0)
                     
@@ -953,7 +959,8 @@ function varargout = main(varargin)
             global keeplist;
             keeplist = ones(data.q,1);
             displayResults(data.q, data.outpath, data.prefix,...
-                data.N, 'icsel', data.covariates, data.X, data.covTypes, data.interactions, 1);
+                data.N, 'icsel', data.covariates, data.X, data.covTypes,...
+                data.interactions, 1, data.validVoxels, data.voxSize);
             uiwait()
             % qStar <= q contains the number of selected ICs.
             data.qstar = sum(keeplist);
@@ -991,7 +998,8 @@ function varargout = main(varargin)
 
     function test_Callback2(~,~)
         displayResults(data.q, data.outpath, data.prefix,...
-            data.N, 'reEst', data.covariates, data.X, data.covTypes, data.interactions);
+            data.N, 'reEst', data.covariates, data.X, data.covTypes,...
+            data.interactions, 1, data.validVoxels, data.voxSize);
     end
 
     function test_Callback(~,~)
@@ -1115,7 +1123,8 @@ function varargout = main(varargin)
                     data.grpICvar, data.success, data.G_z_dict, data.finalIter] = ...
                     CoeffpICA_EM (data.YtildeStar, data.X, data.thetaStar, ...
                     data.CmatStar, data.beta0Star, data.maxiter, ...
-                    data.epsilon1, data.epsilon2, 'approxVec_Experimental', data.outpath, data.prefix,0);
+                    data.epsilon1, data.epsilon2, 'approxVec_Experimental',...
+                    data.outpath, data.prefix, 0, data.analysisType);
 
             % User selected exact EM algorithm, not currently included in
             % package
@@ -1132,7 +1141,8 @@ function varargout = main(varargin)
                     data.grpICvar, data.success, data.gz_dict] = ...
                     CoeffpICA_EM (data.Ytilde, data.X, data.theta0, ...
                     data.C_matrix_diag, data.beta0, data.maxiter, ...
-                    data.epsilon1, data.epsilon2, 'exact', data.outpath, data.prefix, 0);
+                    data.epsilon1, data.epsilon2, 'exact', data.outpath,...
+                    data.prefix, 0, data.analysisType);
             end
 
             % Analysis finished, write to log file.
@@ -1232,19 +1242,19 @@ function varargout = main(varargin)
         if strcmp(disp_map, 'dt1')
             displayResults(data.vis_qstar, data.vis_outpath, ...
                 analysisPrefix, data.vis_N, 'grp', data.vis_varNamesX, data.vis_X, data.vis_covTypes,...
-                data.vis_interactions, data.vis_nVisit)
+                data.vis_interactions, data.vis_nVisit, data.validVoxels, data.voxSize);
         elseif strcmp(disp_map, 'dt2')
             displayResults(data.vis_qstar, data.vis_outpath, ...
                 analysisPrefix, data.vis_N, 'subpop', data.vis_varNamesX, data.vis_X, data.vis_covTypes,...
-                data.vis_interactions, data.vis_nVisit)
+                data.vis_interactions, data.vis_nVisit, data.validVoxels, data.voxSize);
         elseif strcmp(disp_map, 'dt3')
             displayResults(data.vis_qstar, data.vis_outpath, ...
                 analysisPrefix, data.vis_N, 'subj', data.vis_varNamesX, data.vis_X, data.vis_covTypes,...
-                data.vis_interactions, data.vis_nVisit)
+                data.vis_interactions, data.vis_nVisit, data.validVoxels, data.voxSize);
         elseif strcmp(disp_map, 'dt4')
             displayResults(data.vis_qstar, data.vis_outpath, ...
                 analysisPrefix, data.vis_N, 'beta', data.vis_varNamesX, data.vis_X, data.vis_covTypes,...
-                data.vis_interactions, data.vis_nVisit)
+                data.vis_interactions, data.vis_nVisit, data.validVoxels, data.voxSize);
         end
     end
     
@@ -1312,7 +1322,8 @@ function varargout = main(varargin)
             data.vis_covariates, data.vis_X, data.vis_covTypes,...
             data.vis_varNamesX, data.vis_interactions, data.vis_varInModel,...
             data.vis_varInCovFile, data.vis_referenceGroupNumber,...
-            data.vis_nVisit, analysisPrefix] = load_results_for_visualization(runinfoLoc);
+            data.vis_nVisit, analysisPrefix, data.validVoxels,...
+            data.voxSize] = load_results_for_visualization(runinfoLoc);
         
         % Indicate that data has been loaded
         set( findobj('tag', 'displayButton'), 'enable', 'on' );

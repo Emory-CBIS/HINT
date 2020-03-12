@@ -1,6 +1,6 @@
 function [ vis_q, vis_qstar, vis_outpath, vis_N, vis_covariates, vis_X,...
     vis_covTypes, vis_varNamesX, vis_interactions, vis_varInModel, vis_varInCovFile,...
-    vis_referenceGroupNumber, vis_nVisit, prefix ] = load_results_for_visualization( runinfoLoc )
+    vis_referenceGroupNumber, vis_nVisit, prefix, validVoxels, voxSize ] = load_results_for_visualization( runinfoLoc )
 %load_results_for_visualization - function to load the basic results for
 %the visualization window.
 %see also: main.m, displayResults.m
@@ -35,6 +35,8 @@ vis_varInCovFile = tempData.varInCovFile;
 vis_referenceGroupNumber = tempData.referenceGroupNumber;
 vis_nVisit = tempData.nVisit;
 prefix = tempData.prefix;
+validVoxels = tempData.validVoxels;
+voxSize = tempData.voxSize;
 
 waitbar(10/10)
 
