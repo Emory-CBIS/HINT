@@ -19,6 +19,8 @@ function varargout = displayResults(varargin)
 %   covTypes       - vector of 1s and 0s indicating whether each covariate is
 %                 categorical
 %   nVisit      - number of visits in the analysis
+%   validVoxels - indices of voxels contained in brain mask
+%   voxSize     - (x, y, z) dimension of whole brain anatomical image
 %
 %
 
@@ -29,6 +31,8 @@ delete( findobj('Tag', 'viewZScores') );
 % structure will hold all the data as the user continues to use the viewer.
 global ddat;
 global data;
+
+% Go through the input
 ddat = struct();
 ddat.q = cell2mat(varargin(1)); ddat.outdir = varargin{2};
 ddat.outpre = varargin{3}; ddat.nsub = cell2mat(varargin(4));
@@ -36,12 +40,16 @@ ddat.type = varargin{5};
 ddat.varNamesX = varargin{6};
 ddat.X = varargin{7};
 ddat.covTypes = varargin{8};
-ddat.betaVarEst = 0;
 ddat.interactions = varargin{9};
 ddat.nVisit = varargin{10};
 ddat.validVoxels = varargin{11};
 ddat.voxSize = varargin{12};
-ddat.color_map = parula;
+
+ddat.betaVarEst = 0;
+
+% Set the default colormap
+ddat.color_map = 'parula';
+ddat.highcolor = parula;
 [~, ddat.p] = size(ddat.X);
 global keeplist;
 if ~isempty(keeplist)
@@ -125,6 +133,15 @@ end
         BrainView = uimenu(viewerMenu, 'Label', 'Brain View', 'tag', 'BrainViewSubmenu');
         uimenu(BrainView, 'Label', 'Stacked', 'Callback', @brain_view_stacked);
         uimenu(BrainView, 'Label', 'Grouped', 'Callback', @brain_view_grouped);
+        % View -> Colorbar
+        ColorbarView = uimenu(viewerMenu, 'Label', 'Colormap', 'tag', 'ColorbarViewSubmenu');
+        uimenu(ColorbarView, 'Label', 'Autumn', 'Callback', @set_typeof_colorbar, 'tag', 'cbautumn');
+        uimenu(ColorbarView, 'Label', 'Jet', 'Callback', @set_typeof_colorbar, 'tag', 'cbjet');
+        uimenu(ColorbarView, 'Label', 'Parula', 'Checked','on', 'Callback', @set_typeof_colorbar, 'tag', 'cbparula');
+        uimenu(ColorbarView, 'Label', 'Spring', 'Callback', @set_typeof_colorbar, 'tag', 'cbspring');
+        uimenu(ColorbarView, 'Label', 'Summer', 'Callback', @set_typeof_colorbar, 'tag', 'cbsummer');
+        uimenu(ColorbarView, 'Label', 'Winter', 'Callback', @set_typeof_colorbar, 'tag', 'cbwinter');
+        % Help
         helpMenu = uimenu('Label','Help');
         textalign = 'left';
         licaMenu = uimenu('Label', 'Longitudinal Tools', 'Tag', 'licaMenu');
@@ -598,6 +615,20 @@ end
     function brain_view_grouped(varargin)
         ddat.tileType = 'grouped';
         set_viewing_properties;
+    end
+
+    % Allow the user to decide which colorbar they want to use. Default is
+    % parula
+    function set_typeof_colorbar(varargin)
+        % Remove the checkmark from the old selected colormap
+        set(findobj('tag', ['cb' ddat.color_map]), 'checked', 'off');
+        % Get the new map
+        ddat.color_map = lower(varargin{1}.Label);
+        ddat.highcolor = eval(ddat.color_map);
+        % Place a check mark next to the currently selected colormap
+        set(findobj('tag', ['cb' ddat.color_map]), 'checked', 'on');
+        % Update the viewer
+        update_brain_data;
     end
 
 % Function to calculate the required amount of the screen used up by
@@ -1754,12 +1785,12 @@ end
         
         % TODO move to its own function that the user can pick from
         % Set up the initial colorbar.
-        jet2=jet(64); jet2(38:end, :)=[];
-        hot2=hot(64); hot2(end-5:end, :)=[]; hot2(1:4, :)=[];
-        hot2(1:2:38, :)=[]; hot2(2:2:16, :)=[]; hot2=flipud(hot2);
-        hot3=[jet2; hot2];
-        ddat.hot3 = jet(64);
-        ddat.highcolor = jet(64);
+%         jet2=jet(64); jet2(38:end, :)=[];
+%         hot2=hot(64); hot2(end-5:end, :)=[]; hot2(1:4, :)=[];
+%         hot2(1:2:38, :)=[]; hot2(2:2:16, :)=[]; hot2=flipud(hot2);
+%         hot3=[jet2; hot2];
+%         ddat.hot3 = jet(64);
+        %ddat.highcolor = ddat.color_map;
         ddat.basecolor = gray(191);
         ddat.colorlevel = 256;
         
@@ -2833,7 +2864,8 @@ end
         % Update the colorbar
         axes(findobj('Tag', 'colorMap'));
         set(gca,'NextPlot','add')
-        colorbar_plot( findobj('Tag', 'colorMap'), ddat.colorbar_labels, ddat.scaled_pp_labels);
+        colorbar_plot( findobj('Tag', 'colorMap'), ddat.colorbar_labels,...
+            ddat.scaled_pp_labels, ddat.highcolor);
         
     end
 

@@ -1,4 +1,4 @@
-function colorbar_plot(f, colorbar_labels, corresponding_values_on_1_to_64_scale)
+function colorbar_plot(f, colorbar_labels, corresponding_values_on_1_to_64_scale, color_map)
 %colorbar_plot - Internal function to plot the colorbar for the display
 %window
 %
@@ -18,21 +18,21 @@ vec64=[64:-1:1]';
 image(vec64);
 
 % Create the "hot" top color, bottom will be "cool"
-jet2=jet(64);
-jet2(38:end, :)=[];
-hot2=hot(64);
-hot2(end-5:end, :)=[];
-hot2(1:4, :)=[];
-hot2(1:2:38, :)=[];
-hot2(2:2:16, :)=[];
-hot2=flipud(hot2);
-
-% Join the hot and cold colormaps into one map
-hot3=[flipud(hot2); flipud(jet2)];
-hot3 = flipud(jet(64));
+% jet2=jet(64);
+% jet2(38:end, :)=[];
+% hot2=hot(64);
+% hot2(end-5:end, :)=[];
+% hot2(1:4, :)=[];
+% hot2(1:2:38, :)=[];
+% hot2(2:2:16, :)=[];
+% hot2=flipud(hot2);
+% 
+% % Join the hot and cold colormaps into one map
+% hot3=[flipud(hot2); flipud(jet2)];
+% hot3 = flipud(jet(64));
 
 % Set the new colormap as the colormap
-colormap(hot3);
+colormap(color_map);
 
 % Generate colorbar labels, xlimmode manual
 set(f, 'YlimMode', 'manual',...
