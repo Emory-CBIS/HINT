@@ -45,7 +45,7 @@ for i=1:data.qstar
     % Save in the longitudinal case
     else
         for iVisit = 1:data.nVisit
-            for k = 1:size(data.beta_est,1) - 1
+            for k = 1:size(data.beta_est,2) - 1
                 % Setup the filename
                 bfilename = [prefix '_beta_cov' num2str(k) '_IC'...
                     num2str(i) '_visit' num2str(iVisit) '.nii'];
