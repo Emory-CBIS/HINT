@@ -9,6 +9,7 @@ function varargout = main(varargin)
 
     % Add paths
     varargout = cell(1);
+    
     % Global variables
     global outpath;
     global outfilename;
@@ -36,6 +37,7 @@ function varargout = main(varargin)
         figure(hs);
     end;
     data = struct();
+    
     % Initial progress states
     data.preprocessingComplete = 0;
     data.tempiniGuessObtained = 0;
@@ -476,8 +478,8 @@ function varargout = main(varargin)
             writelog = 1;
             prefix = '';
             outdir = get(findobj('tag', 'analysisFolder'), 'string');
-            outfilename = strcat(outdir, '/', prefix, '_textlog_', date(),...
-                '_', datestr(now, 'HH_MM_SS') );
+            outfilename = fullfile(outdir, [prefix, '_textlog_', date(),...
+                '_', datestr(now, 'HH_MM_SS')] );
             outfile = fopen(outfilename, 'wt' );
             fprintf(outfile, strcat('Log for hcica session on',...
                 [' ', date()], ' started at: ',...
@@ -1179,6 +1181,7 @@ function varargout = main(varargin)
         set( findobj('tag', 'displayButton'), 'enable', 'on' );
         set( findobj('tag', 'displayButton'), 'string', 'Display' );
         % Update the display tab with the output path
+        disp('TODO XXX STRSPLIT FIX')
         folderName = strsplit(analysisPrefix, '/');
         set( findobj('tag', 'displayPath'), 'string', fullfile(data.outpath, folderName{1}));
         set( findobj('tag', 'displayPrefix'), 'string', folderName{2});
@@ -1215,7 +1218,8 @@ function varargout = main(varargin)
         data.outpath = folderName;
         ehandle = findobj('Tag','displayPath');
         set(ehandle,'String',folderName);
-        runinfofiles = dir( [folderName '/*_runinfo.mat'] );
+        %runinfofiles = dir( [folderName '/*_runinfo.mat'] );
+        runinfofiles = dir( fullfile(folderName, '*_runinfo.mat') );
         
         if ( ~isempty(runinfofiles) )   
             preEdit = findobj('Tag', 'displayPrefix');
@@ -1272,8 +1276,11 @@ function varargout = main(varargin)
         
         % Version of outfilename that includes the prefix
         if (writelog == 1)
-            outfilename_full = strcat(data.outpath, '/', prefix, '_textlog_', date(),...
-                '_', datestr(now, 'HH_MM_SS') );
+            %outfilename_full = strcat(data.outpath, '/', prefix, '_textlog_', date(),...
+            %    '_', datestr(now, 'HH_MM_SS') );
+            outfilename_full = fullfile(data.outpath, [prefix, '_textlog_', date(),...
+                '_', datestr(now, 'HH_MM_SS')] );
+            
             %Copy the log file to the new file that includes the prefix
             copyfile(outfilename, outfilename_full);
         end
