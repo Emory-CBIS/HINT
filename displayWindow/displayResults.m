@@ -2242,6 +2242,10 @@ end
         disp('figure out args here')
         update_brain_data('updateMasking', 1);
         
+        % Make sure that all augmenting windows are updated to reflect new
+        % map
+        update_all_traj_fields;
+        
     end
 
 
