@@ -65,15 +65,13 @@ end
 for iIC = 1:q
     for iVisit = 1:T
         
-        disp('CHECK WITH YIKAI THAT THIS IS CORRECT INDEX ORDERING')
         % Create an indexing array to grab the right elements of the
         % estimates
         
         % THIS IS INDEXING ASSUMING THAT IT GOES:
-        % IC1 Beta1 Visit 1 IC2 Beta1 Vist1..IC1 Beta1 Visit 2... and so on
-        indArrStart = (iIC) + (T*(iVisit-1));
-        indArr = indArrStart:(q*T):size(varCeta1, 1);
-        disp(indArr)
+        indArrStart = (iVisit-1)*( (p+1)*q ) + (iIC-1)*(p+1) + 1;
+        indArr = indArrStart:(indArrStart+(p));
+        %disp(indArr)
 
         % Fill out the variance estimate
         newMap = zeros( [p+1, p+1, voxSize] ); % empty for intermediate var map

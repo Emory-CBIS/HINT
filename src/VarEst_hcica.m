@@ -63,8 +63,9 @@ function [varBeta1] = VarEst_hcica(theta_est, beta_est, X,...
 		W_var1(:,:,v)  = diag(Sigma3z + theta_est.sigma2_sq) + theta_est.sigma1_sq*eye(q); 
 		
 		%%% Estimating the variance-covariance of vec(beta(v)'): %%%
-		W_varinv1 = inv(W_var1(:,:,v));
+		W_varinv1 = inv(W_var1(:,:,v)) ;
 		
+        varBetaall1 = zeros(size(varBetaall1));
 		for i =1:N
 			Xistar = [eye(q) kron(reshape(X(i,:),[1 p]),eye(q))];
 			varBetaall1 = varBetaall1 + Xistar'*W_varinv1*Xistar;

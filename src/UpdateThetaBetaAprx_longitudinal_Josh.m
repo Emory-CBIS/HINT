@@ -1,6 +1,22 @@
 function [theta_new, beta_new, z_mode, subICmean, subICvar,...
-        grpICmean, grpICvar, err, G_z_dict, iter_time] = ...
-    UpdateThetaBetaAprx_longitudinal(Y, X_mtx, theta, C_diag_matrix, beta, N, T, K, q, p, m, V)
+        grpICmean, grpICvar, err, G_z_dict] = ...
+    UpdateThetaBetaAprx_longitudinal_Josh(Y, X_mtx, theta, C_diag_matrix, beta, N, T, K, q, p, m, V)
+    
+
+    % Josh renaming a few things here
+    J = K;
+    disp(['Time points: ', num2str(J)])
+    
+    % Josh for future Y shape
+    Yij = zeros(q, N, J, V);
+    eind = 0;
+    for i = 1:N
+        for j = 1:J
+            sind = eind + 1;
+            eind = eind + q;
+            Yij(:, i, j, :) = Y(sind:eind, :);
+        end
+    end
     
     % T ?
     % K
@@ -69,7 +85,6 @@ function [theta_new, beta_new, z_mode, subICmean, subICvar,...
             theta.tau_sq*ones(NK*q,1)]);           % var of r_z(v)
     end
     
-    tic
     
     % Calculate the mean of Y: 
     % 1 - First, Obtain the corresponding IC means
@@ -88,11 +103,13 @@ function [theta_new, beta_new, z_mode, subICmean, subICvar,...
     % Calculate the covariance
     mvn_cov = bsxfun( @plus, mtimesx( AR, mtimesx( Sigma23z, AR')), Sigma1);
     
-   
-    
+       % mvn_cov2 = bsxfun( @plus, mtimesx( R, mtimesx( Sigma23z, R')), Sigma1);
+
     % Calculate p( z(v)|y(v) )
     probBelong = bsxfun( @plus ,zeros(1, q+1, V), log(pi_z_prod) );
     probBelong = permute(probBelong, [1,3,2]); % V by q+1
+    
+    probBelongExact = ones(size(probBelong));
     
     AUmiu_z = mtimesx(A, Umiu_z); % ? x (q+1)
     ACvX = mtimesx(A, CvX);       % ? x V
@@ -109,8 +126,24 @@ function [theta_new, beta_new, z_mode, subICmean, subICvar,...
             covtemj = eye(q*(K+1))/mvn_cov( strindex:endindex, strindex:endindex, sp);
             probBelong(1,:,sp) = squeeze(probBelong(1,:,sp))' - squeeze(diag(mtimesx(Yi',mtimesx(covtemj,Yi))))/2;
             probBelong(1,:,sp) = probBelong(1,:,sp)-log(det(covtemj))/2;
+            
+%             probBelongExact(1, :, sp) = squeeze(probBelongExact(1, :, sp))' .*...
+%                 exp(-0.5 * squeeze(diag(mtimesx(Yi',mtimesx(covtemj,Yi)))) ) .*...
+%                 1.0 / sqrt(det(covtemj));
         end
+       % probBelongExact(1, :, sp) = probBelongExact(1, :, sp) * pi_z_prod(sp);
     end
+    
+    
+    probBelong2 = bsxfun( @plus ,zeros(1, q+1, V), log(pi_z_prod) );
+    probBelong2 = permute(probBelong2, [1,3,2]); % V by q+1
+    for sp = 1:(q+1)
+        Ystar = Ystar0 - AUmiu_z(:,1,sp);
+        covtemj = inv(mvn_cov( :, :, sp));
+        probBelong2(1,:,sp) = squeeze(probBelong2(1,:,sp))' - squeeze(diag(mtimesx(Ystar',mtimesx(covtemj,Ystar))))/2;
+        probBelong2(1,:,sp) = probBelong2(1,:,sp)-log(det(covtemj))/2;
+    end
+    
 
     % sum(abs(probBelong(:)) == Inf)
 
@@ -122,9 +155,17 @@ function [theta_new, beta_new, z_mode, subICmean, subICvar,...
     z_mode = VoxelIC;
     
     % Calculate the Probability: 
-    PostProbz_log = zeros(size(probBelong));
+    PostProbz_log      = zeros(size(probBelong));
+    PostProbz_regscale = zeros(size(probBelong));
+    PostProbz_regscale2 = zeros(size(probBelong));
     for sp = 1:(q+1)
-        PostProbz_log(1,:,sp) = 1./sum(squeeze(exp(bsxfun(@minus,probBelong, probBelong(1,:,sp))))');
+        PostProbz_log(1,:,sp) = 1./sum(squeeze(exp(bsxfun(@minus,probBelong, probBelong(1,:,sp))))');        
+    end
+    for v = 1:V
+        PostProbz_regscale(1,v,:)  = exp(probBelong(1,v,:)) ./ sum( exp(probBelong(1,v,:)) );
+        PostProbz_regscale2(1,v,:) = exp(probBelong2(1,v,:)) ./ sum( exp(probBelong2(1,v,:)) );
+        %probBelongExact(1, v, :) = probBelongExact(1, v, :) ./ sum(probBelongExact(1, v, :));
+        % Log sum exp version
     end
     
     
@@ -166,7 +207,122 @@ function [theta_new, beta_new, z_mode, subICmean, subICvar,...
     miu_svij_svT = zeros(q*NK,q);
     
     batch_n = fix(V/IterV);
+    
+    
+    %% Josh Version of E-step
+    % Ceta is Q x P+1 x V x J ? first 2 dims might be flippeds
+    XB = zeros(q, N, J); % fixed effects contribution
+    Y_star   = zeros(q, 1);
+    %Yij_star = zeros(q, N);
+    Yi_bar   = zeros(q, N);
+    
+    % Variance of mean of unmixed, fixed effects centered data (Ybar)
+    %sigmasq_ybar = (1 / (N*J)) * (theta.tau_sq*eye(q) + theta.sigma1_sq*eye(q)) +...
+    %    (1 / N) * diag(theta.D);
+    
+    %% This will match the contrast below
+    %(J^2 * diag(theta.D) + J^2 * VarZv + J*(theta.tau_sq*eye(q)+theta.sigma1_sq*eye(q)))/(J^2)
+    %(ctr * mvn_cov2( strindex:endindex, strindex:endindex, 1) * ctr') / 9
+    %(diag(theta.D) + VarZv + (1/J)*(theta.tau_sq*eye(q)+theta.sigma1_sq*eye(q)))
+    
+    sigmasq_ybar = (diag(theta.D) + (1/J)*(theta.tau_sq*eye(q) + theta.sigma1_sq*eye(q))) / N ;
+    
+%     sigmasq_ybar = (1 / (N*J)) * (theta.tau_sq*eye(q) + theta.sigma1_sq*eye(q)) +...
+%         (1 / (N*J)) * diag(theta.D) +...
+%         (J-1) * diag(theta.D / (N));
+    
+%     (ctr * mvn_cov2( strindex:endindex, strindex:endindex, 1) * ctr') / (3 * N)
+%     
+%     (ctr * mvn_cov2( strindex:endindex, strindex:endindex, 1) * ctr') / 3
+%     N * sigmasq_ybar + VarZv
+    
+%      sigmasq_ybar = (1 / (J)) * (theta.tau_sq*eye(q) + theta.sigma1_sq*eye(q)) +...
+%         (1 / (J)) * diag(theta.D) +...
+%         (J-1) * diag(theta.D );
+%         %(1 / (N * J^2)) * diag(theta.D + nchoosek(J, 2) * theta.D );
+    
+    % Conditional varaince
+    VarYGivenZStore = zeros(q, q, (q+1));
+    for i = 1:(q+1)
+        G_z   = G_z_dict(:,:,i);
+        VarZv = diag(G_z * theta.sigma3_sq);
+        VarYGivenZStore(:, :, i)  = sigmasq_ybar + VarZv;
+    end
+    VarYGivenZStore(:, :, 1)
+    
+    Probzv = zeros(q + 1, 1);
+    ProbZv_All = zeros((q+1), V);
 
+    
+    for v = 1:V
+        
+        % For checking
+        %A' * Ystar0(:, v)
+        %A' * ACvX(:, v)
+        
+        Yi_bar(:, :)   = zeros(q, N);
+        for i = 1:N
+            for j = 1:J
+                XB(:, i, j) = theta.iniguessCeta(:, :, v, j) * X_mtx(:, i);
+                Yi_bar(:, i) = Yi_bar(:, i) + ...
+                    theta.A(:, :, i, j)' * Yij(:, i, j, v) -...  % unmixed time series
+                    XB(:, i, j);
+            end
+            % Turn into an average instead of a sum
+            Yi_bar(:, i) = Yi_bar(:, i) / J;
+        end 
+        % Overall mean of unmixed, fixed effects centered data
+        Y_star(:, 1) = mean(Yi_bar, 2);
+        
+        %% Latent State Probabilities
+        for i = 1:(q+1)
+            G_z   = G_z_dict(:,:,i);
+            MiuZv = G_z * theta.miu3;
+            PiZv      = G_z * theta.pi;  
+            VarYGivenZ = VarYGivenZStore(:, :, i);
+            Probzv(i) = prod(PiZv)*(exp(-(Y_star - MiuZv)'/(VarYGivenZ)*(Y_star-MiuZv)/2)/sqrt(det(VarYGivenZ)));
+        end    
+        PostProbz = Probzv / sum(Probzv);
+        ProbZv_All(:, v) = PostProbz;
+        
+        % This is to test at a voxel where beta is nonzero and S0 is active
+%         if v == 4304
+%             xxx=1;
+%             PostProbz_log(:, v, :)
+%             exp(PostProbz_log(:, v, :)) ./ sum(exp(PostProbz_log(:, v, :)))
+%         end
+
+        
+        
+    end
+    
+    % Compares to log probabilities - THIS IS WHAT HIS CODE ACTUALLY USES
+%     t1 = ProbZv_All(:);
+%     t2 = zeros(size(ProbZv_All));
+%     for v = 1:V
+%         t2(:, v) = exp(PostProbz_log(:, v, :)) ./ sum(exp(PostProbz_log(:, v, :)));
+%     end
+%     t22 = t2(:);
+%     scatter(t1, t22)
+
+    % Compares to regular probabilities
+    t1 = ProbZv_All(:);
+    t2 = zeros(size(ProbZv_All));
+    for v = 1:V
+        t2(:, v) = PostProbz_regscale2(1, v, :);
+    end
+    t22 = t2(:);
+    scatter(t1, t22)
+    corr(t1, t22)
+    
+    histogram(abs(t1 - t22));  
+   
+    scatter(squeeze(t2(1, :)'), squeeze(ProbZv_All(1, :)') ); refline([1 0]);
+    scatter(squeeze(t2(2, :)'), squeeze(ProbZv_All(2, :)') ); refline([1 0]);
+    scatter(squeeze(t2(3, :)'), squeeze(ProbZv_All(3, :)') ); refline([1 0]);
+    scatter(squeeze(t2(4, :)'), squeeze(ProbZv_All(4, :)') ); refline([1 0]);
+    
+    %% Yikai Batch Version of E-step
     for rep = 1:IterV
         if rep == IterV
             begi = endd + 1;
@@ -234,8 +390,6 @@ function [theta_new, beta_new, z_mode, subICmean, subICvar,...
         clear miu_L_z S_L_z 
         
         %%%%%%%%%%% this finished the E part %%%%%%%%%%%%%
-        
-        
     end
     
     %%%%%%%%%%% M Step Starts %%%%%%%%%%% 
@@ -349,6 +503,6 @@ function [theta_new, beta_new, z_mode, subICmean, subICvar,...
     theta_new.miu3(find(isnan(theta_new.miu3))) = theta.miu3(find(isnan(theta_new.miu3))); 
     % Finished Updating Parameters (EM). 
 
-    iter_time = toc
+
     
 end

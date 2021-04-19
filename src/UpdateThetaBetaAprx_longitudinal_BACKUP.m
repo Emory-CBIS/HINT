@@ -1,16 +1,13 @@
 function [theta_new, beta_new, z_mode, subICmean, subICvar,...
-        grpICmean, grpICvar, err, G_z_dict, iter_time] = ...
-    UpdateThetaBetaAprx_longitudinal(Y, X_mtx, theta, C_diag_matrix, beta, N, T, K, q, p, m, V)
+        grpICmean, grpICvar, err, G_z_dict] = ...
+    UpdateThetaBetaAprx_longitudinal_backup(Y, X_mtx, theta, C_diag_matrix, beta, N, T, K, q, p, m, V)
     
-    % T ?
-    % K
     % X_mtx: p x N
-    % vert-version with loops 
+    % Track if an error has occured
     err = 0;
-    IterV = 500; % Number of Loops to go through on voxels. 
     
     K = K - 1;
-
+    
     NK = N*(1+K);
     X_mtx2 = X_mtx;               % no intercept for alpha p*N
     X_mtx = [ones([1 N]); X_mtx]; % Add intercept row to it, of dimension (p+1)*N. 
@@ -35,16 +32,17 @@ function [theta_new, beta_new, z_mode, subICmean, subICvar,...
     
     vspace = q+1;
     G_z_list = repmat([1 0],[vspace q]); % [1 0] is in background
-    for i = 1:q
-        G_z_list(i+1, [2*i-1 2*i]) = [0 1];
-    end;
+	for i = 1:q
+		G_z_list(i+1, [2*i-1 2*i]) = [0 1];
+    end
     G_z_dict = zeros( q, m*q, q+1);
     for i = 1:vspace
         G_z_dict(:,:,i) = repmat(G_z_list(i,:), [q,1]).*kron(eye(q),ones(1,2));
-    end;
+    end
     
     
-    Sigma1   =   diag(C_diag_matrix.*theta.sigma1_sq);
+    %Sigma1   =   diag(C_diag_matrix.*theta.sigma1_sq);
+    Sigma1   =   diag(theta.sigma1_sq);
     Sigma1_inv = diag(1./diag(Sigma1));     
     
     Sigma_gamma_part = AR'*Sigma1_inv;
@@ -69,7 +67,6 @@ function [theta_new, beta_new, z_mode, subICmean, subICvar,...
             theta.tau_sq*ones(NK*q,1)]);           % var of r_z(v)
     end
     
-    tic
     
     % Calculate the mean of Y: 
     % 1 - First, Obtain the corresponding IC means
@@ -99,21 +96,35 @@ function [theta_new, beta_new, z_mode, subICmean, subICvar,...
     
     Ystar0 = Y - ACvX;
     
+    % There is a problem!
     for sp = 1:(q+1)
+        
         Ystar = Ystar0 - AUmiu_z(:,1,sp);
-        for sub_i = 1:N
-            strindex = q*(K+1)*(sub_i-1)+1;
-            endindex = q*(K+1)*sub_i;
-             
-            Yi = Ystar( strindex:endindex,:); % Y - qK by V for subject i
-            covtemj = eye(q*(K+1))/mvn_cov( strindex:endindex, strindex:endindex, sp);
-            probBelong(1,:,sp) = squeeze(probBelong(1,:,sp))' - squeeze(diag(mtimesx(Yi',mtimesx(covtemj,Yi))))/2;
-            probBelong(1,:,sp) = probBelong(1,:,sp)-log(det(covtemj))/2;
+        part1tmp = mtimesx(eye(q*NK)/mvn_cov(:,:,sp),Ystar);
+        
+        %prob_tmp = squeeze(diag(mtimesx(Ystar',part1tmp)))/2 + log(det(mvn_cov(:,:,sp)))/2;
+        prob_tmp = sum(Ystar .* part1tmp, 1)'/2 + log(det(mvn_cov(:,:,sp)))/2;
+        
+        % new 
+        %compare = squeeze(diag(mtimesx(Ystar',part1tmp)));
+        %test = sum(Ystar .* part1tmp, 1)';
+        
+        if(sum(isnan(prob_tmp)) == 0)
+            probBelong(1,:,sp) = squeeze(probBelong(1,:,sp))' - prob_tmp;
+        else % If there is error, we use approximate prob by splitting subjects
+            for sub_i = 1:N
+                strindex = q*(K+1)*(sub_i-1)+1;
+                endindex = q*(K+1)*sub_i;
+                 
+                Yi = Ystar( strindex:endindex,:); % Y - qK by V for subject i
+                
+                covtemj = mvn_cov( strindex:endindex, strindex:endindex, : );
+                probBelong(1,:,sp) = squeeze(probBelong(1,:,sp))' - squeeze(diag(mtimesx(Yi',mtimesx(eye(q*(K+1))/covtemj(:,:,sp),Yi))))/2;
+                probBelong(1,:,sp) = probBelong(1,:,sp)-log(det(covtemj(:,:,sp)))/2;
+            end
         end
     end
-
-    % sum(abs(probBelong(:)) == Inf)
-
+    
     
     % Calculate the IC each voxel belongs to as the mode
     [~, maxid_all_new] = max( probBelong,[], 3);
@@ -145,115 +156,107 @@ function [theta_new, beta_new, z_mode, subICmean, subICvar,...
     % Store the needed terms for s0, si, beta only for the mode z
     % configuration
     for sp = 1:(q+1)
+        
         Sigma_gamma_all(:,:,sp) = eye( (NK+1+N) * q ) / denom(:,:,sp);
         Sigma_star_all(:,:,sp) =  P * Sigma_gamma_all(:,:,sp) * P';
         miu_gamma_all_ic(:,:,sp) = Sigma_gamma_all(:,:,sp) * w2PrimeSigmaInv;
+        
     end
     clear denom Sigma_gamma_all
     
     
+    miu_L_z = zeros((NK+1+N)*q,V);          % E{L(v)}
+    S_L_z = zeros((NK+1+N)*q,(NK+1+N)*q,V); % E{L(v)L(v)'}  
     
-    
-    grpICmean = zeros(q,V);
-    grpICvar = zeros(q,q,V);
-    subICmean  = zeros(q*NK,V);
-    subICvar = zeros(q,q,N,K+1,V);
-
-    miu_bvi = zeros(q*N,V);
-    miu_bvi_bviT = zeros(q*N,q*N);
-    miu_bvi_svT = zeros(q*N,q);
-    miu_svij_bivT = zeros(q*NK,q*N);
-    miu_svij_svT = zeros(q*NK,q);
-    
-    batch_n = fix(V/IterV);
-
-    for rep = 1:IterV
-        if rep == IterV
-            begi = endd + 1;
-            endd = V;
-            batch_n = endd-begi+1;
-        else
-            begi = 1+(rep-1)*batch_n;
-            endd = rep*batch_n;
-        end
+    % sum over all possiblilities in the subspace: 
+    for sp = 1:(q+1)
         
-        miu_L_z = zeros((NK+1+N)*q,batch_n);          % E{L(v)}
-        S_L_z = zeros((NK+1+N)*q,(NK+1+N)*q,batch_n); % E{L(v)L(v)'}  
+        p_z = PostProbz_log(1,:,sp); % of dimension V 
+        MeanTmp = bsxfun(@plus, Umiu_z(:,:,sp), CvX);
         
-        % sum over all possiblilities in the subspace: 
-        for sp = 1:(q+1)
-
-            p_z = PostProbz_log(1,begi:endd,sp); % of dimension batch_n (<< V)
-            MeanTmp = bsxfun(@plus, Umiu_z(:,:,sp), CvX(:,begi:endd));
-
-            Q_z = zeros((NK+1+N)*q, batch_n );  
-            Q_z( ((q*N)+1):((N+1)*q), :) = repmat( miu3z(:,:,sp), [1, batch_n]);
-            Q_z( (q*(N+1)+1):((NK+1+N)*q) , :) = MeanTmp;
-
-            tempmiu = P* miu_gamma_all_ic(:,:,sp)*(Y(:,begi:endd)-A*MeanTmp) + Q_z; % mean of L(v) | y(v),z(v)
-
-            miu_L_z = miu_L_z + tempmiu.* repmat(p_z,(NK+1+N)*q,1);
-
-            %
-
-            tempmiu = reshape(tempmiu, [size(tempmiu,1), 1, batch_n]);
-            tempmiu_sq = bsxfun(@times, tempmiu, permute(tempmiu, [2, 1, 3])); 
-
-            E2tmp = bsxfun(@plus, Sigma_star_all(:,:,sp), tempmiu_sq);
-            S_L_z = S_L_z + bsxfun(@times, reshape(p_z, [1,1,batch_n]), E2tmp);
-        end
+        Q_z = zeros((NK+1+N)*q, V );  
+        Q_z( ((q*N)+1):((N+1)*q), :) = repmat( miu3z(:,:,sp), [1, V]);
+        Q_z( (q*(N+1)+1):((NK+1+N)*q) , :) = MeanTmp;
         
-        % S0:
-        grpICmean(:,begi:endd) = miu_L_z( (q*N+1):(q*(N+1)), :);
-        sv_svT_miu = S_L_z( (q*N+1):(q*(N+1)), (q*N+1):(q*(N+1)),:);
-        grpICvar(:,:,begi:endd) = sv_svT_miu;
+        tempmiu = P* miu_gamma_all_ic(:,:,sp)*(Y-A*MeanTmp) + Q_z; % mean of L(v) | y(v),z(v)
         
-        % Sij: 
-        subICmean(:,begi:endd) = miu_L_z( (q*(N+1)+1):size(miu_L_z,1), :);
-        miu_svij_svijT = S_L_z( (q*(N+1)+1):size(miu_L_z,1),(q*(N+1)+1):size(miu_L_z,1),:);
-        for i = 1:N
-            for j = 0:K
-                ij = j+1+(i-1)*(K+1);
-                subICvar(:,:,i,j+1,begi:endd) = miu_svij_svijT(((1+q*(ij-1)):(q*ij)) , ((1+q*(ij-1)):(q*ij)), :);
-            end
-        end
-
-        % bi: 
-        miu_bvi(:,begi:endd) = miu_L_z( 1:(q*N), :);
-        miu_bvi_bviT = miu_bvi_bviT + sum(S_L_z( 1:(q*N), 1:(q*N),:),3);
+        miu_L_z = miu_L_z + tempmiu.* repmat(p_z,(NK+1+N)*q,1);
         
-        % E{ bi*S0' }
-        miu_bvi_svT = miu_bvi_svT + sum(S_L_z( 1:(q*N), (q*N+1):(q*(N+1)) ,:),3);
-
-        % E{ Sij * bi' }
-        miu_svij_bivT = miu_svij_bivT + sum(S_L_z( (q*(N+1)+1):size(miu_L_z,1) , 1:(q*N) ,:),3);
-
-        % E{ Sij * S0' }
-        miu_svij_svT  = miu_svij_svT + sum(S_L_z( (q*(N+1)+1):size(miu_L_z,1) , (q*N+1):(q*(N+1)),:),3);
-
-        clear miu_L_z S_L_z 
+        tempmiu = reshape(tempmiu, [size(tempmiu,1), 1, V]);
+        tempmiu_sq = bsxfun(@times, tempmiu, permute(tempmiu, [2, 1, 3])); 
         
-        %%%%%%%%%%% this finished the E part %%%%%%%%%%%%%
+        E2tmp = bsxfun(@plus, Sigma_star_all(:,:,sp), tempmiu_sq);
         
+        %tmp = permute(bsxfun(@times,permute(E2tmp,[3 1 2]),...
+        %          repmat(p_z,[size(E2tmp,1) 1])' ),[2 3 1]);
+        
+%         S_L_z = S_L_z+ permute(bsxfun(@times,permute(E2tmp,[3 1 2]),...
+%                   repmat(p_z,[size(E2tmp,1) 1])' ),[2 3 1]);
+              
+        S_L_z = S_L_z + bsxfun(@times, reshape(p_z, [1,1,V]), E2tmp);
+              
+%          orig = permute(bsxfun(@times,permute(E2tmp,[3 1 2]),...
+%                   repmat(p_z,[size(E2tmp,1) 1])' ),[2 3 1]);
+%          new = bsxfun(@times, reshape(p_z, [1,1,V]), E2tmp);
         
     end
     
+    
+    % S0:
+    grpICmean = miu_L_z( (q*N+1):(q*(N+1)), :);
+    sv_svT_miu = S_L_z( (q*N+1):(q*(N+1)), (q*N+1):(q*(N+1)),:);
+    grpICvar = sv_svT_miu;
+    
+    
+    % Sij: 
+    subICmean = miu_L_z( (q*(N+1)+1):size(miu_L_z,1), :);
+    miu_svij_svijT = S_L_z( (q*(N+1)+1):size(miu_L_z,1),(q*(N+1)+1):size(miu_L_z,1),:);
+    subICvar = miu_svij_svijT;
+    
+    
+    % bi: 
+    miu_bvi = miu_L_z( 1:(q*N), :);
+    miu_bvi_bviT = S_L_z( 1:(q*N), 1:(q*N),:);
+    
+    % E{ bi*S0' }
+    miu_bvi_svT = S_L_z( 1:(q*N), (q*N+1):(q*(N+1)) ,:);
+    
+    % E{ Sij * bi' }
+    miu_svij_bivT = S_L_z( (q*(N+1)+1):size(miu_L_z,1) , 1:(q*N) ,:);
+    
+    % E{ Sij * S0' }
+    miu_svij_svT  = S_L_z( (q*(N+1)+1):size(miu_L_z,1) , (q*N+1):(q*(N+1)),:);
+    
+    
+    clear miu_L_z S_L_z 
+    
+    
+    %%%%%%%%%%% this finished the E part %%%%%%%%%%%%%
+    
+    
+    
+    
+    
     %%%%%%%%%%% M Step Starts %%%%%%%%%%% 
+
     sumXiXiT_inv  = eye(p+1)/(X_mtx*X_mtx');  sumXiXiT_inv2  = eye(p)/(X_mtx2*X_mtx2'); 
     
-    % Update mixing matrix (Part 2): 
+    % Update mixing matrix: 
     for i = 1:N
         for j = 0:K
             ij = j+1+(i-1)*(K+1);
             A_ProdPart1 = Y( ((1+q*(ij-1)):(q*ij)) ,:)*subICmean( ((1+q*(ij-1)):(q*ij)), :)' ;
-            A_ProdPart2 = sum(squeeze(subICvar(:,:,i,j+1,:)),3);           
+            A_ProdPart2 = sum(miu_svij_svijT(((1+q*(ij-1)):(q*ij)) , ((1+q*(ij-1)):(q*ij)), :),3) ;           
+            
             theta_new.A(:,:,i,j+1) = A_ProdPart1/ (A_ProdPart2 );
             theta_new.A(:,:,i,j+1) = theta_new.A(:,:,i,j+1)*real( inv(theta_new.A(:,:,i,j+1)' * theta_new.A(:,:,i,j+1)) ^ (1/2));
+        
         end
     end
     
     % Update Subject Level Variance: 
-    theta_new.D = repmat(eye(q),1,N) * diag(miu_bvi_bviT)/N/V;  
+    theta_new.D = repmat(eye(q),1,N) * diag(sum(miu_bvi_bviT,3))/N/V;  
+    
     
     % Update Ceta:
     beta_new = zeros(q,p+1,V,K+1);
@@ -279,17 +282,18 @@ function [theta_new, beta_new, z_mode, subICmean, subICvar,...
     
     
     %%% Update for tau^2, (Second Level Variance), requires Ceta_new
-    theta_new.tau_sq = trace(sum( grpICvar ,3)) *NK;   % The 2nd level variance
+    theta_new.tau_sq = 0;   % The 2nd level variance
     for i = 1:N
         for j = 0:K
             ij = j+1+(i-1)*(K+1);
             
             theta_new.tau_sq = theta_new.tau_sq +  ...
-                      trace(miu_bvi_bviT( (1+q*(i-1)):(q*i),(1+q*(i-1)):(q*i))) + ...
-                      trace(sum(squeeze(subICvar(:,:,i,j+1,:)),3)) + ...
-                      2*trace( miu_bvi_svT( (1+q*(i-1)):(q*i),:) ...
-                             - miu_svij_bivT( (1+q*(ij-1)):(q*ij), (1+q*(i-1)):(q*i) ,:)...
-                             - miu_svij_svT ( (1+q*(ij-1)):(q*ij), :,:) );
+                      trace(sum( sv_svT_miu ,3)) + ...
+                      trace(sum(miu_bvi_bviT( (1+q*(i-1)):(q*i),(1+q*(i-1)):(q*i),:),3)) + ...
+                      trace(sum(miu_svij_svijT(((1+q*(ij-1)):(q*ij)) ,((1+q*(ij-1)):(q*ij)),:),3)) + ...
+                      2*trace( sum(miu_bvi_svT( (1+q*(i-1)):(q*i),:,:) ...
+                        - miu_svij_bivT( ((1+q*(ij-1)):(q*ij)), (1+q*(i-1)):(q*i) ,:)...
+                        - miu_svij_svT ( ((1+q*(ij-1)):(q*ij)), :,:),3) );
                     
             tmp = mtimesx(beta_new(:,:,:,j+1),X_mtx(:,i));
             theta_new.tau_sq = theta_new.tau_sq + sum(sum(tmp.^2));
@@ -311,7 +315,7 @@ function [theta_new, beta_new, z_mode, subICmean, subICvar,...
             C_inv = 1./C_diag_matrix(((1+q*(ij-1)):(q*ij)));
             
             tmp = theta_new.A(:,:,i,j+1)'* diag(C_inv)*theta_new.A(:,:,i,j+1);
-            tmp2 = sum(mtimesx(tmp,squeeze(subICvar(:,:,i,j+1,:))),3);
+            tmp2 = sum(mtimesx(tmp,miu_svij_svijT(((1+q*(ij-1)):(q*ij)),((1+q*(ij-1)):(q*ij)),:)),3);
             
             
             C_inv = 1./C_diag_matrix(((1+q*(ij-1)):(q*ij))); 
@@ -349,6 +353,6 @@ function [theta_new, beta_new, z_mode, subICmean, subICvar,...
     theta_new.miu3(find(isnan(theta_new.miu3))) = theta.miu3(find(isnan(theta_new.miu3))); 
     % Finished Updating Parameters (EM). 
 
-    iter_time = toc
+
     
 end

@@ -7,41 +7,41 @@ function varargout = main(varargin)
 %
 % See also: hcica
 
-    % Add paths
-    varargout = cell(1);
-    % Global variables
-    global outpath;
-    global outfilename;
-    global outfilename_full;
-    global writelog;
-    writelog = 0;
-    global strMatch;
-    global myfont;
-    global data;
-    global analysisPrefix;
+% Add paths
+varargout = cell(1);
+% Global variables
+global outpath;
+global outfilename;
+global outfilename_full;
+global writelog;
+writelog = 0;
+global strMatch;
+global myfont;
+global data;
+global analysisPrefix;
+myfont = 'default';
+
+if ispc
     myfont = 'default';
+elseif ismac
+    myfont = 12;
+end
 
-    if ispc
-        myfont = 'default';
-    elseif ismac
-        myfont = 12;
-    end
-
-    % Check if an instance of hcica already running
-    hs = findall(0,'tag','hcica');
-    if (isempty(hs))
-        hs = addcomponents;
-        set(hs.fig,'Visible','on');
-    else
-        figure(hs);
-    end;
-    data = struct();
-    % Initial progress states
-    data.preprocessingComplete = 0;
-    data.tempiniGuessObtained = 0;
-    data.iniGuessComplete = 0;
-    data.dataLoaded = 0;
-    data.analysisType = 'unselected';
+% Check if an instance of hcica already running
+hs = findall(0,'tag','hcica');
+if (isempty(hs))
+    hs = addcomponents;
+    set(hs.fig,'Visible','on');
+else
+    figure(hs);
+end;
+data = struct();
+% Initial progress states
+data.preprocessingComplete = 0;
+data.tempiniGuessObtained = 0;
+data.iniGuessComplete = 0;
+data.dataLoaded = 0;
+data.analysisType = 'unselected';
 
     function hs = addcomponents
         % Add components, save handles in a struct
@@ -54,7 +54,7 @@ function varargout = main(varargin)
             'Color',[51/256, 63/256, 127/256]);
         % adjust the figure to look better on windows machines
         if ispc
-           set(findobj('tag', 'hcica'), 'position', [50 15 119 30.8]);
+            set(findobj('tag', 'hcica'), 'position', [50 15 119 30.8]);
         end
         tgroup = uitabgroup('Parent', hs.fig,...
             'Tag','tabGroup',...
@@ -168,7 +168,7 @@ function varargout = main(varargin)
             'Title','3. Pre-process data','FontSize',myfont);
         % Adjust size for windows users
         if ispc
-           set(findobj('tag', 'preprocpanel'), 'position', [54 6.82 59 15.7]);
+            set(findobj('tag', 'preprocpanel'), 'position', [54 6.82 59 15.7]);
         end
         text4 = uicontrol('Parent',t1p3,'Style','text',...
             'units', 'normalized',...
@@ -210,14 +210,14 @@ function varargout = main(varargin)
             'String','Generate initial values',...
             'Callback',@calculateInitialParams,...
             'FontSize',9, 'Position',[0.05 0.2 0.45 0.15]); %#ok<NASGU>
-            %'FontSize',myfont, 'Position',[65 45 150 25]);
+        %'FontSize',myfont, 'Position',[65 45 150 25]);
         
         t1button6 = uicontrol('Parent',t1p3,'Style','pushbutton',...
             'String','Choose ICs for hc-ICA',...
             'Callback',@test_Callback,...
             'Units', 'normalized',...
             'FontSize',9, 'Position',[0.5 0.2 0.45 0.15]); %#ok<NASGU>
-            %'FontSize',myfont,'Position',[65 25 150 25]);
+        %'FontSize',myfont,'Position',[65 25 150 25]);
         
         regenButton = uicontrol('Parent',t1p3,'Style','pushbutton',...
             'String','Re-estimate Initial Values',...
@@ -226,7 +226,7 @@ function varargout = main(varargin)
             'Tag', 'reEstButton',...
             'Enable', 'Off',...
             'FontSize',9, 'Position',[0.05 0.05 0.45 0.15]); %#ok<NASGU>
-            %'FontSize',myfont,'Position',[5 5 150 25]); 
+        %'FontSize',myfont,'Position',[5 5 150 25]);
         
         viewRegenButton = uicontrol('Parent',t1p3,'Style','pushbutton',...
             'String','View Reduced Initial Values',...
@@ -235,7 +235,7 @@ function varargout = main(varargin)
             'Tag', 'viewReduced',...
             'Enable', 'Off',...
             'FontSize',9, 'Position',[0.5 0.05 0.45 0.15]); %#ok<NASGU>
-            %'FontSize',myfont,'Position',[120 5 150 25]);
+        %'FontSize',myfont,'Position',[120 5 150 25]);
         
         iniGuessType = uicontrol('Parent', t1p3, 'Style', 'popupmenu', ...
             'String', {'tc-gICA', 'GIFT'}, ...
@@ -243,7 +243,7 @@ function varargout = main(varargin)
             'Position', [133 70 90 25], ...
             'visible', 'off',...
             'Tag', 'iniGuessType'); %#ok<NASGU>
-    
+        
         iniGuessText = uicontrol('Parent', t1p3, 'Style', 'text', ...
             'String', 'Initial Value Estimation Method', ...
             'visible', 'off',...
@@ -331,32 +331,32 @@ function varargout = main(varargin)
             'FontSize',myfont, 'tag', 'analysisProgressPanel', 'Title', 'Analysis Progress');
         % Axis for the estimate change by iteration
         iterChangeAxis1 = axes('Parent',analysisProgressPanel,...
-             'units', 'normalized',...
-             'Position',[0.1 0.65 0.85 0.3],...
-             'Tag','iterChangeAxis1'); %#ok<NASGU>
+            'units', 'normalized',...
+            'Position',[0.1 0.65 0.85 0.3],...
+            'Tag','iterChangeAxis1'); %#ok<NASGU>
         iterChangeAxis2 = axes('Parent',analysisProgressPanel,...
-             'units', 'normalized',...
-             'Position',[0.1 0.15 0.85 0.3],...
-             'Tag','iterChangeAxis2'); %#ok<NASGU>
-         
-         
-         analysisStatusPanel = uipanel('Parent',tab2,'Position',[.05 .01 .9 .13],...
-            'FontSize',myfont, 'tag', 'analysisStatusPanel', 'Title', 'Analysis Status'); 
-         t2button2 = uicontrol('Parent',analysisStatusPanel,'Style','pushbutton',...
+            'units', 'normalized',...
+            'Position',[0.1 0.15 0.85 0.3],...
+            'Tag','iterChangeAxis2'); %#ok<NASGU>
+        
+        
+        analysisStatusPanel = uipanel('Parent',tab2,'Position',[.05 .01 .9 .13],...
+            'FontSize',myfont, 'tag', 'analysisStatusPanel', 'Title', 'Analysis Status');
+        t2button2 = uicontrol('Parent',analysisStatusPanel,'Style','pushbutton',...
             'units', 'normalized',...
             'String','Display Results', 'tag', 'displayResultsButton',...
             'Callback',@switchDisplayTab,'enable','off',...
             'FontSize',myfont,'Position',[0.8 0.18 0.18 0.8]); %#ok<NASGU>
-         stopButton = uicontrol('Parent',analysisStatusPanel,'Style','pushbutton',...
+        stopButton = uicontrol('Parent',analysisStatusPanel,'Style','pushbutton',...
             'units', 'normalized', 'tag', 'stopButton',...
             'String','Stop',...
             'Callback',@stopButtonCallback,'enable','off',...
             'FontSize',myfont,'Position',[0.68 0.18 0.1 0.8]); %#ok<NASGU>
-         % Analysis waitbar. The following code is by Yuanfei and can be
-         % found at https://www.mathworks.com/matlabcentral/fileexchange/47896-embedding-waitbar-inside-a-gui
-         ax1=axes('parent', analysisStatusPanel ,'Units','normalized','Position',[0.01 0.2 0.65 0.80]);
-         set(ax1,'Xtick',[],'Ytick',[],'Xlim',[0 1000], 'Tag', 'analysisWaitbar');
-         box on;
+        % Analysis waitbar. The following code is by Yuanfei and can be
+        % found at https://www.mathworks.com/matlabcentral/fileexchange/47896-embedding-waitbar-inside-a-gui
+        ax1=axes('parent', analysisStatusPanel ,'Units','normalized','Position',[0.01 0.2 0.65 0.80]);
+        set(ax1,'Xtick',[],'Ytick',[],'Xlim',[0 1000], 'Tag', 'analysisWaitbar');
+        box on;
         
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %% Tab3: Display
@@ -436,9 +436,9 @@ function varargout = main(varargin)
         
     end
 
-    %%%%%%%%%%% General GUI Functions %%%%%%%%%%
-    
-    % Add the CBIS logo to the hc-ICA window.
+%%%%%%%%%%% General GUI Functions %%%%%%%%%%
+
+% Add the CBIS logo to the hc-ICA window.
     function axes1_CreateFcn(~,~)
         [im, ~, alpha] = imread('CBIS_white_transparent.png');
         h = imshow(im);
@@ -453,7 +453,7 @@ function varargout = main(varargin)
         axis image
     end
 
-    % Delete the hc-ICA window.
+% Delete the hc-ICA window.
     function closeFig(~,~)
         delete(hs.fig);
     end
@@ -462,31 +462,31 @@ function varargout = main(varargin)
         helpbox = msgbox('This is the number of principal components to be used in the first stage of dimension reduction in TC-GICA')
     end
 
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    %%%%%%%%%%% Functions for Panel 1 %%%%%%%%%%
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    
-    % Check if the hc-ICA session is to be logged. Create log file.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%% Functions for Panel 1 %%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Check if the hc-ICA session is to be logged. Create log file.
     function logCheckBox_Callback(hObject,~)
         if strcmp(get(findobj('tag', 'analysisFolder'), 'string'), '')
             warndlg('Please specify an analysis folder before writing a log file.')
             set(hObject, 'Value', 0);
         else
-        if (get(hObject,'Value') == get(hObject,'Max'))
-            writelog = 1;
-            prefix = '';
-            outdir = get(findobj('tag', 'analysisFolder'), 'string');
-            outfilename = strcat(outdir, '/', prefix, '_textlog_', date(),...
-                '_', datestr(now, 'HH_MM_SS') );
-            outfile = fopen(outfilename, 'wt' );
-            fprintf(outfile, strcat('Log for hcica session on',...
-                [' ', date()], ' started at: ',...
-                [' ', datestr(now, 'HH_MM_SS')] ) );
-        end
+            if (get(hObject,'Value') == get(hObject,'Max'))
+                writelog = 1;
+                prefix = '';
+                outdir = get(findobj('tag', 'analysisFolder'), 'string');
+                outfilename = strcat(outdir, '/', prefix, '_textlog_', date(),...
+                    '_', datestr(now, 'HH_MM_SS') );
+                outfile = fopen(outfilename, 'wt' );
+                fprintf(outfile, strcat('Log for hcica session on',...
+                    [' ', date()], ' started at: ',...
+                    [' ', datestr(now, 'HH_MM_SS')] ) );
+            end
         end
     end
 
-    % Allow the user to select the output directory for the analysis.
+% Allow the user to select the output directory for the analysis.
     function button1_Callback(~,~)
         folderName = uigetdir(pwd);
         if folderName==0
@@ -496,27 +496,9 @@ function varargout = main(varargin)
         set(findobj('Tag','analysisFolder'), 'String', folderName);
     end
 
-    % Load the nifti data, covariate file, and mask file specified by the
-    % user.
+% Load the nifti data, covariate file, and mask file specified by the
+% user.
     function loadDataButton_Callback(~,~)
-        
-        % Open a box asking the user if the analysis is a regular hc-ICA
-        % analysis or a longitudinal analysis
-%         answer = questdlg('What type of hc-ICA analysis would you like to perform?', ...
-%         'Analysis Type', ...
-%         'Cross-Sectional', 'Longitudinal', 'Cancel', 'Cancel');
-%         % Handle response
-%         switch answer
-%             case 'Cross-Sectional'
-%                 data.analysisType = 'hcica';
-%             case 'Longitudinal'
-%                 data.analysisType = 'lica';
-%             case 'Cancel'
-%                 data.analysisType = 'unselected';
-%         end
-%         
-%         % check to make sure anything else should be done
-%         if ~strcmp(data.analysisType, 'unselected')
         
         data.preprocessingComplete = 0;
         data.iniGuessComplete = 0;
@@ -545,17 +527,18 @@ function varargout = main(varargin)
         
         % Handle input data in .mat form. This will load runinfo file
         if (strcmp(dataType, 'matData') == 1)
+            
             % Direct the user to load a runinfo file
             [fname pathname] = uigetfile('.mat');
             
             % Make sure user did not close out window
             if fname ~= 0
-
+                
                 % Waitbar while the data loads
                 waitLoad = waitbar(0,'Please wait while the data load');
-
+                
                 runinfo = load([pathname fname]);
-
+                
                 % Update the appropriate data structures
                 waitbar(1/10)
                 data.qstar = runinfo.q;
@@ -586,7 +569,7 @@ function varargout = main(varargin)
                 data.referenceGroupNumber = runinfo.referenceGroupNumber;
                 waitbar(1)
                 close(waitLoad);
-
+                
                 % Populate the display fields
                 %set(findobj('tag', ''), 'string', num2str());
                 set(findobj('tag', 'numICA'), 'string', num2str(runinfo.qold));
@@ -597,26 +580,26 @@ function varargout = main(varargin)
                 data.iniGuessComplete = 1;
                 data.tempiniGuessObtained = 1;
                 set(findobj('tag', 'runButton'), 'enable', 'on');
-
+                
                 % Fill in the blanks to reflect what was loaded
-
+                
                 % Update the GUI to reflect the loaded information
                 set(findobj('Tag','dataProgress'),'BackgroundColor',[51/256,153/256,0/256],...
                     'ForegroundColor',[0.9255,0.9255,0.9255],...
                     'enable','on');
                 set(findobj('Tag','pcaProgress'),'BackgroundColor',[51/256,153/256,0/256],...
                     'ForegroundColor',[0.9255,0.9255,0.9255],...
-                    'enable','on'); 
+                    'enable','on');
                 set(findobj('Tag','iniProgress'),'BackgroundColor',[51/256,153/256,0/256],...
                     'ForegroundColor',[0.9255,0.9255,0.9255],...
-                    'enable','on'); 
+                    'enable','on');
                 set(findobj('Tag','icProgress'),'BackgroundColor',[51/256,153/256,0/256],...
                     'ForegroundColor',[0.9255,0.9255,0.9255],...
                     'enable','on');
                 data.dataLoaded = 1;
             end
             
-        % Handle data in nifti form.
+            % Handle data in nifti form.
         elseif (strcmp(dataType, 'niftiData') == 1)
             
             % Check if data is already loaded, if so, warn the user that
@@ -633,164 +616,164 @@ function varargout = main(varargin)
                     proceedWithLoad = 1;
                 end
             end
-           
+            
             
             if proceedWithLoad
-              
+                
                 fls = loadNii;
-%                 if strcmp(data.analysisType, 'hcica')
-%                     fls = loadNii;
-%                 elseif strcmp(data.analysisType, 'lica')
-%                     cov_and_mask_fls = input_load_cov_and_mask;
-%                     varargoutttt = input_determine_visits_and_subject_names( cov_and_mask_fls{2} );
-%                     fls = select_folder_structure_lica;
-%                 else
-%                     disp('ERROR - no valid analysis selected. This is a toolbox error, not user error.')
-%                 end
+                %                 if strcmp(data.analysisType, 'hcica')
+                %                     fls = loadNii;
+                %                 elseif strcmp(data.analysisType, 'lica')
+                %                     cov_and_mask_fls = input_load_cov_and_mask;
+                %                     varargoutttt = input_determine_visits_and_subject_names( cov_and_mask_fls{2} );
+                %                     fls = select_folder_structure_lica;
+                %                 else
+                %                     disp('ERROR - no valid analysis selected. This is a toolbox error, not user error.')
+                %                 end
                 
-            % outer check makes sure anything was input
-            if (~isempty(fls))
-            if (~isempty(fls{1}) && ~isempty(fls{2}) && ~isempty(fls{3}))
-                
-                waitLoad = waitbar(0,'Please wait while the data load');
-                niifiles = fls{1}; data.niifiles_raw = niifiles;
-                maskf = fls{2}; data.maskf = maskf;
-                covf = fls{3}; data.covf = covf;
-                nfile = length(niifiles);
-                data.nVisit = fls{4};
-                
-                if data.nVisit > 1
-                    data.analysisType = 'Longitudinal';
-                else
-                    data.analysisType = 'Cross-Sectional';
-                end
-                
-                % Make sure there is something to load
-                if (nfile > 0)
-                    
-                    waitbar(1/10, waitLoad, 'Loading and sorting covariates')
-                    % Match up each covariate with its row in the covariate
-                    % file
-                    data.covariateTable = readtable(covf, 'Delimiter', ',');
-                    data.covariates = data.covariateTable.Properties.VariableNames;
-                    data.referenceGroupNumber = ones(1, length(data.covariates) - data.nVisit + 1);
-                    
-                    %% Extend the covariate table by repeating the
-                    % covariates for each subject nVisit times, then only
-                    ncov = length(data.covariates) - data.nVisit;
-                    cellCov = {nfile, ncov + 1};
-                    subjindex = 0;
-                    for iSubj = 1:(nfile/data.nVisit)
-                        for iVisit = 1:data.nVisit
-                            subjindex = subjindex + 1;
-                            cellCov(subjindex, 1) = niifiles(subjindex);
-                            for icov = 1:ncov
-                                cellCov{subjindex, icov+1} = data.covariateTable{iSubj, data.nVisit+icov};
-                            end
+                % outer check makes sure anything was input
+                if (~isempty(fls))
+                    if (~isempty(fls{1}) && ~isempty(fls{2}) && ~isempty(fls{3}))
+                        
+                        waitLoad = waitbar(0,'Please wait while the data load');
+                        niifiles = fls{1}; data.niifiles_raw = niifiles;
+                        maskf = fls{2}; data.maskf = maskf;
+                        covf = fls{3}; data.covf = covf;
+                        nfile = length(niifiles);
+                        data.nVisit = fls{4};
+                        
+                        if data.nVisit > 1
+                            data.analysisType = 'Longitudinal';
+                        else
+                            data.analysisType = 'Cross-Sectional';
                         end
-                           
-                    end
-                    % Finalize into a new table
-                    newTable = cell2table(cellCov);
-                    % Update the structures in data
-                    % renaming covariates
-                    data.covariates = data.covariates(data.nVisit:length(data.covariates));
-                    data.covariates{1} = 'file';
-                    % update the column names of the new table and add it
-                    % to data
-                    newTable.Properties.VariableNames = data.covariates;
-                    data.covariateTable = newTable;
-                    
-                    
-                    % No longer need to do string matchinghere
-                    %[data.niifiles, tempcov] = matchCovariatesToNiifiles(data.niifiles_raw,...
-                    %    data.covariateTable, strMatch);
-                    % add these becuase we removed matchCovariatesToNiifiles
-                    tempcov = data.covariateTable;
-                    data.niifiles = niifiles;
-                    % Get rid of the subject part of the data frame
-                    data.covariates = tempcov(:, 2:width(tempcov));
-                    data.covariates.Properties.VariableNames =...
-                        data.covariateTable.Properties.VariableNames(2:length(data.covariateTable.Properties.VariableNames));
-                    
-                    % Create variables tracking whether or not the
-                    % covariate is to be included in the hc-ICA model
-                    data.varInCovFile = ones( width(tempcov) - 1, 1);
-                    data.varInModel = ones( width(tempcov) - 1, 1);
-                    
-                    % Identify categorical and continuous covariates
-                    data.covTypes = auto_identify_covariate_types(data.covariates);
-                    
-                    % Reference cell code based on covTypes, user can
-                    % change these types in model specification later
-                    [ data.X, data.varNamesX, data.interactions ] = ref_cell_code( data.covariates,...
-                        data.covTypes, data.varInModel,...
-                        0, zeros(0, length(data.covTypes)), 0, data.referenceGroupNumber  );
-                    
-                    % Create the (empty) interactions matrix
-                    [~, nCol] = size(data.X);
-                    data.interactions = zeros(0, nCol);
-                    data.interactionsBase = zeros(0, length(data.covTypes));
-                    
-                    % Load the first data file and get its size.
-                    waitbar(5/10, waitLoad, 'Loading the mask')
-                    image = load_nii(niifiles{1});
-                    [m,n,l,k] = size(image.img);
-                    
-                    % load the mask file.
-                    if(~isempty(maskf))
-                        mask = load_nii(maskf);
-                        validVoxels = find(mask.img == 1);
-                    else
-                        validVoxels = find(ones(m,n,l) == 1);
-                    end
-                    nValidVoxel = length(validVoxels);
-                    
-                    % Store the relevant information
-                    data.time_num = k;
-                    data.N = nfile / data.nVisit;
-                    data.validVoxels = validVoxels;
-                    data.voxSize = size(mask.img);
-                    data.dataLoaded = 1;
-                    waitbar(1)
-                    close(waitLoad);
-                end
-                
-                % Update main gui window to show that data has been loaded.
-                set(findobj('Tag','dataProgress'),'BackgroundColor',[51/256,153/256,0/256],...
-                    'ForegroundColor',[0.9255,0.9255,0.9255],...
-                    'enable','on');
-                
-                % Update process trackers
-                data.preprocessingComplete = 0;
-                data.iniGuessComplete = 0;
-                data.tempiniGuessObtained = 0;
-                
-                % Reset the run window
-                axes(findobj('tag','analysisWaitbar'));
-                cla;
-                rectangle('Position',[0,0,0+(round(1000*0)),20],'FaceColor','g');
-                text(482,10,[num2str(0+round(100*0)),'%']);
-                drawnow;
+                        
+                        % Make sure there is something to load
+                        if (nfile > 0)
+                            
+                            waitbar(1/10, waitLoad, 'Loading and sorting covariates')
+                            % Match up each covariate with its row in the covariate
+                            % file
+                            data.covariateTable = readtable(covf, 'Delimiter', ',');
+                            data.covariates = data.covariateTable.Properties.VariableNames;
+                            data.referenceGroupNumber = ones(1, length(data.covariates) - data.nVisit + 1);
+                            
+                            %% Extend the covariate table by repeating the
+                            % covariates for each subject nVisit times, then only
+                            ncov = length(data.covariates) - data.nVisit;
+                            cellCov = {nfile, ncov + 1};
+                            subjindex = 0;
+                            for iSubj = 1:(nfile/data.nVisit)
+                                for iVisit = 1:data.nVisit
+                                    subjindex = subjindex + 1;
+                                    cellCov(subjindex, 1) = niifiles(subjindex);
+                                    for icov = 1:ncov
+                                        cellCov{subjindex, icov+1} = data.covariateTable{iSubj, data.nVisit+icov};
+                                    end
+                                end
                                 
+                            end
+                            % Finalize into a new table
+                            newTable = cell2table(cellCov);
+                            % Update the structures in data
+                            % renaming covariates
+                            data.covariates = data.covariates(data.nVisit:length(data.covariates));
+                            data.covariates{1} = 'file';
+                            % update the column names of the new table and add it
+                            % to data
+                            newTable.Properties.VariableNames = data.covariates;
+                            data.covariateTable = newTable;
+                            
+                            
+                            % No longer need to do string matchinghere
+                            %[data.niifiles, tempcov] = matchCovariatesToNiifiles(data.niifiles_raw,...
+                            %    data.covariateTable, strMatch);
+                            % add these becuase we removed matchCovariatesToNiifiles
+                            tempcov = data.covariateTable;
+                            data.niifiles = niifiles;
+                            % Get rid of the subject part of the data frame
+                            data.covariates = tempcov(:, 2:width(tempcov));
+                            data.covariates.Properties.VariableNames =...
+                                data.covariateTable.Properties.VariableNames(2:length(data.covariateTable.Properties.VariableNames));
+                            
+                            % Create variables tracking whether or not the
+                            % covariate is to be included in the hc-ICA model
+                            data.varInCovFile = ones( width(tempcov) - 1, 1);
+                            data.varInModel = ones( width(tempcov) - 1, 1);
+                            
+                            % Identify categorical and continuous covariates
+                            data.covTypes = auto_identify_covariate_types(data.covariates);
+                            
+                            % Reference cell code based on covTypes, user can
+                            % change these types in model specification later
+                            [ data.X, data.varNamesX, data.interactions ] = ref_cell_code( data.covariates,...
+                                data.covTypes, data.varInModel,...
+                                0, zeros(0, length(data.covTypes)), 0, data.referenceGroupNumber  );
+                            
+                            % Create the (empty) interactions matrix
+                            [~, nCol] = size(data.X);
+                            data.interactions = zeros(0, nCol);
+                            data.interactionsBase = zeros(0, length(data.covTypes));
+                            
+                            % Load the first data file and get its size.
+                            waitbar(5/10, waitLoad, 'Loading the mask')
+                            image = load_nii(niifiles{1});
+                            [m,n,l,k] = size(image.img);
+                            
+                            % load the mask file.
+                            if(~isempty(maskf))
+                                mask = load_nii(maskf);
+                                validVoxels = find(mask.img == 1);
+                            else
+                                validVoxels = find(ones(m,n,l) == 1);
+                            end
+                            nValidVoxel = length(validVoxels);
+                            
+                            % Store the relevant information
+                            data.time_num = k;
+                            data.N = nfile / data.nVisit;
+                            data.validVoxels = validVoxels;
+                            data.voxSize = size(mask.img);
+                            data.dataLoaded = 1;
+                            waitbar(1)
+                            close(waitLoad);
+                        end
+                        
+                        % Update main gui window to show that data has been loaded.
+                        set(findobj('Tag','dataProgress'),'BackgroundColor',[51/256,153/256,0/256],...
+                            'ForegroundColor',[0.9255,0.9255,0.9255],...
+                            'enable','on');
+                        
+                        % Update process trackers
+                        data.preprocessingComplete = 0;
+                        data.iniGuessComplete = 0;
+                        data.tempiniGuessObtained = 0;
+                        
+                        % Reset the run window
+                        axes(findobj('tag','analysisWaitbar'));
+                        cla;
+                        rectangle('Position',[0,0,0+(round(1000*0)),20],'FaceColor','g');
+                        text(482,10,[num2str(0+round(100*0)),'%']);
+                        drawnow;
+                        
+                    end
+                end
+                %end % end of proceedWithLoad check
             end
-            end
-            %end % end of proceedWithLoad check
-        end
-        
+            
         end % end of check that user did not press cancel
     end
 
-    
 
-    % Perform the PCA data reduction. Output is Ytilde, C_matrix_diag,
-    %    H_matrix_inv, H_matrix, and deWhite.
+
+% Perform the PCA data reduction. Output is Ytilde, C_matrix_diag,
+%    H_matrix_inv, H_matrix, and deWhite.
     function calculatePCA(~,~)
         
         if data.dataLoaded == 0;
             warndlg('Please load data before preprocessing.');
         else
-        
+            
             data.preprocessingComplete = 0;
             data.tempiniGuessObtained = 0;
             data.iniGuessComplete = 0;
@@ -802,11 +785,11 @@ function varargout = main(varargin)
             rectangle('Position',[0,0,0+(round(1000*0)),20],'FaceColor','g');
             text(482,10,[num2str(0+round(100*0)),'%']);
             drawnow;
-
+            
             data.q = str2double(get(findobj('Tag', 'numICA'), 'String'));
             [data.Ytilde, data.C_matrix_diag, data.H_matrix_inv,  data.H_matrix, data.deWhite]...
                 = PreProcICA(data.niifiles, data.validVoxels, data.q, data.time_num, data.N*data.nVisit);
-
+            
             % Update GUI to show PCA completed
             data.dispPCA.String = 'PCA Completed';
             set(findobj('Tag','pcaProgress'),'BackgroundColor',[51/256,153/256,0/256],...
@@ -820,7 +803,7 @@ function varargout = main(varargin)
             set(findobj('Tag','icProgress'),'BackgroundColor',[0.94,0.94,0.94],...
                 'ForegroundColor',[0.9255,0.9255,0.9255],...
                 'enable','on');
-
+            
             % Update the data structure to know that preprocessing is
             % complete
             data.preprocessingComplete = 1;
@@ -837,8 +820,8 @@ function varargout = main(varargin)
         end
     end
 
-    % Calculate the initial guess parameters for hc-ICA. 2 options: tc-gica
-    % and GIFT. GIFT is the better option.
+% Calculate the initial guess parameters for hc-ICA. 2 options: tc-gica
+% and GIFT. GIFT is the better option.
     function calculateInitialParams(~,~)
         
         if data.preprocessingComplete == 1
@@ -878,53 +861,31 @@ function varargout = main(varargin)
                 numberOfPCs = findobj('Tag', 'numPCA');
                 data.prefix = get(findobj('Tag', 'prefix'), 'String');
                 data.outpath = get(findobj('Tag', 'analysisFolder'), 'String');
-
+                
                 % Perform GIFT
                 % Generate the text parameter file used by GIFT
-                hcicadir = pwd;
+                hcicadir = pwd; % TODO this should not be required
+                
+                [ data.theta0, data.beta0, data.s0, s0_agg ] = ...
+                    ObtainInitialGuess(data.niifiles,...
+                    data.maskf, ...
+                    get(findobj('Tag', 'prefix'), 'String'),...
+                    get(findobj('Tag', 'analysisFolder'), 'String'),...
+                    str2double(numberOfPCs.String),...
+                    data.N, data.q, data.X, data.Ytilde, hcicadir, data.nVisit);
                 
                 
-                % TODO delete this, here for testing
-%                 Ytilde = data.Ytilde;
-%                 niifiles = data.niifiles;
-%                 maskf = data.maskf;
-%                 prefix = get(findobj('Tag', 'prefix'), 'String');
-%                 outdir =  get(findobj('Tag', 'analysisFolder'), 'String');
-%                 numpc = str2double(numberOfPCs.String);
-%                 N = data.N;
-%                 q = data.q;
-%                 nVisit = data.nVisit;
-%                 X = data.X;
-%                 save('/Users/joshlukemire/Desktop/lica_ini_guess_dev/licatest.mat', 'Ytilde', 'niifiles', 'maskf',...
-%                     'prefix', 'outdir', 'numpc', 'N', 'q', 'nVisit', 'X')
-                
-                % run GIFT to get the initial guess. This function also outputs nifti files
-                % with initial values.
-                
-%                 [ data.theta0, data.beta0, data.s0, s0_agg ] = runGIFT(data.niifiles, data.maskf, ...
-%                     get(findobj('Tag', 'prefix'), 'String'),...
-%                     get(findobj('Tag', 'analysisFolder'), 'String'),...
-%                     str2double(numberOfPCs.String),...
-%                     data.N, data.q, data.X, data.Ytilde, hcicadir);
-
-                [ data.theta0, data.beta0, data.s0, s0_agg ] = ObtainInitialGuess(data.niifiles, data.maskf, ...
-                     get(findobj('Tag', 'prefix'), 'String'),...
-                     get(findobj('Tag', 'analysisFolder'), 'String'),...
-                     str2double(numberOfPCs.String),...
-                     data.N, data.q, data.X, data.Ytilde, hcicadir, data.nVisit);
-
-
                 % Write to log file that initial guess stage is complete.
                 if (writelog == 1)
                     outfile = fopen(outfilename, 'a' );
                     fprintf(outfile, strcat('\nCalculated initial guess values '));
                 end
-
+                
                 % Turn all the initial group ICs into nifti files to allow user to
                 % view and select the ICs for hc-ICA.
                 template = zeros(data.voxSize);
                 template = reshape(template, [prod(data.voxSize), 1]);
-
+                
                 anat = load_nii(data.maskf);
                 for ic=1:data.q
                     newIC = template;
@@ -934,7 +895,7 @@ function varargout = main(varargin)
                     newIC.hdr.hist.originator = anat.hdr.hist.originator;
                     save_nii(newIC, [get(findobj('Tag', 'analysisFolder'), 'String') '/' get(findobj('Tag', 'prefix'), 'String') '_iniIC_' num2str(ic) '.nii' ], 'IC');
                 end
-
+                
                 % Update the gui main window to show that initial values
                 % calculation is completed.
                 set(findobj('Tag','iniProgress'),'BackgroundColor',[51/256,153/256,0/256],...
@@ -945,7 +906,7 @@ function varargout = main(varargin)
                 set(findobj('Tag','icProgress'),'BackgroundColor',[0.94,0.94,0.94],...
                     'ForegroundColor',[0.9255,0.9255,0.9255],...
                     'enable','on');
-
+                
                 chooseIC;
             end % end of check that proceed == 1
         else
@@ -953,7 +914,7 @@ function varargout = main(varargin)
         end
     end
 
-    % Open viewer to allow user to select which ICs to use for hc-ICA.
+% Open viewer to allow user to select which ICs to use for hc-ICA.
     function chooseIC(~)
         if data.tempiniGuessObtained == 1
             global keeplist;
@@ -973,13 +934,13 @@ function varargout = main(varargin)
                 data.YtildeStar = data.Ytilde;
                 data.CmatStar = data.C_matrix_diag;
                 % Lock user out of re-restimate buttons
-                set( findobj('Tag', 'reEstButton') ,'Enable','Off') 
+                set( findobj('Tag', 'reEstButton') ,'Enable','Off')
                 set( findobj('Tag', 'viewReduced') ,'Enable','Off')
                 % Fill in the progress bar to let the user know that they can
                 % move on to the analysis
                 set(findobj('Tag','icProgress'),'BackgroundColor',[51/256,153/256,0/256],...
-                'ForegroundColor',[0.9255,0.9255,0.9255],...
-                'enable','on');
+                    'ForegroundColor',[0.9255,0.9255,0.9255],...
+                    'enable','on');
                 data.iniGuessComplete = 1;
                 set(findobj('tag', 'saveContinueButton'), 'enable', 'on');
             end
@@ -988,8 +949,8 @@ function varargout = main(varargin)
             if (data.qstar < data.q)
                 data.iniGuessComplete = 0;
                 set(findobj('tag', 'saveContinueButton'), 'enable', 'off');
-                set( findobj('Tag', 'reEstButton') ,'Enable','On') 
-                set( findobj('Tag', 'viewReduced') ,'Enable','On') 
+                set( findobj('Tag', 'reEstButton') ,'Enable','On')
+                set( findobj('Tag', 'viewReduced') ,'Enable','On')
             end
         else
             warndlg('Please obtain initial guess before selecting ICs for analysis.');
@@ -1016,9 +977,9 @@ function varargout = main(varargin)
         reEstimateIniGuess_callback;
     end
 
-    % Function to re-estimate the initial values based on a smaller
-    % selection of independent components. This is just a stripped down
-    % version of GIFT and still requires GIFT to run.
+% Function to re-estimate the initial values based on a smaller
+% selection of independent components. This is just a stripped down
+% version of GIFT and still requires GIFT to run.
     function reEstimateIniGuess_callback(~)
         
         % Redeclare the list of ICs to be used and calculate the new q
@@ -1061,35 +1022,35 @@ function varargout = main(varargin)
         data.dataLoaded = 0;
     end
 
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    %%%%%%%%%%% Functions for Panel 2 %%%%%%%%%%
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%% Functions for Panel 2 %%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-    
-    % Run the selected algorithm.
+
+% Run the selected algorithm.
     function runButton_Callback(~, ~)
         
         % Make sure preprocessing complete
-        if data.iniGuessComplete == 1 
-        
+        if data.iniGuessComplete == 1
+            
             % Enable the stop button and disable the run button
-            set(findobj('tag','stopButton'),'enable','on');   
+            set(findobj('tag','stopButton'),'enable','on');
             set(findall(findobj('tag', 'analysisSetup'),...
                 '-property', 'enable'), 'enable', 'off')
-
+            
             % Clear the progress bar
             axes(findobj('tag','analysisWaitbar'));
             cla
             rectangle('Position',[0,0,0,0],'FaceColor','g');
             text(482,10,[num2str(0),'%']);
-
+            
             % Clear both of the progress plots
             axes(findobj('tag','iterChangeAxis1'));
             cla
             axes(findobj('tag','iterChangeAxis2'));
             cla
             pause(1)
-
+            
             % Get all the settings.
             global prefix;
             global keeplist;
@@ -1099,16 +1060,16 @@ function varargout = main(varargin)
             data.maxiter = str2double(get(findobj('Tag','maxIter'),'String'));
             data.epsilon1 = str2double(get(findobj('Tag','epsilon1'),'String'));
             data.epsilon2 = str2double(get(findobj('Tag','epsilon2'),'String'));
-
+            
             % Write out algorithm information to log file.
             if (writelog == 1)
                 outfile = fopen(outfilename, 'a' );
                 fprintf(outfile, '\n\n----------------- EM Algorithm Running -----------------');
             end
-
+            
             % User selected approximate EM algorithm.
             if(selected_algo == 1)
-
+                
                 % Write the analysis information to the log file.
                 if (writelog == 1)
                     fprintf(outfile, '\nStarted approximate EM algorithm with the following settings:');
@@ -1116,7 +1077,7 @@ function varargout = main(varargin)
                     fprintf(outfile, strcat('\nEpsilon 1: ',num2str(data.epsilon1)));
                     fprintf(outfile, strcat('\nEpsilon 2: ',num2str(data.epsilon2)));
                 end
-
+                
                 % Run the approximate EM algorithm.
                 [data.theta_est, data.beta_est, data.z_mode, ...
                     data.subICmean, data.subICvar, data.grpICmean, ...
@@ -1125,16 +1086,16 @@ function varargout = main(varargin)
                     data.CmatStar, data.beta0Star, data.maxiter, ...
                     data.epsilon1, data.epsilon2, 'approxVec_Experimental',...
                     data.outpath, data.prefix, 0, data.analysisType);
-
-            % User selected exact EM algorithm, not currently included in
-            % package
+                
+                % User selected exact EM algorithm, not currently included in
+                % package
             else
-
+                
                 % Write analysis information to log file.
                 if (writelog == 1)
                     fprintf(outfile, '\nStarted exact EM algorithm');
                 end
-
+                
                 % Run the exact EM algorithm.
                 [data.theta_est, data.beta_est, data.z_mode, ...
                     data.subICmean, data.subICvar, data.grpICmean, ...
@@ -1144,36 +1105,36 @@ function varargout = main(varargin)
                     data.epsilon1, data.epsilon2, 'exact', data.outpath,...
                     data.prefix, 0, data.analysisType);
             end
-
+            
             % Analysis finished, write to log file.
             if (writelog == 1)
-            fprintf(outfile, strcat('\nOutput is in',...
-                [' ',get(findobj('Tag','analysisFolder'),'String')] )  );
+                fprintf(outfile, strcat('\nOutput is in',...
+                    [' ',get(findobj('Tag','analysisFolder'),'String')] )  );
             end
             path = get(findobj('Tag','analysisFolder'),'String');
             
             
-           
+            
             data.theoretical_beta_se_est = save_analysis_results(analysisPrefix, data);
-
+            
             % Disable the stop button
-            set(findobj('Tag','stopButton'),'enable','off'); 
+            set(findobj('Tag','stopButton'),'enable','off');
             % Enable the "Display Results" button
-            set(findobj('Tag','displayResultsButton'),'enable','on'); 
+            set(findobj('Tag','displayResultsButton'),'enable','on');
             % Re-enable the analysis buttons
             set(findall(findobj('tag', 'analysisSetup'),...
                 '-property', 'enable'), 'enable', 'on');
-            set(findobj('tag','runButton'),'enable','on');   
+            set(findobj('tag','runButton'),'enable','on');
             % Enable the display results button
-            %set(findobj('Tag','displayResultsButton'),'enable','off'); 
-
+            %set(findobj('Tag','displayResultsButton'),'enable','off');
+            
         else
             warndlg('Please complete all preprocessing and obtain initial guess before running EM algorithm.')
         end
         
     end
-    
-    % Switch the display tab to the results display tab.
+
+% Switch the display tab to the results display tab.
     function switchDisplayTab(~,~)
         set(findobj('Tag','tabGroup'),'SelectedTab',findobj('Tag','tab3'))
         set( findobj('tag', 'displayButton'), 'enable', 'on' );
@@ -1186,25 +1147,25 @@ function varargout = main(varargin)
         loadResultsCallback;
     end
 
-    % Function to terminate the analysis when the current iteration
-    % finishes.
+% Function to terminate the analysis when the current iteration
+% finishes.
     function stopButtonCallback(~,~)
         global keepRunning;
         keepRunning = 0;
         set( findobj('tag', 'displayButton'), 'enable', 'on' );
         set( findobj('tag', 'displayButton'), 'string', 'Display' );
         set( findobj('tag', 'displayResultsButton'), 'enable', 'on');
-        set(findobj('tag','stopButton'),'enable','off');   
+        set(findobj('tag','stopButton'),'enable','off');
         set(findall(findobj('tag', 'analysisSetup'),...
             '-property', 'enable'), 'enable', 'on')
         msgbox('EM Algorithm terminated early.')
     end
-    
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    %%%%%%%%%%% Functions for Panel 3 %%%%%%%%%%
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    
-    % Function to point to display path
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%% Functions for Panel 3 %%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Function to point to display path
     function browseDisplayPath(~,~)
         
         folderName = uigetdir(pwd);
@@ -1217,17 +1178,17 @@ function varargout = main(varargin)
         set(ehandle,'String',folderName);
         runinfofiles = dir( [folderName '/*_runinfo.mat'] );
         
-        if ( ~isempty(runinfofiles) )   
+        if ( ~isempty(runinfofiles) )
             preEdit = findobj('Tag', 'displayPrefix');
             [data.prefix, data.vis_prefix, data.vis_covariates,...
-            data.vis_covTypes, data.vis_X, data.vis_varNamesX,...
-            data.vis_interactions, data.vis_interactionsBase,...
-            data.vis_niifiles, data.vis_N, data.vis_nVisit,...
-            data.vis_qstar] = load_browse_display_path(runinfofiles, preEdit, folderName);
-        
+                data.vis_covTypes, data.vis_X, data.vis_varNamesX,...
+                data.vis_interactions, data.vis_interactionsBase,...
+                data.vis_niifiles, data.vis_N, data.vis_nVisit,...
+                data.vis_qstar] = load_browse_display_path(runinfofiles, preEdit, folderName);
+            
             % Update the prefix
             preEdit = findobj('Tag', 'displayPrefix');
-            preEdit.String = data.prefix;    
+            preEdit.String = data.prefix;
         else
             errordlg('No runinfo file found for the analysis!')
         end
@@ -1257,12 +1218,12 @@ function varargout = main(varargin)
                 data.vis_interactions, data.vis_nVisit, data.validVoxels, data.voxSize);
         end
     end
-    
-    %%%%%%%%%%% Functions to Fix or classify %%%%%%%%%% 
+
+%%%%%%%%%%% Functions to Fix or classify %%%%%%%%%%
     function dataselection(~,~)
     end
 
-    % Save the run infoformation into a file called runinfo.mat.
+% Save the run infoformation into a file called runinfo.mat.
     function saveContinueButton_Callback(~,~)
         
         [analysisPrefix] = save_analysis_preparation(data);
@@ -1282,7 +1243,7 @@ function varargout = main(varargin)
         
     end
 
-    % Open the window to allow the user to view the covariate files.
+% Open the window to allow the user to view the covariate files.
     function openCovWindow_Callback(~,~)
         if (data.dataLoaded == 1)
             waitfor(viewCovariateDisplay(data.X, data.varNamesX, data.niifiles,...
@@ -1307,8 +1268,8 @@ function varargout = main(varargin)
         end
     end
 
-    % Load the runinfo file provided by the user add data to a structure
-    % called "data"
+% Load the runinfo file provided by the user add data to a structure
+% called "data"
     function loadResultsCallback(~,~)
         
         % Get the user selected path to the runinfo file
@@ -1316,7 +1277,7 @@ function varargout = main(varargin)
         fileprefix = get( findobj('Tag', 'displayPrefix'), 'String' );
         %runinfoLoc = [filepath, '/', fileprefix, '_runinfo.mat'];
         runinfoLoc = fullfile(filepath, [fileprefix, '_runinfo.mat']);
-
+        
         
         [data.vis_q, data.vis_qstar, data.vis_outpath, data.vis_N,...
             data.vis_covariates, data.vis_X, data.vis_covTypes,...
@@ -1335,12 +1296,12 @@ function varargout = main(varargin)
         
     end
 
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    %% Functions for the Toolbar:
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    
-    % Function to take the parameter estimates from a given iteration and
-    % convert them into the approporiate maps
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Functions for the Toolbar:
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Function to take the parameter estimates from a given iteration and
+% convert them into the approporiate maps
     function compileIterationResults(~,~)
         waitfor(compileIterationResultsWindow)
     end
