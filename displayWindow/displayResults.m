@@ -1909,7 +1909,9 @@ end
         
         % Log for what steps are required (defaults here)
         updateCombinedImage = 0; updateCombinedImageElements = 0; %updateScaling=0;
-        updateColorbarFlag = 1; updateMasking=0;
+        updateColorbarFlag = 1;
+        updateMasking = 0;
+        %updateMasking = get(findobj('tag', 'maskSelect'), 'value') > 1;
         
         % Determine which steps are required based on user input
         narg = length(varargin)/2;
@@ -2968,9 +2970,9 @@ end
                     % Turn off Z-scores (Revert to oimg)
                     else
                         ddat.img{iPop, iVisit} = ddat.oimg{iPop, iVisit};
-                        set(findobj('Tag', 'thresholdSlider'), 'Value', 0);
+                        %set(findobj('Tag', 'thresholdSlider'), 'Value', 0);
                         set(findobj('Tag', 'manualThreshold'), 'String', '');
-                        set(findobj('Tag', 'manualThreshold'), 'Value', 0);
+                        %set(findobj('Tag', 'manualThreshold'), 'Value', 0);
                     end
                     
                 %end
