@@ -44,7 +44,7 @@ end
 newColormap2(1,:) = 0;
 
 %---Look up and store the appropriate RGB values. ----------------------
-for RGB_dim = 1:3,  % Loop through the three slabs: R, G, and B
+for RGB_dim = 1:3  % Loop through the three slabs: R, G, and B
     % Each entry in the 1-to-256-scaled anatomical (functional) matrix gives 
     % a row in the colormap matrix to look up.  The three elements of that 
     % row gets assigned to the respective color slab.  Note that we 

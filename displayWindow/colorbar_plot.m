@@ -13,8 +13,10 @@ function colorbar_plot(f, colorbar_labels, corresponding_values_on_1_to_64_scale
 %See also: scale_in
 %
 %Function by: Lijun Zhang, Ph.D  
+% Last edited by: Joshua Lukemire on 4/20/2021
 
-vec64=[64:-1:1]';
+colormap_range = size(color_map, 1);
+vec64=[colormap_range:-1:1]';
 image(vec64);
 
 % Create the "hot" top color, bottom will be "cool"
@@ -36,7 +38,7 @@ colormap(color_map);
 
 % Generate colorbar labels, xlimmode manual
 set(f, 'YlimMode', 'manual',...
-    'Ylim', [1,64],...
+    'Ylim', [1,colormap_range],...
     'YColor',[1 0 0],'XColor',[1 0 0],'XTickLabel',[],...
     'YTickLabel',(colorbar_labels),'YAxisLocation','right',...
     'YTick',(corresponding_values_on_1_to_64_scale));

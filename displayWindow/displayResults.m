@@ -2304,7 +2304,8 @@ end
             %tempImage(ddat.maskingStatus{iRow, iCol} == 0 ) = nan;
             tempImage(isnan(tempImage)) = minVal1 - 1;
             minVal2 = minVal1 - 1;
-            ddat.scaledFunc{iRow, iCol} = scale_in(tempImage, minVal2, maxVal1, 63);
+            %ddat.scaledFunc{iRow, iCol} = scale_in(tempImage, minVal2, maxVal1, 63);            
+            ddat.scaledFunc{iRow, iCol} = scale_in(tempImage, minVal2, maxVal1, size(ddat.highcolor, 1) - 1);
             
         
             % Loop over sub populations and update threshold.
@@ -2880,7 +2881,9 @@ end
         ddat.colorbar_labels = (min_functmap_value):incr:max_functmap_value;
         %ddat.colorbar_labels = round(ddat.colorbar_labels,2);
         ddat.colorbar_labels = fix(ddat.colorbar_labels*100)/100;
-        ddat.scaled_pp_labels = scale_in(ddat.colorbar_labels, min_functmap_value, max_functmap_value, 63);
+        % size(ddat.highcolor, 1)
+        %%ddat.scaled_pp_labels = scale_in(ddat.colorbar_labels, min_functmap_value, max_functmap_value, 63);
+        ddat.scaled_pp_labels = scale_in(ddat.colorbar_labels, min_functmap_value, max_functmap_value, size(ddat.highcolor, 1) - 1);
         % Update the colorbar
         axes(findobj('Tag', 'colorMap'));
         set(gca,'NextPlot','add')
