@@ -1333,7 +1333,8 @@ end
             drawnow;
             
             % Add the currently selected voxel to the trajectory plot
-            plot_voxel_trajectory([ddat.sag, ddat.cor, ddat.axi])
+            %plot_voxel_trajectory([ddat.sag, ddat.cor, ddat.axi])
+            update_all_traj_fields([ddat.sag, ddat.cor, ddat.axi])
             
             % Turn off trajectory view
         else
@@ -1392,13 +1393,34 @@ end
             storedCoordinates{nStored+1, 3} = ddat.axi;
             set( findobj('Tag', 'TrajTable'), 'Data', storedCoordinates );
             % Plot the new voxel
-            plot_voxel_trajectory(newCoordinates)
+            %plot_voxel_trajectory(newCoordinates)
+            update_all_traj_fields(newCoordinates);
         end
         
     end
 
-% Function to plot the trajectory of the currently selected voxel
-    function plot_voxel_trajectory(voxelIndex)
+%% New function -> completely draws all plots based on saved voxels and on
+% the currently select voxel. Intended as a replacement for the combination
+% of plot_voxel_trajectory and update_all_traj_fields(old version)
+
+% voxelIndex is the currently selected voxel -> dont think is needed
+    function update_all_traj_fields(voxelIndex)
+        
+        currentlySelectedVoxel = num2str([ddat.sag, ddat.cor, ddat.axi]);
+        
+         % TODO - pre-create this somewhere -> enumeration of line type
+        % by marker type
+        marker_style = {'none'; 'o'; '+'};
+        line_style = {'-'; '--'};
+        traj_style_settings = cell( length(marker_style)*length(line_style), 2);
+        style_ind = 0;
+        for imarkerstyle = 1:length(marker_style)
+            for ilinetype = 1:length(line_style)
+                style_ind = style_ind + 1;
+                traj_style_settings{style_ind, 1} = marker_style{imarkerstyle};
+                traj_style_settings{style_ind, 2} = line_style{ilinetype};
+            end
+        end
         
         % verify that trajectories are being plotted
         if ddat.trajectoryActive == 1
@@ -1406,136 +1428,89 @@ end
             % Get the axes to plot to
             trajAxesHandle = findobj('Tag', 'TrajAxes');
             
-            % check if this is a new voxel, if so, delete previous red line
-            if ~strcmp(num2str(voxelIndex), ddat.trajPreviousTag)
-                % Delete the previously selected red line
-                for iline = 1:length(trajAxesHandle.Children)
-                    if strcmp(trajAxesHandle.Children(iline).Tag, ddat.trajPreviousTag)
-                        % check if red line
-                        if all(trajAxesHandle.Children(iline).Color == [1 0 0])
-                            delete(trajAxesHandle.Children(iline));
-                            break
+            % Step 0: Remove all lines
+            for iline = length(trajAxesHandle.Children):-1:1
+                 delete(trajAxesHandle.Children(iline));
+            end
+            
+            % Make sure there is something to plot
+            if ~isempty(ddat.oimg)
+            
+                % Determine required size of Yaxis
+                trajAxesHandle.YLim(1) = min(min(min(cell2mat(ddat.oimg)))) ;
+                trajAxesHandle.YLim(2) = max(max(max(cell2mat(ddat.oimg)))) ;
+
+                % Step 1: Plot (in blue) all voxels from the saved table
+                nTypePlot = size(ddat.oimg, 1); % 1 for agg, nbeta for beta, ncontr for ctr etc
+                set(trajAxesHandle.Legend, 'visible', 'off');
+                savedVoxels = get( findobj('Tag', 'TrajTable'), 'Data');
+                for iSavedVoxel = 1:size(savedVoxels, 1)
+                    lineName = num2str([savedVoxels{iSavedVoxel, :}]);
+                    for iTypePlot = 1:nTypePlot
+                        % Get the trajectory
+                        traj = zeros(size(ddat.oimg, 2), 1);
+                        for iVisit = 1:size(ddat.oimg, 2)
+                            traj(iVisit) = ddat.oimg{iTypePlot, iVisit}(savedVoxels{iSavedVoxel, 1},...
+                                savedVoxels{iSavedVoxel, 2},...
+                                savedVoxels{iSavedVoxel, 3});
                         end
+                        line(trajAxesHandle, 1:ddat.nVisit,...
+                            traj,...
+                            'Tag', lineName,...
+                            'Color', 'Blue',...
+                            'LineStyle', traj_style_settings{iTypePlot, 2},...
+                            'Marker', traj_style_settings{iTypePlot, 1});
+                        drawnow;
                     end
                 end
-            end
-            
-            % Get the trajectory for the currently selected voxel
-            traj = zeros(ddat.nVisit, 1);
-            for iVisit = 1:ddat.nVisit
-                traj(iVisit) = ddat.oimg{1, iVisit}(voxelIndex(1), voxelIndex(2), voxelIndex(3));
-            end
-            
-            
-            % Make sure the yaxis of the plot matches
-            if any(~isnan(traj))
-                minY = min(traj);
-                maxY = max(traj);
-                range = maxY - minY;
-                if trajAxesHandle.YLim(1) > (minY - (0.05*range))
-                    trajAxesHandle.YLim(1) = (minY - (0.05*range));
+
+                % Step 2: Plot the currently selected voxel in red
+                for iTypePlot = 1:nTypePlot
+                    % Get the trajectory
+                    traj = zeros(size(ddat.oimg, 2), 1);
+                    for iVisit = 1:size(ddat.oimg, 2)
+                        traj(iVisit) = ddat.oimg{iTypePlot, iVisit}(ddat.sag, ddat.cor, ddat.axi);
+                    end
+                    % plot it
+                    lineName = num2str([ddat.sag, ddat.cor, ddat.axi]);
+                    line(trajAxesHandle, 1:ddat.nVisit,...
+                        traj,...
+                        'Tag', lineName,...
+                        'Color', 'Red',...
+                        'LineStyle', traj_style_settings{iTypePlot, 2},...
+                        'Marker', traj_style_settings{iTypePlot, 1});
+                    drawnow;
                 end
-                if trajAxesHandle.YLim(2) < (maxY + (0.05*range))
-                    trajAxesHandle.YLim(2) = (maxY + (0.05*range));
+
+                % Step 3: Determine legend labels
+                switch ddat.type
+                    case 'beta'
+                        switch get(findobj('tag', 'EffectTypeButtonGroup'), 'SelectedObject').String
+                            case 'Effect View'
+                                legendLabels = ddat.varNamesX;
+                            case 'Contrast View'
+                                legendLabels = ddat.LC_contrast_names;
+                            case 'Cross-Visit Contrast View'
+                                legendLabels = ddat.LC_contrast_names;
+                                disp('NEED TO SET SUB POP NAMES')
+                            otherwise
+                                disp('Error, unrecognized setting for beta view type')
+                        end
+                    case 'subpop'
+                        disp('SETUP SUB POPULATION LABELS!!!')
+                    case 'grp'
+                        legendLabels = 'Aggregate';
+                    otherwise
                 end
-            end
+                legend(trajAxesHandle,...
+                        legendLabels ,'Location','NorthEastOutside');
             
-            % Give the new line a name based on its coordinates
-            lineName = num2str(voxelIndex);
-            
-            % check if the line name is already in use, if so, the new line
-            % should be blue instead of red (stored)
-            if (length(trajAxesHandle.Children) > 0) && strcmp(lineName, trajAxesHandle.Children(1).Tag)
-                % Plot the line to be stored
-                line(trajAxesHandle, 1:ddat.nVisit, traj, 'Tag', lineName, 'Color', 'Blue');
-                drawnow;
-            else
-                % Plot a new line
-                line(trajAxesHandle, 1:ddat.nVisit, traj, 'Tag', lineName, 'Color', 'Red');
-                drawnow;
-            end
-            
-            
-            % Store this to know what to delete when moving to a new
-            % position
-            ddat.trajPreviousTag = lineName;
+            end % end of check that there is data to plot. 
             
         end
         
     end
 
-% Function to update the trajectory information when a new subject/IC/subpop has been
-% selected. Main idea is that we need to force an update of all saved
-% lines, as well as the red line. Can also be used in future we we "save" a
-% state of the viewer window to re-loaded saved voxels.
-%
-% Last Edited - 12/5/19
-%
-% Steps Involved
-% 0. Remove all lines from the plot
-% 1. Get a list of all saved voxels
-% 2. Re-plot the blue lines for each of these
-% 3. Obtain currently selected voxel
-% 4. Plot red line for this one
-%
-% Potential Changes
-% 1. Right now starts with a check that the trajectories are active. I
-% might want to remove this, since I think I want to call it any time that
-% a large number of things change. On the other hand, I could make it run
-% any time that the trajectory box is enabled/disabled (might be less error
-% prone).
-    function update_all_traj_fields()
-        
-        % verify that trajectories are being plotted
-        if ddat.trajectoryActive == 1
-            
-            % Get the axes to plot to
-            trajAxesHandle = findobj('Tag', 'TrajAxes');
-            
-            % Step 0 - Remove all old lines
-            for iline = 1:length(trajAxesHandle.Children)
-                delete(trajAxesHandle.Children(1));
-            end
-            
-            % Step 1 - Obtain list of all saved voxels
-            storedCoordinates = get( findobj('Tag', 'TrajTable'), 'Data' );
-            nStored = size(storedCoordinates, 1);
-            %storedCoordinates{iStored, :}
-            
-            % Step 2 - Plot a blue line for each voxel in the list
-            % TODO in future might need to loop over pops/contrasts here
-            traj = zeros(ddat.nVisit, 1);
-            for iline = 1:nStored
-                
-                % Extract the voxel indices
-                voxelIndex = [storedCoordinates{iline, :}];
-                
-                % Get the value at this voxel for each visit
-                for iVisit = 1:ddat.nVisit
-                    traj(iVisit) = ddat.oimg{1, iVisit}(voxelIndex(1), voxelIndex(2), voxelIndex(3));
-                end
-                
-                % Plot the corresponding blue line
-                lineName = num2str(voxelIndex);
-                line(trajAxesHandle, 1:ddat.nVisit, traj, 'Tag', lineName, 'Color', 'Blue');
-                
-            end
-            
-            % Step 3 - Grab the currently selected voxel coordinates/values
-            % TODO in future might need to loop over pops/contrasts here
-            for iVisit = 1:ddat.nVisit
-                traj(iVisit) = ddat.oimg{1, iVisit}(ddat.sag, ddat.cor, ddat.axi);
-            end
-            
-            % Step 4 - Plot the red line
-            % TODO in future might need to loop over pops/contrasts here
-            lineName = num2str([ddat.sag, ddat.cor, ddat.axi]);
-            line(trajAxesHandle, 1:ddat.nVisit, traj, 'Tag', lineName, 'Color', 'Red');
-            ddat.trajPreviousTag = lineName;
-            
-        end % end of verification that traj being plotted
-        
-    end
 
 % Function to move the viewer window to a selected voxel
     function traj_box_cell_select(hObject, eventdata, handles)
@@ -1630,7 +1605,8 @@ end
         else
             position_information_update(type);
         end
-        plot_voxel_trajectory([ddat.sag, ddat.cor, ddat.axi]);
+        %plot_voxel_trajectory([ddat.sag, ddat.cor, ddat.axi]);
+        update_all_traj_fields([ddat.sag, ddat.cor, ddat.axi]);
     end
 
 %% Initial Display

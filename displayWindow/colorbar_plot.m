@@ -34,7 +34,7 @@ image(vec64);
 % hot3 = flipud(jet(64));
 
 % Set the new colormap as the colormap
-colormap(color_map);
+colormap(flipud(color_map));
 
 % Generate colorbar labels, xlimmode manual
 set(f, 'YlimMode', 'manual',...
