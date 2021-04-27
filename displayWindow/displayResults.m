@@ -1511,6 +1511,8 @@ end
                         legendLabels = ddat.LC_subpop_names;
                     case 'grp'
                         legendLabels = 'Aggregate';
+                    case 'subj'
+                        legendLabels = findobj('tag', 'selectSubject').String{findobj('tag', 'selectSubject').Value};
                     otherwise
                 end
                 legend(trajAxesHandle,...
@@ -1723,6 +1725,7 @@ end
             set( findobj('Tag', 'thresholdPanel'), 'Position',[.56, 0.01 .32 .19]);
             set( findobj('Tag', 'icPanel'), 'Position',[.56, 0.21 .32 .50]);
             set( findobj('Tag', 'locPanel'), 'Position',[.12, 0.01 .32 .98]);
+            setupSubMenu;
             
         elseif strcmp(ddat.type, 'icsel')
             % TODO check 4 lines below for removal
@@ -2252,9 +2255,9 @@ end
          % Load each visit
         for iVisit = 1:ddat.nVisit
 
-            j = iVisit - 1;
-            ij = j+1+(iSubj-1)*(ddat.nVisit);
-            allicsubj = subj_results.subICmean(((1+ddat.q*(ij-1)):(ddat.q*ij)),:);
+            %j = iVisit - 1;
+            %ij = j+1+(iSubj-1)*(ddat.nVisit);
+            allicsubj = subj_results.subICmean(:, :, iSubj, iVisit);
             new_image = zeros(runinfo.voxSize);
             new_image(valid_voxels) = allicsubj(iIC, :);
             ddat.oimg{1, iVisit} = new_image;
