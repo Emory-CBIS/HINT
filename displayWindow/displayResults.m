@@ -97,6 +97,7 @@ ddat.valid_LC_contrast = zeros(0);
 ddat.LC_contrasts = zeros(0, ddat.p);
 ddat.LC_contrast_names = {};
 ddat.valid_LC_subpop = zeros(0);
+ddat.LC_subpop_names = {};
 ddat.LC_subpops = zeros(0, ddat.p);
 
 % Keep tracker of the user's preferred settings
@@ -902,18 +903,28 @@ end
             set(findobj('tag', 'ViewSelectTable'), 'ColumnName', {});
 
 
-            % Set the visit names (rows)
-            for k=1:ddat.nVisit; visit_names{k} = ['Visit ' num2str(k)]; end
-            set(findobj('tag', 'ViewSelectTable'), 'RowName', visit_names');
+%             % Set the visit names (rows)
+%             for k=1:ddat.nVisit; visit_names{k} = ['Visit ' num2str(k)]; end
+%             set(findobj('tag', 'ViewSelectTable'), 'RowName', visit_names');
 
             if prod(size(subpop_names, 1)) == 1
                 subpop_names = {subpop_names};
             end
+            
+            % Set the visit names (rows)
+            for k=1:ddat.nVisit; visit_names{k} = ['Visit ' num2str(k)]; end
+            set(findobj('tag', 'ViewSelectTable'), 'RowName', visit_names');
 
-            % set the column names (contrasts)
+            % set the column names (subpopulations)
+            for p=1:n_subpop; column_names{p} = ddat.LC_subpop_names{p}; end;
             if n_subpop > 0
-                set(findobj('tag', 'ViewSelectTable'), 'ColumnName', subpop_names');
+                set(findobj('tag', 'ViewSelectTable'), 'ColumnName', column_names');
             end
+
+%             % set the column names (contrasts)
+%             if n_subpop > 0
+%                 set(findobj('tag', 'ViewSelectTable'), 'ColumnName', subpop_names');
+%             end
             
         end
         
@@ -1497,7 +1508,7 @@ end
                                 disp('Error, unrecognized setting for beta view type')
                         end
                     case 'subpop'
-                        disp('SETUP SUB POPULATION LABELS!!!')
+                        legendLabels = ddat.LC_subpop_names;
                     case 'grp'
                         legendLabels = 'Aggregate';
                     otherwise
@@ -3363,6 +3374,7 @@ end
                         
                         set(findobj('Tag', 'subPopDisplay'), 'Data', newTable);
                         set(findobj('Tag', 'subPopDisplay'), 'RowName', newRowNames);
+                        ddat.LC_subpop_names = newRowNames;
                         % Make it so that only the main effects can be edited
                         ceditable = false(1, ddat.p);
                         ceditable(1:size(ddat.interactions,2)) = 1;
@@ -3450,12 +3462,21 @@ end
         
         set(findobj('Tag', 'subPopDisplay'), 'Data', newTable);
         set(findobj('Tag', 'subPopDisplay'), 'RowName', newRowNames);
+        
+        %if length(newRowNames)
+        if iscell(newRowNames)
+            ddat.LC_subpop_names = newRowNames;
+        else
+            ddat.LC_subpop_names = {newRowNames};
+        end
+        
         % Make it so that only the main effects can be edited
         ceditable = false(1, ddat.p);
         ceditable(1:length(ddat.varNamesX)) = 1;
         set(findobj('Tag', 'subPopDisplay'), 'ColumnEditable', ceditable);
         
-        % change the drop down menu
+        % change the drop down menu TODO THINK I CAN REMOVE THIS DUE TO
+        % VIEWTABLE SWITCH
         newString = cell(olddim(1)+1,1);
         oldstring = get(findobj('Tag', 'subPopSelect1'), 'String');
         for i=1:olddim(1)
@@ -3466,10 +3487,8 @@ end
             end
         end
         newString(olddim(1) + 1) = {['SubPop' num2str(olddim(1)+1)]};
-        % Update all sub population selection viewers
-%         for iPop = 1:ddat.nCompare
-%             set(findobj('Tag', ['subPopSelect' num2str(iPop)]),'String', newString);
-%         end
+        set(findobj('Tag', 'subPopSelect1'), 'String', newString)
+        
     end
 
 
