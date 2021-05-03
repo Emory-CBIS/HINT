@@ -84,17 +84,9 @@ for i=1:data.qstar
             nullAggregateMatrix = nan(vxl);
             nullAggregateMatrix(locs) = 0.0;
             
-            disp('still figuring out the indexing for sub ic mean')
-            indSubj = iVisit -  data.qstar * data.nVisit;
             q = data.qstar;
             for iSubj=1:data.N
-                
-               
-                ii = iSubj;
-                j = iVisit - 1;
-                ij = j+1+(ii-1)*(data.nVisit);
-                
-                qvsubj = subICmean(((1+q*(ij-1)):(q*ij)),:);
+                qvsubj = subICmean(:, :, iSubj, iVisit);
                 
                 nullAggregateMatrix(locs) = nullAggregateMatrix(locs) +...
                     1/data.N * squeeze(qvsubj(i, :))';
@@ -123,10 +115,17 @@ if data.nVisit == 1
         
 else
     
-    theory_var = var_est_longitudinal(data.theta_est, data.beta_est, data.X,...
-        data.z_mode, data.YtildeStar, data.G_z_dict, data.voxSize,...
+    % this is old version
+%     theory_var = var_est_longitudinal(data.theta_est, data.beta_est, data.X,...
+%         data.z_mode, data.YtildeStar, data.G_z_dict, data.voxSize,...
+%         data.validVoxels, prefix, data.outpath);
+%         data.theoretical_beta_se_est = theory_var;
+        
+    theory_var = VarEstLICAExact(data.theta_est, data.beta_est, data.X,...
+        data.PostProbs, data.YtildeStar, data.voxSize,...
         data.validVoxels, prefix, data.outpath);
-        data.theoretical_beta_se_est = theory_var;
+    
+    data.theoretical_beta_se_est = theory_var;
     
 end
 
