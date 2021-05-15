@@ -44,6 +44,7 @@ ddat.interactions = varargin{9};
 ddat.nVisit = varargin{10};
 ddat.validVoxels = varargin{11};
 ddat.voxSize = varargin{12};
+ddat.user_specified_anatomical_file = '';
 
 ddat.betaVarEst = 0;
 
@@ -127,6 +128,7 @@ end
             'WindowKeyPressFcn', @KeyPress);
         fileMenu = uimenu('Label','File');
         %uimenu(fileMenu,'Label','Save','Callback','disp(''save'')');
+        uimenu(fileMenu, 'Label', 'Load anatomical image', 'Callback', @anatomical_spec_window);
         uimenu(fileMenu, 'Label', 'Save to JPG', 'Callback', @save_jpg);
         %uimenu(fileMenu,'Label','Quit','Callback','disp(''exit'')',...
         %    'Separator','on','Accelerator','Q');
@@ -1838,8 +1840,13 @@ end
 %% Anatomical Image and Mask Functions
     function setupAnatomical(hObject, callbackdata)
         
+        
+        %% Check if user has specified an anatomical image if not, check
+        % if there is a matching anatomical in provided list
+        if ~strcmp(ddat.user_specified_anatomical_file, '')
+            ddat.mri_struct = load_nii(ddat.user_specified_anatomical_file);
         % 2mm voxel case
-        if ddat.xdim == 182 && ddat.ydim == 218 && ddat.zdim == 182
+        elseif ddat.xdim == 182 && ddat.ydim == 218 && ddat.zdim == 182
             ddat.mri_struct = load_nii('templates/MNI152_T1_1mm.nii');
         elseif ddat.xdim == 91 && ddat.ydim == 109 && ddat.zdim == 91
             ddat.mri_struct = load_nii('templates/MNI152_T1_2mm.nii');
@@ -1852,6 +1859,7 @@ end
             mriHolder = ones(ddat.xdim, ddat.ydim, ddat.zdim);
             ddat.mri_struct = make_nii(mriHolder);
         end
+        
         minVal = min(ddat.mri_struct.img(:));
         maxVal = max(ddat.mri_struct.img(:));
         ddat.scaledImg = scale_in(ddat.mri_struct.img, minVal, maxVal, 190);
@@ -2653,8 +2661,9 @@ end
         % Check if all main effects are now filled out. If so, update the
         % interactions, otherwise set them to zero
         rowIndex = callbackdata.Indices(1);
+        nMainEffects = length(ddat.covTypes);
         allFilledOut = ~any(cellfun(@isempty,...
-            callbackdata.Source.Data(rowIndex, :)));
+            callbackdata.Source.Data(rowIndex, 1:nMainEffects)));
         
         % If all factors are filled out, then update the interactions
         if allFilledOut == 1
@@ -3414,6 +3423,20 @@ end
         else
             warnbox = warndlg('No Sub-Populations have been specified');
         end
+    end
+
+
+    %% Function to open a dialogue box allowing the user to input an anatomical image
+    function anatomical_spec_window(hObject, callbackdata)
+        [anatfile, anatpath] = uigetfile('*.nii');
+        if isequal(anatfile,0)
+           ddat.user_specified_anatomical_file = '';
+        else
+           ddat.user_specified_anatomical_file = fullfile(anatpath, anatfile);
+        end
+        % Re-load the underlying anatomical image and redisplay
+        setupAnatomical;
+        load_functional_images;
     end
 
 
