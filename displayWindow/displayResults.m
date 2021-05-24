@@ -663,6 +663,11 @@ end
         % changes size of screen they no longer have to repeat every time
         % they change something
         
+        if ddat.nVisit > 1
+            set(findobj('tag', 'licaMenu'), 'Visible', 'on');
+        else
+            set(findobj('tag', 'licaMenu'), 'Visible', 'off');
+        end
         
         % Second, determine what control panels should be in view based on
         % the type of viewer currently being used
@@ -1319,67 +1324,69 @@ end
 % Function to shift view structure to include the trajectory viewer on the right
     function shift_to_trajectory_view(varargin)
         
-        % Turn on Trajectory View
+        % First make sure that trajectory viewer is valid (longitudinal data only)        
+        if ddat.nVisit > 1
         
-        if (ddat.trajectoryActive == 0)
-            
-            % Increase the size of the viewer window
-            currentPosition = hs.fig.Position;
-            ddat.prevDisplaySize = currentPosition;
-            hs.fig.Position = [currentPosition(1)*.6 currentPosition(2) 0.8 0.6];
-            
-            % Resize the Default View panel
-            set(findobj('Tag', 'DefaultPanel'), 'Position', [0.0, 0.0, 0.75, 1.0]);
-            
-            % Give the new space to the augmenting panel
-            set(findobj('Tag', 'AugmentingPanel'), 'Position', [0.75, 0.0, 0.25, 1.0]);
-            
-            % Enable the trajectory view
-            set(findobj('Tag', 'ViewTrajPanel'), 'Visible', 'On');
-            
-            % Set the tracker in the ddat structure
-            ddat.trajectoryActive = 1;
-            
-            % Make sure the visit labels on the x-axis are correct
-            trajAxesHandle = findobj('Tag', 'TrajAxes');
-            set(trajAxesHandle,'XLim', [1, ddat.nVisit], 'XTick', 1:ddat.nVisit);
-            drawnow;
-            
-            % Add the currently selected voxel to the trajectory plot
-            %plot_voxel_trajectory([ddat.sag, ddat.cor, ddat.axi])
-            update_all_traj_fields([ddat.sag, ddat.cor, ddat.axi])
-            
-            % Turn off trajectory view
-        else
-            
-            % Remove any red lines
-            trajAxesHandle = findobj('Tag', 'TrajAxes');
-            nLine = length(trajAxesHandle.Children);
-            if nLine > 0
-                for iline = 1:nLine
-                    if all(trajAxesHandle.Children(iline).Color == [1 0 0])
-                        delete(trajAxesHandle.Children(iline));
-                        break
+            % Turn on Trajectory View
+            if (ddat.trajectoryActive == 0)
+
+                % Increase the size of the viewer window
+                currentPosition = hs.fig.Position;
+                ddat.prevDisplaySize = currentPosition;
+                hs.fig.Position = [currentPosition(1)*.6 currentPosition(2) 0.8 0.6];
+
+                % Resize the Default View panel
+                set(findobj('Tag', 'DefaultPanel'), 'Position', [0.0, 0.0, 0.75, 1.0]);
+
+                % Give the new space to the augmenting panel
+                set(findobj('Tag', 'AugmentingPanel'), 'Position', [0.75, 0.0, 0.25, 1.0]);
+
+                % Enable the trajectory view
+                set(findobj('Tag', 'ViewTrajPanel'), 'Visible', 'On');
+
+                % Set the tracker in the ddat structure
+                ddat.trajectoryActive = 1;
+
+                % Make sure the visit labels on the x-axis are correct
+                trajAxesHandle = findobj('Tag', 'TrajAxes');
+                set(trajAxesHandle,'XLim', [1, ddat.nVisit], 'XTick', 1:ddat.nVisit);
+                drawnow;
+
+                % Add the currently selected voxel to the trajectory plot
+                %plot_voxel_trajectory([ddat.sag, ddat.cor, ddat.axi])
+                update_all_traj_fields([ddat.sag, ddat.cor, ddat.axi])
+
+                % Turn off trajectory view
+            else
+
+                % Remove any red lines
+                trajAxesHandle = findobj('Tag', 'TrajAxes');
+                nLine = length(trajAxesHandle.Children);
+                if nLine > 0
+                    for iline = 1:nLine
+                        if all(trajAxesHandle.Children(iline).Color == [1 0 0])
+                            delete(trajAxesHandle.Children(iline));
+                            break
+                        end
                     end
                 end
+
+                % Reset the size of the figure
+                hs.fig.Position = ddat.prevDisplaySize;
+
+                % Take away the space from the augmenting panel
+                set(findobj('Tag', 'AugmentingPanel'), 'Position', [0.0, 0.0, 0.0, 0.0]);
+
+                % Resize the Default View panel
+                set(findobj('Tag', 'DefaultPanel'), 'Position', [0, 0, 1.0, 1.0]);
+
+                % Disable the trajectory view
+                set(findobj('Tag', 'ViewTrajPanel'), 'Visible', 'Off');
+
+                % Set the tracker in the ddat structure
+                ddat.trajectoryActive = 0;
             end
-            
-            % Reset the size of the figure
-            hs.fig.Position = ddat.prevDisplaySize;
-            
-            % Take away the space from the augmenting panel
-            set(findobj('Tag', 'AugmentingPanel'), 'Position', [0.0, 0.0, 0.0, 0.0]);
-            
-            % Resize the Default View panel
-            set(findobj('Tag', 'DefaultPanel'), 'Position', [0, 0, 1.0, 1.0]);
-            
-            % Disable the trajectory view
-            set(findobj('Tag', 'ViewTrajPanel'), 'Visible', 'Off');
-            
-            % Set the tracker in the ddat structure
-            ddat.trajectoryActive = 0;
-        end
-        
+        end % end of check that we are using longitudinal viewer
     end
 
 % Function to add the currently selected voxel to the stored list
@@ -2615,12 +2622,14 @@ end
             
             % Edit the view selection table
             setup_ViewSelectTable;
+            ddat.viewingContrast = 0;
           
             % Contrast View
         else
             
             setup_ViewSelectTable;
             disp('set this!')
+            ddat.viewingContrast = 1;
             
             % If an archived view table is present, then load it, otherwise
             % setup a default view table based on the number of contrasts.
@@ -2658,25 +2667,37 @@ end
         
         [nsubpop ign] = size( get(findobj('Tag', 'subPopSelect'),'String'));
         
-        % Check if all main effects are now filled out. If so, update the
-        % interactions, otherwise set them to zero
+        %% Determine if need to autofill the interaction term:
+        % IF sub population - yes
+        % IF contrast - no
         rowIndex = callbackdata.Indices(1);
         nMainEffects = length(ddat.covTypes);
-        allFilledOut = ~any(cellfun(@isempty,...
-            callbackdata.Source.Data(rowIndex, 1:nMainEffects)));
+        if strcmp(ddat.type, 'beta')
+            allFilledOut = ~any(cellfun(@isempty,...
+                callbackdata.Source.Data(rowIndex, 1:end)));
+        else
+            allFilledOut = ~any(cellfun(@isempty,...
+                callbackdata.Source.Data(rowIndex, 1:nMainEffects)));
+        end
+        
         
         % If all factors are filled out, then update the interactions
         if allFilledOut == 1
             [nInt, nCov] = size(ddat.interactions);
-            for iInt = 1:nInt
-                interactionValue = 1;
-                for iCov = 1:nCov
-                    if ddat.interactions(iInt, iCov) == 1
-                        interactionValue = interactionValue *...
-                            str2double(callbackdata.Source.Data{callbackdata.Indices(1), iCov});
+            
+            %% If sub-population viewer then covariates determine interactions
+            % so we can auto fill them:
+            if strcmp(ddat.type, 'subpop')
+                for iInt = 1:nInt
+                    interactionValue = 1;
+                    for iCov = 1:nCov
+                        if ddat.interactions(iInt, iCov) == 1
+                            interactionValue = interactionValue *...
+                                str2double(callbackdata.Source.Data{callbackdata.Indices(1), iCov});
+                        end
                     end
+                    callbackdata.Source.Data{callbackdata.Indices(1), nCov+iInt} = num2str(interactionValue);
                 end
-                callbackdata.Source.Data{callbackdata.Indices(1), nCov+iInt} = num2str(interactionValue);
             end
             
             % Update appropriate LC list, note this is different from
@@ -2906,13 +2927,15 @@ end
         % If looking at effect/contrast maps, go ahead and load all of the
         % variances for the currently selected IC and visits, this way we do not keep
         % reloading them during the loop
-        current_vars = {};
+        %current_vars = {};
         if strcmp('beta', ddat.type) && (Z_enabled == 1)
-            for iVisit = 1:size(ddat.viewTracker, 2)
-                newMap = load(fullfile(ddat.outdir, [ddat.outpre '_BetaVarEst_IC'...
-                    num2str(current_IC) '_visit' num2str(iVisit) '.mat']));
-                current_vars{iVisit} = newMap.betaVarEst;
-            end
+%             for iVisit = 1:size(ddat.viewTracker, 2)
+%                 newMap = load(fullfile(ddat.outdir, [ddat.outpre '_BetaVarEst_IC'...
+%                     num2str(current_IC) '_visit' num2str(iVisit) '.mat']));
+%                 current_vars{iVisit} = newMap.be`taVarEst;
+%             end
+              current_vars = load( fullfile(ddat.outdir, [ddat.outpre '_BetaVarEst_IC' num2str(current_IC)...
+                            '.mat']) ).betaVarEst;
         end
         
         for iPop = 1:size(ddat.viewTracker, 1)
@@ -2923,33 +2946,50 @@ end
                     if Z_enabled == 1
                         
                         if strcmp('beta', ddat.type)
+               
                             
                             if (ddat.viewingContrast == 0)
                                 
+                                % create the appropriate vector multiplier
+                                % to pick out the current covariate at the
+                                % current visit
+                                csel = zeros( size(ddat.viewTracker, 1) + 1 , 1) ;
+                                csel(iPop + 1) = 1;
+                                ctr = createContrast( csel, iVisit, ddat.nVisit);
+                                
+                                % get the corresponding variance term
+                                
                                 % TODO preallcoate and stop re-doing this
                                 % using above current vars
-                                current_var_est = current_vars{iVisit};
+                                %current_var_est = current_vars{iVisit};
                                 
-                                % Scale using the theoretical variance estimate
+                                current_var_est = squeeze(mtimesx(mtimesx(ctr', current_vars(:, :, :, :, :) ), ctr));
+                                
+                                % Scale using the variance estimate
                                 % theoretical estimate is q(p+1) * q(p+1)
                                 ddat.img{iPop, iVisit} = ddat.oimg{iPop, iVisit} ./...
-                                    sqrt(squeeze( current_var_est( iPop, iPop, :,:,: )));
+                                    sqrt(current_var_est);
                                 
                                 
                             end
                             
                             if (ddat.viewingContrast == 1)
                                 contrastSettings = get(findobj('Tag', 'contrastDisplay'), 'Data');
-                                % Load the contrast
-                                c = zeros(ddat.p,1);
+                                
+                                % create the appropriate vector multiplier
+                                % to pick out the current covariate at the
+                                % current visit
+                                csel = zeros( size(ddat.viewTracker, 1) + 1 , 1) ;
                                 for xi = 1:ddat.p
-                                    c(xi) = str2double(contrastSettings( get(findobj('Tag',...
+                                    csel(xi + 1) = str2double(contrastSettings( get(findobj('Tag',...
                                         ['contrastSelect' num2str(1)]), 'Value') , xi));
                                 end
+                                ctr = createContrast( csel, iVisit, ddat.nVisit);         
+                                
                                 % Get the variance estimate; loop over each voxel
-                                seContrast = sqrt(squeeze(mtimesx(mtimesx(c', ddat.betaVarEst), c)));
-                                ddat.img{subPop} = ddat.oimg{subPop} ./...
-                                    squeeze(seContrast);
+                                current_var_est = squeeze(mtimesx(mtimesx(ctr', current_vars(:, :, :, :, :) ), ctr));
+                                ddat.img{iPop, iVisit} = ddat.oimg{iPop, iVisit} ./...
+                                    sqrt(current_var_est);
                             end
                         
                         % Update for sub-population level
@@ -3172,9 +3212,15 @@ end
 
         set(findobj('Tag', 'contrastDisplay'), 'Data', newTable);
         set(findobj('Tag', 'contrastDisplay'), 'RowName', ddat.LC_contrast_names);
-        % Make it so that only the main effects can be edited
-        ceditable = false(1, ddat.p);
-        ceditable(1:size(ddat.interactions,2)) = 1;
+        
+        % Make it so that only the main effects can be edited if this is a
+        % subpopulation, otherwise all can be edited
+        if strcmp(ddat.type, 'beta')
+            ceditable = true(1, ddat.p);
+        else
+            ceditable = false(1, ddat.p);
+            ceditable(1:size(ddat.interactions,2)) = 1;
+        end
         set(findobj('Tag', 'contrastDisplay'), 'ColumnEditable', ceditable);
         
         ddat.contrastExists = 1;
