@@ -1,4 +1,4 @@
-function [ varCeta1 ] = VarEstLICAExact( theta_est, beta_est, X,...
+function [ VarEsts ] = VarEstLICAExact( theta_est, beta_est, X,...
     PostProbs, YtildeStar, voxSize,...
     validVoxels, prefix, outpath )
 %var_est_longitudinal - Summary of this function goes here
@@ -59,6 +59,7 @@ end
 
 % Finished estimate the covariance matrix for C(v)
 %save([path_data 'varCeta_sel2.mat'],'varCeta1','-v7.3')
+VarEsts = zeros( [T*(p+1) - 1, T*(p+1) - 1, V,  q]);
 
 % Create the maps for each IC based on the theoretical variance
 % estimator
@@ -69,19 +70,22 @@ for iIC = 1:q
         % estimates
         
         % THIS IS INDEXING ASSUMING THAT IT GOES:
-        indArrStart = (iVisit-1)*( (p+1)*q ) + (iIC-1)*(p+1) + 1;
-        indArr = indArrStart:(indArrStart+(p));
+        %indArrStart = (iVisit-1)*( (p+1)*q ) + (iIC-1)*(p+1) + 1;
+        indArrStart = q + iIC;
+        indArr = indArrStart:q:size(varCeta1, 1);
         %disp(indArr)
 
         % Fill out the variance estimate
-        newMap = zeros( [p+1, p+1, voxSize] ); % empty for intermediate var map
+        newMap = zeros( [T*(p+1) - 1, T*(p+1) - 1, voxSize] ); % empty for intermediate var map
         tempData = squeeze(varCeta1(indArr, indArr, :));
         newMap( :,:, validVoxels ) = tempData;
         betaVarEst = newMap;
+        
+        VarEsts(:, :, :, iIC) = tempData;
 
         % Save as a .mat file to be loaded in the display viewer
         fname = fullfile(outpath, [prefix '_BetaVarEst_IC' num2str(iIC)...
-            '_visit' num2str(iVisit) '.mat']);
+            '.mat']);
         save(fname, 'betaVarEst');
     end
 end

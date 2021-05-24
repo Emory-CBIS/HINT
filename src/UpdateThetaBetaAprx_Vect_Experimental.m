@@ -1,6 +1,6 @@
 function [theta_new, beta_new, z_mode, subICmean, subICvar,...
         grpICmean, grpICvar, err, G_z_dict] = UpdateThetaBetaAprx_Vect_Experimental (...
-        Y, X_mtx, theta, C_matrix_diag, beta, N, T, q, p, m, V)
+        Y, X_mtx, theta, C_matrix_diag, beta, N, T, nVisit, q, p, m, V)
 % UpdateThetaBetaAprx_Vect - Function to run hc-ICA approximate EM algorithm
 % Each run of this function performs one iteration of EM approximate
 % algorithm

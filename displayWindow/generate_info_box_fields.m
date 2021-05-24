@@ -43,7 +43,7 @@ switch viewerType
     case 'subpop'
         %% Case 3: Sub-population Viewer
         display_names = get(findobj('tag', 'ViewSelectTable'), 'ColumnName');
-        for iSubPop = 1:size(viewTracker, 1)
+        for iSubPop = 1:length(display_names)
             for iVisit = 1:size(viewTracker, 2)
                 map_fields{iSubPop, iVisit} = ['Sub-Population: ' display_names{iSubPop}];
                 visit_fields{iSubPop, iVisit} = ['Visit ' num2str(iVisit)];
