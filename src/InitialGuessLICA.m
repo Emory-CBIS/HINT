@@ -16,6 +16,11 @@ function [theta, beta, grpSig, s0_agg] = InitialGuessLICA( prefix, Ytilde,...
 % N becomes N (needs to be number of subjects)
 % Remove C_diag_matrix
 
+%% Changes to variable names
+% T becomes nVisit
+% N becomes N (needs to be number of subjects)
+% Remove C_diag_matrix
+
 mask = load_nii(maskfl);
 
 % Create a version of the design matrix that is appropriate for this script
@@ -23,151 +28,216 @@ Xorig = X;
 selectRows = 1:nVisit:N*nVisit; % one row per subject
 Xtemp = Xorig(selectRows, :);
 % add a row of ones to the top
-X = [ones(1, N); Xtemp'];
+%X = [ones(1, N); Xtemp'];
 
-%% Start of Yikai's script
-% T IS NVISIT-1 BECAUSE T STARTS FROM 0
-T = nVisit - 1;
+%Xall = kron(eye(nVisit), Xtemp')';
+%Xallint = [ones(N*nVisit, 1) Xall];
+X = [];
+for i = 1:N
+    X = [X; kron(eye(nVisit), Xtemp(i, :))];
+end
 
-    % Index 2 is N*q*nVisit x ??? seems like by nVisit - CHECK
-    Index2 = zeros([N*q*(T+1) 3]);iter = 1;
-    for i = 1:N
-        for j = 0:T
-            for t = 1:q
-                Index2(iter,:) = [i j t]; iter = iter+1;
-            end
-        end
+% above design matrix does not include alpha -> estimate that at the end
+
+% rearrange Ytilde to be order visit -> subject within visit
+% yinds = [];
+% for j = 1:nVisit
+%     yinds = [yinds; repmat(0:(q-1), 1, N)'  + repmat( (j:nVisit*q:nVisit*N)', q, 1) ];
+% end
+% YtildeVisitOrder = Ytilde(yinds, :);
+
+% Load in the initial estimate for each Sij(v)
+initial_guess_Sij = zeros(q, V, N, nVisit);
+ind = 0;
+for i = 1:N
+    for j = 1:nVisit
+        ind = ind + 1;
+        subject_visit_data = load([prefix '_ica_br' num2str(ind) '.mat']); % q by V
+        initial_guess_Sij(:, :, i, j) = subject_visit_data.compSet.ic;
     end
-    
-    % subj_PCA_R=6; % for simulated data which has 3 IC
-    initalguessS0 = zeros(q,V,T+1);
-    iniguessSij = zeros(q,V,N,T+1);
-    epsilon2 = zeros(q,V,N,T+1); % Visit specific and subject specific error
-    iniguessCeta = zeros(q,p+1,V,T+1); %p plus intercept % INCLUDES BOTH ALPHA AND BETA
-    A = zeros(q,q,N,T+1);
+end
 
+% Subject Specific Mixing Matrices
+Aij = zeros(q, q, N, nVisit);
+eind = 0;
+for i = 1:N
+    for j = 1:nVisit
+        sind = eind + 1; eind = eind + q;
+        Aijtemp = Ytilde(sind:eind, :) * initial_guess_Sij(:, :, i, j)' * inv(initial_guess_Sij(:, :, i, j) * initial_guess_Sij(:, :, i, j)');
+        %Aijtemp = Aijtemp';
+        Aij(:, :, i, j) = Aijtemp*real(inv(Aijtemp'*Aijtemp)^(1/2));
+    end
+end
 
-    % above was in the GIFT part -> see what can be removed TODO
-    
-    iter = 1;
-    errors = zeros(q, V, N, T+1);
+% Now reverse direction to get Sij on the same scale as the Ytilde data
+eind = 0;
+initial_guess_Sij_stacked = zeros(q, V, N*nVisit);
+ind = 0;
+for i = 1:N
+    for j = 1:nVisit
+        ind = ind + 1; % for Sij
+        sind = eind + 1; eind = eind + q; %for Y
+        initial_guess_Sij(:, :, i, j) = Aij(:, :, i, j)' * Ytilde(sind:eind, :);
+        initial_guess_Sij_stacked(:, :, ind) = Aij(:, :, i, j)' * Ytilde(sind:eind, :);
+    end
+end
 
-    for j = 0:T
-    % load the ICs for subject i
-        for i=1:N
-             dattempp = load([prefix '_ica_br' num2str(iter) '.mat']); % q by V
-             iniguessSij(:,:,i,j+1) = dattempp.compSet.ic;        
-             A(:,:,i,j+1) = ((iniguessSij(:,:,i,j+1)*iniguessSij(:,:,i,j+1)')^(-1)*...
-                iniguessSij(:,:,i,j+1)*Ytilde(Index2(:,1)==i & Index2(:,2)==j,:)')';
-            iter = iter +1;
+% Next we fit voxel specific regression models to estimate beta and S0 (NOT
+% alpha)
+% S0temp   = zeros(q, V);
+% betatemp = zeros(p, q, V, nVisit);
+% Xint = [ones(N*nVisit, 1) X];
+% proj = inv(Xint' * Xint) * Xint';
+% for qq = 1:q
+%     est  = proj * squeeze(initial_guess_Sij_stacked(qq,:, :))';
+%     S0temp(qq, :) = est(1, :); 
+%     for j = 1:nVisit
+%         betatemp(:, qq, :, j) = est( (1 + (j-1)*p+1):(1 + j*p), :);
+%     end
+% end
+
+% Next we fit voxel specific regression models to estimate beta and S0
+% (WITH
+% alpha)
+S0temp   = zeros(q, V);
+betatemp = zeros(p, q, V, nVisit);
+alpha_guess = zeros(q, V, nVisit);
+alphalead = eye(nVisit); alphalead(1, 1) = 0;
+alphaX = repmat(alphalead, N, 1);
+alphaX = alphaX(:, 2:end);
+Xint = [ones(N*nVisit, 1) alphaX X];
+proj = inv(Xint' * Xint) * Xint';
+for qq = 1:q
+    est  = proj * squeeze(initial_guess_Sij_stacked(qq,:, :))';
+    S0temp(qq, :) = est(1, :); 
+    for j = 1:nVisit
+        if j > 1
+            alpha_guess(qq, :, j) = est(j, :);
         end
-        
-        % Esimate the Beta to make sure S0 is estimatable we do not estimate alpha
-        % first. 
-        X0 = X((2:(p+1)),:); % 1sr row of X is 1
-        if j == 0
-            for v = 1:V
-                % alpha0 should be all 0
-                     iniguessCeta(:,:,v,j+1) =  [zeros(q,1) squeeze(iniguessSij(:,v,:,j+1))* X0' * (X0*X0')^(-1)]; % alpha_0 needs to be all zeros
-            end
+        betatemp(:, qq, :, j) = est( (nVisit + (j-1)*p+1):(nVisit + j*p), :);
+    end
+end
+
+% Now estimate alpha using the residuals
+% alpha_guess = zeros(q, V, nVisit);
+% ind = 0;
+% for i = 1:N
+%     for j = 1:nVisit
+%         ind = ind + 1;
+%         resid = initial_guess_Sij(:, :, i, j) ...
+%             - S0temp ...
+%             - squeeze(mtimesx( X(ind, ((j-1)*p+1):(j*p) ), betatemp(:, :, :, j) ));
+%         alpha_guess(:, :, j) = alpha_guess(:, :, j) + resid;
+%     end
+% end
+% % dimension q x V x n Visit
+% alpha_guess = alpha_guess / N;
+
+%% Estimation of subject specific random intercept
+bi_est = zeros(q, V, N);
+ind = 0;
+for i = 1:N
+    sum_level_2_residual(:, :) = 0;
+    for j = 1:nVisit
+        ind = ind + 1;
+        resid = initial_guess_Sij(:, :, i, j) ...
+            - S0temp ...
+            - alpha_guess(:, :, j) ...
+            - squeeze(mtimesx( X(ind, ((j-1)*p+1):(j*p) ), betatemp(:, :, :, j) ));
+        sum_level_2_residual = sum_level_2_residual + resid;
+    end
+    bi_est(:, :, i) = sum_level_2_residual / nVisit;
+end
+
+%% Estimation of residual variance terms
+% sum_level1_error = zeros(q, V);
+% sum_level2_error = zeros(q, V);
+% eind = 0;
+% ind = 0;
+% for i = 1:N
+%     for j = 1:nVisit
+%         ind = ind + 1;
+%         sind = eind + 1; eind = eind + q;
+%         % First level is Yij - AijSij
+%         sum_level1_error = sum_level1_error ...
+%             + (Ytilde(sind:eind, :) - Aij(:, :, i, j) * initial_guess_Sij(:, :, i, j));
+%         sum_level2_error = sum_level2_error...
+%             + (Aij(:, :, i, j)' * Ytilde(sind:eind, :) ...
+%             - S0temp ...
+%             - alpha_guess(:, :, j) ...
+%             - bi_est(:, :, i)...
+%             - squeeze(mtimesx( X(ind, ((j-1)*p+1):(j*p) ), betatemp(:, :, :, j) )) );
+%     end
+% end
+sigma_1_sq = var(Ytilde(:));
+sigma_2_sq = var(initial_guess_Sij(:));
+
+%% Estimate parameters of MoG using heuristic approach
+m = 2;
+for j = 1:q
+    S0_j = squeeze(S0temp(j,:)');
+    sigma_noise = sqrt(var(S0_j));
+    % Determine sign of activation mean
+    quants = quantile(S0_j, [0.025, 0.975]);
+    MoG_sign = 1;
+    if abs(quants(1)) > abs(quants(2))
+        MoG_sign = -1;
+    end
+    % Cutoff
+    cutpoint = 1.64 * sigma_noise;
+    
+    if sum((S0_j*MoG_sign) > cutpoint) > 0
+        if abs(quants(1)) > abs(quants(2))
+            cutpoint = quants(1);
         else
-            for v = 1:V
-                     iniguessCeta(:,:,v,j+1) =  squeeze(iniguessSij(:,v,:,j+1))* X' * (X*X')^(-1); % [alpha_j, beta_j] q x (p+1)
-            end
-        end            
-        
-        % get the S0
-        S0_temp = zeros(q, V, N); 
-        for i = 1:N
-            eta = zeros(q, V);
-            for covv = 1:(p+1)
-                eta = eta + squeeze(X(covv, i) .* iniguessCeta(:,covv,:,j+1) );
-            end
-            S0_temp(:,:,i) = iniguessSij(:,:,i,j+1) - eta;
-        end
-        initalguessS0(:,:,j+1) = mean(S0_temp, 3);
-        
-        % calculating sigma2 squared
-        for i = 1:N
-            epsilon2(:, :, i,j+1) = S0_temp(:,:,i) - initalguessS0(:,:,j+1);
-        end
-        
-% Finally calculate sigma1_squared
-%ytilde - ai * si;
-        
-        for i=1:N
-            ij = j+1+(i-1)*(T+1);
-             errors(:,:,i,j+1) = Ytilde(Index2(:,1)==i & Index2(:,2)==j,:) - A(:,:,i,j+1)*iniguessSij(:,:,i,j+1);
-             for ic1 = 1:q
-                 errors(ic1,:,i,j+1) = errors(ic1,:,i,j+1);
-             end
-        end
-   
-    % Initial Guess: fit a Gaussian mixture
-        if j ==0 
-             m=2;
-             if j ==0
-                  for icl =1:q
-                     GMModel = fitgmdist(initalguessS0(icl,:,j+1)' ,m+1);
-                     id = find(abs(GMModel.mu) == max(abs(GMModel.mu)));
-                     miu3(1+m*(icl-1): m*icl, j+1) =[0, GMModel.mu(id)];
-                     sigma3_sq(1+m*(icl-1): m*icl, j+1) = [GMModel.Sigma(id), GMModel.Sigma(id)];
-                     pi(1+m*(icl-1): m*icl, j+1)  =[1-GMModel.PComponents(id),...
-                                           GMModel.PComponents(id)];
-                  end
-             end
-        end
-        
-        
-    end % end of loop over T (nVisit)
-
-
-% First Level
-    theta.sigma1_sq = (var(reshape(errors,1,prod(size(errors))))); % v0
-    
-    theta.A = A;
-
-    % Second Level
-    % first set the value of alpha2...T
-    for j = 1:T
-        for icl = 1:q
-            iniguessCeta(icl,1,:,j+1) = initalguessS0(icl,:,j+1) - initalguessS0(icl,:,1);
+            cutpoint = quants(2);
         end
     end
-    %theta.iniguessCeta = iniguessCeta;
     
-    % Then extract the subject's variance D=diag(v1,..,vq) and 
-    % time-subject variance tau
-    for i = 1:N
-        esilon_subj = squeeze(epsilon2(:,:,i,:));
-        temp(:,:,i) = (esilon_subj(:,:,1) -mean(esilon_subj,3)).^2;
-        for j = 1:T
-        temp(:,:,i) = temp(:,:,i)+(esilon_subj(:,:,j+1) -mean(esilon_subj,3)).^2;
-        end
-    end
+    theta.miu3(2+(j-1)*m)      = mean( S0_j( (S0_j*MoG_sign) > cutpoint ) );
+    theta.sigma3_sq(2+(j-1)*m) = var( S0_j( (S0_j*MoG_sign) > cutpoint ) );
+    theta.sigma3_sq(1+(j-1)*m) = sigma_noise^2;
+    theta.pi(2+(j-1)*m)        = sum( (S0_j*MoG_sign) > cutpoint ) / numel(S0_j);
+    theta.pi(1+(j-1)*m)        = 1 - theta.pi(2+(j-1)*m);
 
-    temp = temp/T;
-    theta.tau_sq = (mean(reshape(mean(temp,3),1,q*V)));
-    theta.D = mean(var(mean(epsilon2,4),1,3),2);
+    % Zero out covariate effects that don't fall within 
+    %Ceta_post( :, j, (S0_j*MoG_sign) < cutpoint ) = 0.0;
+end
 
-    % Third Level of S0
-    theta.sigma3_sq = sigma3_sq(:,1);
-    theta.pi = pi(:,1);
-    theta.miu3 = miu3(:,1);
-    
-    % renaming some things
-    beta = iniguessCeta;
-    
-     % Save the aggregate map for IC selection; these are only used for IC
-    % selection
-    agg_IC = load_nii([prefix '_agg__component_ica_.nii']);
-    s0_agg = zeros(q, V);
-    for c = 1:q
-        tempVals = reshape(agg_IC.img(:,:,:,c), [1, numel(agg_IC.img(:,:,:,c))]);
-        s0_agg(c,:) = reshape(tempVals(mask.img==1), [1, V]);
+%% Prepare return objects
+grpSig = S0temp;
+
+% Combine alpha and beta
+% iniguessCeta = zeros(q,p+1,V,T+1);
+combined_alpha_beta = zeros(q, p+1, V, nVisit);
+for j = 1:nVisit
+    combined_alpha_beta(:, 1, :, j) = alpha_guess(:, :, j);
+    for qq = 1:q
+        combined_alpha_beta(qq, 2:(p+1), :, j) = betatemp(:, qq, :, j);
     end
+end
+
+% Second level variance 
+theta.tau_sq = sigma_2_sq;
+% Random effects variance
+theta.D = var(bi_est, [], [2,3]) ;
+
+theta.sigma1_sq = sigma_1_sq; % v0
     
-    grpSig = initalguessS0;
+theta.A = Aij;
+
+agg_IC = load_nii([prefix '_agg__component_ica_.nii']);
+s0_agg = zeros(q, V);
+for c = 1:q
+    tempVals = reshape(agg_IC.img(:,:,:,c), [1, numel(agg_IC.img(:,:,:,c))]);
+    s0_agg(c,:) = reshape(tempVals(mask.img==1), [1, V]);
+end
+
+% for function return
+beta = combined_alpha_beta;
+
+theta.S0 = S0temp;
+
     
 
 end
