@@ -2120,11 +2120,13 @@ end
                 end
                 
                 % load the visit effects
-                for iVisit = 1:ddat.nVisit
-                    visit_effect_fname = [ddat.outdir '/' ddat.outpre '_visit_effect' '_IC'...
-                        num2str(sel_IC) '_visit' num2str(iVisit) '.nii'];
-                    ndata = load_nii(visit_effect_fname);
-                    visit_effect{iVisit} = ndata.img;
+                if ddat.nVisit > 1
+                    for iVisit = 1:ddat.nVisit
+                        visit_effect_fname = [ddat.outdir '/' ddat.outpre '_visit_effect' '_IC'...
+                            num2str(sel_IC) '_visit' num2str(iVisit) '.nii'];
+                        ndata = load_nii(visit_effect_fname);
+                        visit_effect{iVisit} = ndata.img;
+                    end
                 end
                 
                 % File name for S0 Map
@@ -2147,7 +2149,12 @@ end
 
                     % The column of the contrast is the linear
                     % combination currently viewing
-                    ddat.oimg{iRow, iCol} = S0_maps + visit_effect{iCol};
+                    if ddat.nVisit > 1
+                        ddat.oimg{iRow, iCol} = S0_maps + visit_effect{iCol};
+                    else
+                        ddat.oimg{iRow, iCol} = S0_maps;
+                    end
+                    
                     ddat.maskingStatus{iRow, iCol} = ~isnan(S0_maps);
                     
                     % Main Effects
