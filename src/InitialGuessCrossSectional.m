@@ -78,16 +78,47 @@ sigma2_sq = var(reshape(epsilon2temp, [q,V*N]), 0, 2);
 
 
 % Initial Guess: fit a Gaussian mixture
-m=2;
+% m=2;
+% for j =1:q
+%     GMModel = fitgmdist(S0(j,:)' ,m+1);
+%     id = find(abs(GMModel.mu) == max(abs(GMModel.mu)));
+%     theta.miu3(1+m*(j-1): m*j, 1) =[GMModel.mu(id), 0];
+%     idzero = abs(GMModel.mu) == min(abs(GMModel.mu));
+%     theta.sigma3_sq(1+m*(j-1): m*j, 1) = [GMModel.Sigma(id), GMModel.Sigma(idzero)];
+%     theta.pi(1+m*(j-1): m*j, 1)  =[GMModel.PComponents(id), 1-GMModel.PComponents(id)];
+% end
 
-for j =1:q
-    GMModel = fitgmdist(S0(j,:)' ,m+1);
-    id = find(abs(GMModel.mu) == max(abs(GMModel.mu)));
-    theta.miu3(1+m*(j-1): m*j, 1) =[GMModel.mu(id), 0];
-    idzero = abs(GMModel.mu) == min(abs(GMModel.mu));
-    theta.sigma3_sq(1+m*(j-1): m*j, 1) = [GMModel.Sigma(id), GMModel.Sigma(idzero)];
-    theta.pi(1+m*(j-1): m*j, 1)  =[GMModel.PComponents(id), 1-GMModel.PComponents(id)];
+
+%% Estimate parameters of MoG using heuristic approach
+m = 2;
+for j = 1:q
+    S0_j = squeeze(S0(j,:)');
+    sigma_noise = sqrt(var(S0_j));
+    % Determine sign of activation mean
+    quants = quantile(S0_j, [0.025, 0.975]);
+    MoG_sign = 1;
+    if abs(quants(1)) > abs(quants(2))
+        MoG_sign = -1;
+    end
+    % Cutoff
+    cutpoint = 1.64 * sigma_noise;
+    if sum((S0_j*MoG_sign) > cutpoint) > 0
+        if abs(quants(1)) > abs(quants(2))
+            cutpoint = quants(1);
+        else
+            cutpoint = quants(2);
+        end
+    end
+    theta.miu3(2+(j-1)*m)      = mean( S0_j( (S0_j*MoG_sign) > cutpoint ) );
+    theta.sigma3_sq(2+(j-1)*m) = var( S0_j( (S0_j*MoG_sign) > cutpoint ) );
+    theta.sigma3_sq(1+(j-1)*m) = sigma_noise^2;
+    theta.pi(2+(j-1)*m)        = sum( (S0_j*MoG_sign) > cutpoint ) / numel(S0_j);
+    theta.pi(1+(j-1)*m)        = 1 - theta.pi(2+(j-1)*m);
 end
+theta.miu3 = theta.miu3';
+theta.sigma3_sq =  theta.sigma3_sq';
+theta.pi =     theta.pi';
+
 
 
 % create the final variables to return (beta already created)
