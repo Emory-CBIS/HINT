@@ -88,7 +88,7 @@ function [varBeta1] = VarEst_hcica(theta_est, beta_est, X,...
         newMap( :,:, validVoxels ) = tempData;
         betaVarEst = newMap;
         % Save as a .mat file to be loaded in the display viewer
-        fname = fullfile(outpath, [prefix '_BetaVarEst_IC_' num2str(iIC) '.mat']);
+        fname = fullfile(outpath, [prefix '_BetaVarEst_IC' num2str(iIC) '.mat']);
         save(fname, 'betaVarEst');
     end
 
