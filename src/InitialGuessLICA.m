@@ -203,6 +203,8 @@ for j = 1:q
     % Zero out covariate effects that don't fall within 
     %Ceta_post( :, j, (S0_j*MoG_sign) < cutpoint ) = 0.0;
 end
+theta.miu3 = theta.miu3';
+theta.sigma3_sq =  theta.sigma3_sq';
 
 %% Prepare return objects
 grpSig = S0temp;

@@ -89,14 +89,21 @@ ddat.viewTracker(1, 1) = 1;
 ddat.saved_grp_viewTracker = zeros(1, ddat.nVisit);
 ddat.saved_beta_viewTracker = zeros(ddat.p, ddat.nVisit);
 ddat.saved_contrast_viewTracker = zeros(0, ddat.nVisit);
+ddat.saved_cross_visit_contrast_viewTracker = zeros(0, ddat.nVisit);
 ddat.saved_subpop_viewTracker = zeros(0, ddat.nVisit);
 ddat.saved_subj_viewTracker = zeros(0, ddat.nVisit);
 
-% Keep track of what sub-populations/contrasts have been specified
+%% Keep track of what sub-populations/contrasts have been specified
 % variable name is specified linear combinations
+% Standard contrast
 ddat.valid_LC_contrast = zeros(0);
 ddat.LC_contrasts = zeros(0, ddat.p);
 ddat.LC_contrast_names = {};
+% Cross-visit contrast
+ddat.valid_LC_cross_visit_contrast = zeros(0);
+ddat.LC_cross_visit_contrasts = zeros(0, ddat.p);
+ddat.LC_cross_visit_contrast_names = {};
+% Subpopulation specification
 ddat.valid_LC_subpop = zeros(0);
 ddat.LC_subpop_names = {};
 ddat.LC_subpops = zeros(0, ddat.p);
@@ -1130,13 +1137,16 @@ end
                     ddat.saved_grp_viewTracker = ddat.viewTracker;
                 case 'beta'
                     
-                    contrast_selected = strcmp(get(get(findobj('tag',...
+                    effect_view_selected = strcmp(get(get(findobj('tag',...
                         'EffectTypeButtonGroup'), 'SelectedObject'),...
-                        'String'), 'Contrast View');
-                    if contrast_selected
-                        ddat.saved_contrast_viewTracker = ddat.viewTracker;
-                    else
+                        'String'), 'Effect View');
+                    
+                    if effect_view_selected
                         ddat.saved_beta_viewTracker = ddat.viewTracker;
+                    else
+                        % TODO check for type of contrast (cross visit or
+                        % within)
+                        ddat.saved_contrast_viewTracker = ddat.viewTracker;
                     end
 
                 case 'subj'
@@ -2055,39 +2065,67 @@ end
                 end
                 
                 % Check if currently using the contrast view
-                contrast_selected = strcmp(get(get(findobj('tag',...
-                'EffectTypeButtonGroup'), 'SelectedObject'),...
-                'String'), 'Contrast View');
+                contrast_selected = ~strcmp(get(get(findobj('tag',...
+                    'EffectTypeButtonGroup'), 'SelectedObject'),...
+                    'String'), 'Effect View');
             
                 % This is just here for dimension purposes later
+                % TODO check if can delete now
                 refimg = zeros(size(beta_raw{1, 1}));
                     
-                
                 if contrast_selected
                     
-                    % Check to make sure a contrast has been specified
-                    if size(ddat.LC_contrasts, 1) > 0
+                    % Check which type of contrast viewer is selected
+                    selected_contrast_type = get(get(findobj('tag',...
+                        'EffectTypeButtonGroup'), 'SelectedObject'),...
+                        'String');
                     
-                    % Fill out each linear combination based on indices
-                    nUpdate = size(indices, 1); 
-                    
-                    for iUpdate = 1:nUpdate
-                        disp('add random intercept')
-                        disp('check for interactions')
-            
-                        % Cell to update
-                        iRow = indices(iUpdate, 1); iCol = indices(iUpdate, 2);
-                        
-                        % The column of the contrast is the linear
-                        % combination currently viewing
-                        ddat.oimg{iRow, iCol} = zeros(size(beta_raw{1, 1}));
-                        ddat.maskingStatus{iRow, iCol} = ~isnan(beta_raw{1, 1});
-                        % Main Effects
-                        for xi = 1:ddat.p
-                            ddat.oimg{iRow, iCol} = ddat.oimg{iRow, iCol} + ...
-                                str2double(ddat.LC_contrasts{iRow, xi}) .* beta_raw{xi, iCol};
-                        end
-                    end
+                    % Standard Contrasts
+                    if strcmp(selected_contrast_type, 'Contrast View')
+                        % Check to make sure a contrast has been specified
+                        if size(ddat.LC_contrasts, 1) > 0
+                            % Fill out each linear combination based on indices
+                            nUpdate = size(indices, 1); 
+                            for iUpdate = 1:nUpdate
+                                disp('add random intercept')
+                                disp('check for interactions')
+
+                                % Cell to update
+                                iRow = indices(iUpdate, 1); iCol = indices(iUpdate, 2);
+
+                                % The column of the contrast is the linear
+                                % combination currently viewing
+                                ddat.oimg{iRow, iCol} = zeros(size(beta_raw{1, 1}));
+                                ddat.maskingStatus{iRow, iCol} = ~isnan(beta_raw{1, 1});
+                                % Main Effects
+                                for xi = 1:ddat.p
+                                    ddat.oimg{iRow, iCol} = ddat.oimg{iRow, iCol} + ...
+                                        str2double(ddat.LC_contrasts{iRow, xi}) .* beta_raw{xi, iCol};
+                                end
+                            end
+                        end % end of check that contrasts have been specified (standard view)
+                    else
+                        % Check to make sure a contrast has been specified
+                        if size(ddat.LC_cross_visit_contrasts, 1) > 0
+                            % Fill out each linear combination based on indices
+                            nUpdate = size(indices, 1); 
+                            for iUpdate = 1:nUpdate
+                                disp('add random intercept')
+                                disp('check for interactions')
+                                % Cell to update
+                                iRow = indices(iUpdate, 1); iCol = indices(iUpdate, 2);
+                                % The column of the contrast is the linear
+                                % combination currently viewing
+                                ddat.oimg{iRow, iCol} = zeros(size(beta_raw{1, 1}));
+                                ddat.maskingStatus{iRow, iCol} = ~isnan(beta_raw{1, 1});
+                                % Main Effects
+                                % TODO change this to nVisit * P ?
+                                for xi = 1:ddat.p
+                                    ddat.oimg{iRow, iCol} = ddat.oimg{iRow, iCol} + ...
+                                        str2double(ddat.LC_cross_visit_contrasts{iRow, xi}) .* beta_raw{xi, iCol};
+                                end
+                            end 
+                        end % end of check that contrasts have been specified (cross-visit view)
                     end
                     
                 else
