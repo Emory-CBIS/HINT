@@ -3032,9 +3032,27 @@ end
     end
 
 
+    % Function to give the complete type of thing beng viewed. Note that
+    % this is mostly just to return different variants of the beta view
+    % window
+    function [fullViewType] = get_viewer_type(~)
+        
+        fullViewType = ddat.type;
+        
+        if strcmp(fullViewType, 'beta')
+            
+            % Determine type of beta viewer
+            fullViewType = get(get(findobj('tag',...
+                'EffectTypeButtonGroup'), 'SelectedObject'),...
+                'String');
+            
+        end
+        
+    end
+
+
 % Function to check the status of the Z-score button and update .img
-% attribute of ddat accordingly. Replaces the old updateZImg function
-% verified used 3/12
+% attribute of ddat accordingly.
     function update_Z_maps(~)
         
         % Check if Z-scroes are enabled or disabled
@@ -3043,127 +3061,161 @@ end
         % Number of currently selected independent component
         current_IC = get(findobj('Tag', 'ICselect'), 'val');
         
-        % If looking at effect/contrast maps, go ahead and load all of the
-        % variances for the currently selected IC and visits, this way we do not keep
-        % reloading them during the loop
-        if strcmp('beta', ddat.type) && (Z_enabled == 1)
-
-              current_vars = load( fullfile(ddat.outdir, [ddat.outpre '_BetaVarEst_IC' num2str(current_IC)...
-                            '.mat']) ).betaVarEst;
+        % Filename for the relevant variance-covariance estimates
+        varFile = fullfile(ddat.outdir,...
+                  [ddat.outpre '_BetaVarEst_IC' num2str(current_IC) '.mat']);
+        
+        viewerType = get_viewer_type;
+        
+        % Get the current relevant linear combination for this
+        % viewer type. Note that this is only really applicable to 
+        % beta case
+        currentLC = 0;
+        if strcmp(viewerType, 'Contrast View')
+            currentLC = XXX;
+        end
+        if strcmp(viewerType, 'Cross-Visit Contrast View')
+            currentLC = XXX;
         end
         
-        % Determine if cross-visit contrast
-        cvc_selected = strcmp(get(get(findobj('tag',...
-            'EffectTypeButtonGroup'), 'SelectedObject'),...
-            'String'), 'Cross-Visit Contrast View');
         
-        for iPop = 1:size(ddat.viewTracker, 2)
-            for iVisit = 1:size(ddat.viewTracker, 1)
-                %if ddat.viewTracker(iPop, iVisit) > 0
-                    
-                    % Turn on Z-scores
-                    if Z_enabled == 1
-                        
-                        if strcmp('beta', ddat.type)
-
-                            if (ddat.viewingContrast == 0)
-                                
-                                % create the appropriate vector multiplier
-                                % to pick out the current covariate at the
-                                % current visit
-                                csel = zeros( size(ddat.viewTracker, 2), 1) ;
-                                csel(iPop) = 1;
-                                ctr = createContrast( csel, ddat.p, ddat.nVisit);
-                                ctr = ctr(:, iVisit);
-                                % get the corresponding variance term
-                                
-                                % TODO preallcoate and stop re-doing this
-                                % using above current vars
-                                %current_var_est = current_vars{iVisit};
-                                
-                                current_var_est = squeeze(mtimesx(mtimesx(ctr', current_vars(:, :, :, :, :) ), ctr));
-                                
-                                % Scale using the variance estimate
-                                % theoretical estimate is q(p+1) * q(p+1)
-                                ddat.img{iVisit, iPop} = ddat.oimg{iVisit, iPop} ./...
-                                    sqrt(current_var_est);
-                                
-                                
-                            end
-                            
-                            if (ddat.viewingContrast == 1)
-                                
-                   
-                                
-                                if cvc_selected == 0
-                                    contrastSettings = get(findobj('Tag', 'contrastDisplay'), 'Data');
-                                    
-                                    disp('MAKE SURE THIS IS USING CORRECT POP ROW')
-
-                                    % create the appropriate vector multiplier
-                                    % to pick out the current covariate at the
-                                    % current visit
-                                    csel = zeros( size(ddat.viewTracker, 2) , 1) ;
-                                    for xi = 1:ddat.p
-                                        csel(xi) = str2double(contrastSettings( get(findobj('Tag',...
-                                            ['contrastSelect' num2str(1)]), 'Value') , xi));
-                                    end
-                                    ctr = createContrast( csel, ddat.p, ddat.nVisit);   
-                                    ctr = ctr(:, iVisit);
-
-                                    % Get the variance estimate; loop over each voxel
-                                    current_var_est = squeeze(mtimesx(mtimesx(ctr', current_vars(:, :, :, :, :) ), ctr));
-                                    ddat.img{iVisit, iPop} = ddat.oimg{iVisit, iPop} ./...
-                                        sqrt(current_var_est);
-                                else
-                                    
-                                    % this will be of length nVisit *
-                                    % nCovariateEffect, BUT we will also
-                                    % need to include the random intercept
-                                    % in any contrasts we write (with a 0
-                                    % coefficient, just there to make sure
-                                    % multiplies correctly with variance
-                                    % estimate)
-                                    
-
-                                    if iVisit == 1
-                                    
-                                        contrastSettings = ddat.LC_cross_visit_contrasts(iPop, :);
-
-                                        ctr = createContrast( contrastSettings, ddat.p, ddat.nVisit);       
-                                        
-                                        % Get the variance estimate; loop over each voxel
-                                        current_var_est = squeeze(mtimesx(mtimesx(ctr', current_vars(:, :, :, :, :) ), ctr));
-                                        ddat.img{1, iPop} = ddat.oimg{1, iPop} ./...
-                                            sqrt(current_var_est);
-                                    end
-                                end
-                            end
-     
-                        % Z-update for population or subject level
-                        else
-                            % Get the image restricted to the actual voxels
-                            tempImg = ddat.oimg{iVisit, iPop};
-                            FinalImg = nan(size(tempImg));
-                            % Calculate the Z-scores
-                            FinalImg(ddat.validVoxels) = (tempImg(ddat.validVoxels) - mean(tempImg(ddat.validVoxels))) /...
-                                std(tempImg(ddat.validVoxels), 'omitnan');
-                            ddat.img{iVisit, iPop} = FinalImg;
-                            set(findobj('Tag', 'manualThreshold'), 'max',1);
-                            %editThreshold;
-                        end
-                        
-                    % Turn off Z-scores (Revert to oimg)
-                    else
-                        ddat.img{iVisit, iPop} = ddat.oimg{iVisit, iPop};
-                        %set(findobj('Tag', 'thresholdSlider'), 'Value', 0);
-                        set(findobj('Tag', 'manualThreshold'), 'String', '');
-                        %set(findobj('Tag', 'manualThreshold'), 'Value', 0);
-                    end
-                    
-                %end
-            end
+        ddat.img = generate_zscore_maps(viewerType, Z_enabled,...
+            varFile, ddat.validVoxels, currentLC);
+        
+        % Update the thresholding slider
+        if Z_enabled == 1
+            set(findobj('Tag', 'manualThreshold'), 'max',1);
+        else
+            set(findobj('Tag', 'manualThreshold'), 'String', '');
         end
+        
+        
+%         
+%         
+%         
+%         
+%         
+%         
+%         % If looking at effect/contrast maps, go ahead and load all of the
+%         % variances for the currently selected IC and visits, this way we do not keep
+%         % reloading them during the loop
+%         if strcmp('beta', ddat.type) && (Z_enabled == 1)
+%               current_vars = load( fullfile(ddat.outdir,...
+%                   [ddat.outpre '_BetaVarEst_IC' num2str(current_IC) '.mat'])).betaVarEst;
+%         end
+%         
+%         % Determine if cross-visit contrast
+%         cvc_selected = strcmp(get(get(findobj('tag',...
+%             'EffectTypeButtonGroup'), 'SelectedObject'),...
+%             'String'), 'Cross-Visit Contrast View');
+%         
+%         for iPop = 1:size(ddat.viewTracker, 2)
+%             for iVisit = 1:size(ddat.viewTracker, 1)
+%                 %if ddat.viewTracker(iPop, iVisit) > 0
+%                     
+%                     % Turn on Z-scores
+%                     if Z_enabled == 1
+%                         
+%                         if strcmp('beta', ddat.type)
+% 
+%                             if (ddat.viewingContrast == 0)
+%                                 
+%                                 % create the appropriate vector multiplier
+%                                 % to pick out the current covariate at the
+%                                 % current visit
+%                                 csel = zeros( size(ddat.viewTracker, 2), 1) ;
+%                                 csel(iPop) = 1;
+%                                 ctr = createContrast( csel, ddat.p, ddat.nVisit);
+%                                 ctr = ctr(:, iVisit);
+%                                 % get the corresponding variance term
+%                                 
+%                                 % TODO preallcoate and stop re-doing this
+%                                 % using above current vars
+%                                 %current_var_est = current_vars{iVisit};
+%                                 
+%                                 current_var_est = squeeze(mtimesx(mtimesx(ctr', current_vars(:, :, :, :, :) ), ctr));
+%                                 
+%                                 % Scale using the variance estimate
+%                                 % theoretical estimate is q(p+1) * q(p+1)
+%                                 ddat.img{iVisit, iPop} = ddat.oimg{iVisit, iPop} ./...
+%                                     sqrt(current_var_est);
+%                                 
+%                                 
+%                             end
+%                             
+%                             if (ddat.viewingContrast == 1)
+%                                 
+%                    
+%                                 
+%                                 if cvc_selected == 0
+%                                     contrastSettings = get(findobj('Tag', 'contrastDisplay'), 'Data');
+%                                     
+%                                     disp('MAKE SURE THIS IS USING CORRECT POP ROW')
+% 
+%                                     % create the appropriate vector multiplier
+%                                     % to pick out the current covariate at the
+%                                     % current visit
+%                                     csel = zeros( size(ddat.viewTracker, 2) , 1) ;
+%                                     for xi = 1:ddat.p
+%                                         csel(xi) = str2double(contrastSettings( get(findobj('Tag',...
+%                                             ['contrastSelect' num2str(1)]), 'Value') , xi));
+%                                     end
+%                                     ctr = createContrast( csel, ddat.p, ddat.nVisit);   
+%                                     ctr = ctr(:, iVisit);
+% 
+%                                     % Get the variance estimate; loop over each voxel
+%                                     current_var_est = squeeze(mtimesx(mtimesx(ctr', current_vars(:, :, :, :, :) ), ctr));
+%                                     ddat.img{iVisit, iPop} = ddat.oimg{iVisit, iPop} ./...
+%                                         sqrt(current_var_est);
+%                                 else
+%                                     
+%                                     % this will be of length nVisit *
+%                                     % nCovariateEffect, BUT we will also
+%                                     % need to include the random intercept
+%                                     % in any contrasts we write (with a 0
+%                                     % coefficient, just there to make sure
+%                                     % multiplies correctly with variance
+%                                     % estimate)
+%                                     
+% 
+%                                     if iVisit == 1
+%                                     
+%                                         contrastSettings = ddat.LC_cross_visit_contrasts(iPop, :);
+% 
+%                                         ctr = createContrast( contrastSettings, ddat.p, ddat.nVisit);       
+%                                         
+%                                         % Get the variance estimate; loop over each voxel
+%                                         current_var_est = squeeze(mtimesx(mtimesx(ctr', current_vars(:, :, :, :, :) ), ctr));
+%                                         ddat.img{1, iPop} = ddat.oimg{1, iPop} ./...
+%                                             sqrt(current_var_est);
+%                                     end
+%                                 end
+%                             end
+%      
+%                         % Z-update for population or subject level
+%                         else
+%                             % Get the image restricted to the actual voxels
+%                             tempImg = ddat.oimg{iVisit, iPop};
+%                             FinalImg = nan(size(tempImg));
+%                             % Calculate the Z-scores
+%                             FinalImg(ddat.validVoxels) = (tempImg(ddat.validVoxels) - mean(tempImg(ddat.validVoxels))) /...
+%                                 std(tempImg(ddat.validVoxels), 'omitnan');
+%                             ddat.img{iVisit, iPop} = FinalImg;
+%                             set(findobj('Tag', 'manualThreshold'), 'max',1);
+%                             %editThreshold;
+%                         end
+%                         
+%                     % Turn off Z-scores (Revert to oimg)
+%                     else
+%                         ddat.img{iVisit, iPop} = ddat.oimg{iVisit, iPop};
+%                         %set(findobj('Tag', 'thresholdSlider'), 'Value', 0);
+%                         set(findobj('Tag', 'manualThreshold'), 'String', '');
+%                         %set(findobj('Tag', 'manualThreshold'), 'Value', 0);
+%                     end
+%                     
+%                 %end
+%             end
+%         end
         
     end
 
