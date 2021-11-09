@@ -2142,7 +2142,7 @@ end
                                 % NOTE - beta raw is covariate x visit
                                 for xi = 1:ddat.p
                                     ddat.oimg{iRow, iCol} = ddat.oimg{iRow, iCol} + ...
-                                        str2double(ddat.LC_contrasts{iCol, xi}) .* beta_raw{xi, iRow};
+                                        ddat.LC_contrasts(iCol, xi) .* beta_raw{xi, iRow};
                                 end
                             end
                         end % end of check that contrasts have been specified (standard view)
@@ -2825,7 +2825,12 @@ end
             % background, even if we switch viewer types
             %LC = cellfun(@str2num, callbackdata.Source.Data(callbackdata.Indices(1), :));
             if strcmp(ddat.type, 'beta')
-                ddat.LC_contrasts = callbackdata.Source.Data; 
+%                 if size(callbackdata.Source.Data, 1) == 1
+%                     ddat.LC_contrasts = cellfun(@str2num, callbackdata.Source.Data); 
+%                 else
+%                     ddat.LC_contrasts = cellfun(@str2num, callbackdata.Source.Data); 
+%                 end
+                ddat.LC_contrasts = cellfun(@str2num, callbackdata.Source.Data);
                 ddat.valid_LC_contrast(callbackdata.Indices(1)) = 1; 
                 
                 % Update the size of saved viewTracker
@@ -3072,14 +3077,14 @@ end
         % beta case
         currentLC = 0;
         if strcmp(viewerType, 'Contrast View')
-            currentLC = XXX;
+            currentLC = ddat.LC_contrasts;
         end
         if strcmp(viewerType, 'Cross-Visit Contrast View')
-            currentLC = XXX;
+            currentLC = ddat.LC_cross_visit_contrasts;
         end
         
         
-        ddat.img = generate_zscore_maps(viewerType, Z_enabled,...
+        ddat.img = generate_zscore_maps(viewerType, Z_enabled, ddat.oimg,...
             varFile, ddat.validVoxels, currentLC);
         
         % Update the thresholding slider

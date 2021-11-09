@@ -33,7 +33,7 @@ if toZ == true
         
         case 'Effect View'
             
-            %varianceEst = load(varianceEstFile).betaVarEst;
+            varianceEst = load(varianceEstFile).betaVarEst;
             
             % Create the "contrast" corresponding to looking at each effect
             % at each visit
@@ -50,18 +50,21 @@ if toZ == true
             ctrCells = horzcat(ctrCells{:});
                                     
             % Divide by estimated standard error
-            newImgs = cellfun(se_normalize_image, oimg, varianceEst, ctrCells);
+            newImgs = cellfun(@(x, y) se_normalize_image(x, varianceEst, y),...
+                oimg, ctrCells, 'uniformoutput', false);
             
             
         case 'Contrast View'
             
-            %varianceEst = load(varianceEstFile).betaVarEst;
-                        
+            varianceEst = load(varianceEstFile).betaVarEst;
+            
+            P = size(LC, 2);
+            
             LCCellArr = num2cell(LC, 2)';
             
             % Each cell is a contrast, within each cell we have the
             % corresponding "contrast" for each visit
-            ctrList = cellfun(@(x) createContrast(x, nCol, nRow), LCCellArr,...
+            ctrList = cellfun(@(x) createContrast(x, P, nRow), LCCellArr,...
                 'uniformoutput', false);
             
             % Split so shape of contrasts matches shape of image cell array
@@ -70,26 +73,31 @@ if toZ == true
             ctrCells = horzcat(ctrCells{:});
             
             % Divide by estimated standard error
-            newImgs = cellfun(se_normalize_image, oimg, varianceEst, ctrCells);
+            newImgs = cellfun(@(x, y) se_normalize_image(x, varianceEst, y),...
+                oimg, ctrCells, 'uniformoutput', false);
             
         case 'Cross-Visit Contrast View'
             
-            %varianceEst = load(varianceEstFile).betaVarEst;
+            varianceEst = load(varianceEstFile).betaVarEst;
             
             LCCellArr = num2cell(LC, 2)';
             
+            nVisit = size(varianceEst, 1) - size(LC, 2) + 1;
+            P = size(LC, 2) / nVisit;
+            
             % Each cell is a contrast, within each cell we have the
             % corresponding "contrast" for each visit
-            ctrList = cellfun(@(x) createContrast(x, nCol, nRow), LCCellArr,...
+            ctrList = cellfun(@(x) createContrast(x, P, nVisit), LCCellArr,...
                 'uniformoutput', false);
             
             % Split so shape of contrasts matches shape of image cell array
             ctrCells = cellfun(@(x) num2cell(x, 1)', ctrList,...
                 'uniformoutput', false);
-            ctrCells = horzcat(ctrCells{:});
+            ctrCells = horzcat(ctrCells{:})';
             
             % Divide by estimated standard error
-            newImgs = cellfun(se_normalize_image, oimg, varianceEst, ctrCells);
+            newImgs = cellfun(@(x, y) se_normalize_image(x, varianceEst, y),...
+                oimg, ctrCells, 'uniformoutput', false);
             
         otherwise
                         
