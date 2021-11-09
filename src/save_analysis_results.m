@@ -113,6 +113,8 @@ if data.nVisit == 1
         data.validVoxels, prefix, data.outpath);
         data.theoretical_beta_se_est = theory_var;
         
+        data.theoretical_beta_se_est = theory_var;
+        
 else
     
     % this is old version
@@ -128,6 +130,11 @@ else
     data.theoretical_beta_se_est = theory_var;
     
 end
+
+% % Save the variance estimates - SAVED ELSEWHERE
+% varFilename = [path prefix '_varianceEstimates.mat'];
+% theoretical_beta_se_est = data.theoretical_beta_se_est;
+% save(varFilename, 'theoretical_beta_se_est');
 
 waitbar(1)
 close(waitSave)

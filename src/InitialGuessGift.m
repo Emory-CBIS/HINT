@@ -56,11 +56,11 @@ end
     for iSubj = 1:(N*nVisit-1)
         % convert to just the file name
         [~,name,~] = fileparts(subjfl{iSubj});
-        fprintf(fid, name);
+        fprintf(fid, ['subj' num2str(iSubj)]);
         fprintf(fid, ''',''');
     end
     [~,name,~] = fileparts(subjfl{N*nVisit});
-    fprintf(fid, name);
+    fprintf(fid, ['subj' num2str(N*nVisit)]);
     fprintf(fid,'%s \n', '''}');
     
     % Print the number of sessions
@@ -70,7 +70,7 @@ end
     for i = 1:N*nVisit
         % convert to just the file name
         [pathstr,name,ext] = fileparts(subjfl{i});
-        string_label = [name '_s1 = {'''];
+        string_label = ['subj' num2str(i) '_s1 = {'''];
         fprintf(fid, '%s%s%s%s%s%s%s\n', string_label, pathstr,'''', ',', '''', [name ext], '''};');
     end   
     

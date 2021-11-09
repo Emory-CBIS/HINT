@@ -561,6 +561,13 @@ data.analysisType = 'unselected';
                 data.thetaStar = runinfo.thetaStar;
                 data.time_num = runinfo.time_num;
                 data.nVisit = runinfo.nVisit;
+                
+                if data.nVisit > 1
+                    data.analysisType = 'Longitudinal';
+                else
+                    data.analysisType = 'Cross-Sectional';
+                end
+                
                 data.validVoxels = runinfo.validVoxels;
                 data.outpath = runinfo.outfolder;
                 data.prefix = '';
@@ -1071,7 +1078,7 @@ data.analysisType = 'unselected';
                 outfile = fopen(outfilename, 'a' );
                 fprintf(outfile, '\n\n----------------- EM Algorithm Running -----------------');
             end
-            
+                        
             % User selected approximate EM algorithm.
             if(selected_algo == 1)
                 

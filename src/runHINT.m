@@ -1,5 +1,5 @@
-function [ output_args ] = runHINT( HINTpath, datadir, outdir, q, N, numberOfPCs, maskf,...
-    covf, prefix, maxit, epsilon1, epsilon2)
+function [ output_args ] = runHINT( HINTpath, datadir, outdir,...
+    analysisType, maskf, covf, q, numberOfPCs, prefix, maxit, epsilon1, epsilon2)
 %runHINT - function to run the entire HINT analysis from the command line.
 % Author - Joshua Lukemire
 %
@@ -7,6 +7,7 @@ function [ output_args ] = runHINT( HINTpath, datadir, outdir, q, N, numberOfPCs
 %    HINTpath    - path to the HINT toolbox
 %    datadir     - filepath to the directory where the data are stored
 %    outdir      - filepath to the directory where the output should be stored
+%    analysisType - cross-sectional or longitudinal
 %    q           - number of independent components for the analysis
 %    N           - number of subjects for the analysis
 %    numberOfPCs - number of principal components for tc-gica
@@ -33,7 +34,15 @@ data.q = q;
 
 % Number of iterations
 data.maxiter = maxit;
+data.maskf = maskf;
+data.covf = covf;
 
+%% CURRENTLY HERE, TRYING TO MATCH UP WITH LICA MAIN GUI FUNCTION
+%% Step 1: Read in the covariates file and determine some analysis
+% features from it
+data.covariateTable = readtable(covf);
+data.covariates = data.covariateTable.Properties.VariableNames;
+data.referenceGroupNumber = ones(1, length(data.covariates));
 
 %% Step 1, Loading the data and sorting on covariates 
 
@@ -48,8 +57,6 @@ end
 strMatch = length(strsplit(niifiles{1}, '/'));
 
 data.niifiles_raw = niifiles;
-data.maskf = maskf;
-data.covf = covf;
 
 % Match up each covariate with its row in the covariate
 % file

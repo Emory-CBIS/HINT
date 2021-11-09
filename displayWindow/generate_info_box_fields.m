@@ -15,25 +15,33 @@ switch viewerType
         %% Case 1: Using aggregate viewer
         % Loop through the view table and label
         for iVisit = 1:size(viewTracker, 2)
-            map_fields{1, iVisit} = 'Population Aggregate';
-            visit_fields{1, iVisit} = ['Visit ' num2str(iVisit)];
+            map_fields{iVisit, 1} = 'Population Aggregate';
+            visit_fields{iVisit, 1} = ['Visit ' num2str(iVisit)];
         end
     case 'beta'
         %% Case 2: Beta Viewer - Depends on whether contrast is being viewed
         contrast_selected = strcmp(get(get(findobj('tag',...
                 'EffectTypeButtonGroup'), 'SelectedObject'),...
                 'String'), 'Contrast View');
+        cvc_selected = strcmp(get(get(findobj('tag',...
+                'EffectTypeButtonGroup'), 'SelectedObject'),...
+                'String'), 'Cross-Visit Contrast View');
         display_names = get(findobj('tag', 'ViewSelectTable'), 'ColumnName');
         if contrast_selected == 1
-            for iContrast = 1:size(viewTracker, 1)
-                for iVisit = 1:size(viewTracker, 2)
-                    map_fields{iContrast, iVisit} = ['Contrast: ' display_names{iContrast}];
-                    visit_fields{iContrast, iVisit} = ['Visit ' num2str(iVisit)];
+            for iContrast = 1:size(viewTracker, 2)
+                for iVisit = 1:size(viewTracker, 1)
+                    map_fields{iVisit, iContrast} = ['Contrast: ' display_names{iContrast}];
+                    visit_fields{iVisit, iContrast} = ['Visit ' num2str(iVisit)];
                 end
             end
+        elseif cvc_selected == 1
+            for iContrast = 1:size(viewTracker, 1)
+                map_fields{iContrast, 1} = ['Contrast: ' 'FIXME'];
+                visit_fields{iContrast, 1} = [''];
+            end
         else
-            for iCovariate = 1:size(viewTracker, 1)
-                for iVisit = 1:size(viewTracker, 2)
+            for iVisit = 1:size(viewTracker, 1)
+                for iCovariate = 1:size(viewTracker, 2)
                     map_fields{iCovariate, iVisit} = ['Effect of: '  display_names{iCovariate}];
                     visit_fields{iCovariate, iVisit} = ['Visit ' num2str(iVisit)];
                 end

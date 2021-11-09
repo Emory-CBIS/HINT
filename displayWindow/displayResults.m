@@ -81,17 +81,19 @@ ddat.trajectoryActive = 0;
 ddat.trajPreviousTag = ''; % string value of previously added line. used to clear plot
 
 % Keep track of what pops / visits are being viewed
-ddat.viewTracker = zeros(1, ddat.nVisit);
+%ddat.viewTracker = zeros(1, ddat.nVisit);
+%ddat.viewTracker(1, 1) = 1;
+ddat.viewTracker = zeros(1, 1);
 ddat.viewTracker(1, 1) = 1;
 
 % Keep track of user's previous settings for viewTracker (for switching
 % back and forth between viewers)
-ddat.saved_grp_viewTracker = zeros(1, ddat.nVisit);
-ddat.saved_beta_viewTracker = zeros(ddat.p, ddat.nVisit);
-ddat.saved_contrast_viewTracker = zeros(0, ddat.nVisit);
-ddat.saved_cross_visit_contrast_viewTracker = zeros(0, ddat.nVisit);
-ddat.saved_subpop_viewTracker = zeros(0, ddat.nVisit);
-ddat.saved_subj_viewTracker = zeros(0, ddat.nVisit);
+ddat.saved_grp_viewTracker = zeros(ddat.nVisit, 1);
+ddat.saved_beta_viewTracker = zeros(ddat.nVisit, ddat.p);
+ddat.saved_contrast_viewTracker = zeros(ddat.nVisit, 0);
+ddat.saved_cross_visit_contrast_viewTracker = zeros(0, 1); % visits not meaningful for cross visit contrast
+ddat.saved_subpop_viewTracker = zeros(ddat.nVisit, 0);
+ddat.saved_subj_viewTracker = zeros(ddat.nVisit, 0);
 
 %% Keep track of what sub-populations/contrasts have been specified
 % variable name is specified linear combinations
@@ -101,8 +103,9 @@ ddat.LC_contrasts = zeros(0, ddat.p);
 ddat.LC_contrast_names = {};
 % Cross-visit contrast
 ddat.valid_LC_cross_visit_contrast = zeros(0);
-ddat.LC_cross_visit_contrasts = zeros(0, ddat.p);
+ddat.LC_cross_visit_contrasts = zeros(0, ddat.nVisit * ddat.p);
 ddat.LC_cross_visit_contrast_names = {};
+ddat.LC_cross_visit_contrast_strings = repmat({''}, 0, 1);
 % Subpopulation specification
 ddat.valid_LC_subpop = zeros(0);
 ddat.LC_subpop_names = {};
@@ -521,11 +524,21 @@ end
             'String', 'Add New Contrast', ...
             'Position', [0.01, 0.01, 0.49, 0.15], ...
             'Tag', 'newContrast', 'Callback', @addNewContrast); %#ok<NASGU>
+        crossVisitContrastDisplay = uitable('Parent', betaContrastPanel, ...
+            'Units', 'Normalized', ...
+            'Position', [0.1, 0.17, 0.8, 0.8], ...
+            'Tag', 'crossVisitContrastDisplay'); %#ok<NASGU>
+        editCrossVisitContrasts = uicontrol('Parent', betaContrastPanel, ...
+            'Units', 'Normalized', ...
+            'String', 'Edit Cross-Visit Contrasts', ...
+            'Position', [0.26, 0.01, 0.49, 0.15], ...
+            'Tag', 'editCrossVisitContrasts',...
+            'Callback', @openCrossVisitContrastSpecificationWindow); %#ok<NASGU>
         removeContrastButton = uicontrol('Parent', betaContrastPanel, ...
             'Units', 'Normalized', ...
             'String', 'Remove A Contrast', ...
             'Position', [0.51, 0.01, 0.49, 0.15], ...
-            'Tag', 'newContrast', 'Callback', @removeContrast); %#ok<NASGU>
+            'Tag', 'removeContrast', 'Callback', @removeContrast); %#ok<NASGU>
         
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         % IC Selection
@@ -715,6 +728,24 @@ end
             set( findobj('Tag', 'ViewSelectionPanel'), 'Position',[.67, 0.51 .31 .48]);
             set( findobj('Tag', 'covariateContrastControl'), 'Position',[.67, 0.01 .31 .48]);
             set( findobj('tag', 'EffectTypeButtonGroup'), 'visible', 'on' );
+            
+            % Determine if should show standard contrast information or
+            % cross-visit contrast information
+            if strcmp( get(findobj('tag', 'EffectTypeButtonGroup'),...
+                    'SelectedObject').String, 'Cross-Visit Contrast View')
+                set( findobj('tag', 'editCrossVisitContrasts'), 'visible', 'on' );
+                set( findobj('tag', 'crossVisitContrastDisplay'), 'visible', 'on' );
+                set( findobj('tag', 'newContrast'), 'visible', 'off' );
+                set( findobj('tag', 'removeContrast'), 'visible', 'off' );
+                set( findobj('tag', 'contrastDisplay'), 'visible', 'off' );
+            else
+                set( findobj('tag', 'editCrossVisitContrasts'), 'visible', 'off' );
+                set( findobj('tag', 'crossVisitContrastDisplay'), 'visible', 'off' );
+                set( findobj('tag', 'newContrast'), 'visible', 'on' );
+                set( findobj('tag', 'removeContrast'), 'visible', 'on' );
+                set( findobj('tag', 'contrastDisplay'), 'visible', 'on' );
+            end
+            
         end
         
         if strcmp(ddat.type, 'subpop')
@@ -871,6 +902,7 @@ end
         % fixed. Will just be a list of visits and whether or not they
         % are being viewed.
         if strcmp(ddat.type, 'grp') || strcmp(ddat.type, 'subj')
+            ddat.viewTracker = zeros(ddat.nVisit, 1);
             for k=1:ddat.nVisit; table_data{k} = 'no'; end
             table_data{1} = 'yes';
             set(findobj('tag', 'ViewSelectTable'), 'Data', table_data');
@@ -891,18 +923,13 @@ end
             % Load saved viewTracker information
             ddat.viewTracker = ddat.saved_subpop_viewTracker;
 
-            % Default to showing contrast 1, visit 1
-            if all(ddat.viewTracker(:) == 0)
-                %ddat.viewTracker(1, 1) = 1;
-            end
-
             % Fill out the selection table
             table_data = cell(ddat.nVisit, 0);
             for k=1:ddat.nVisit
                 for p=1:length(ddat.valid_LC_subpop)
                     if ddat.valid_LC_subpop(p) == 1
                         % enable clicking on this cell and set yes/no
-                        if ddat.viewTracker(p, k) > 0
+                        if ddat.viewTracker(k, p) > 0
                             table_data{k, p} = 'yes';
                         else
                             table_data{k, p} = 'no';
@@ -915,11 +942,6 @@ end
             end
             set(findobj('tag', 'ViewSelectTable'), 'Data', table_data);
             set(findobj('tag', 'ViewSelectTable'), 'ColumnName', {});
-
-
-%             % Set the visit names (rows)
-%             for k=1:ddat.nVisit; visit_names{k} = ['Visit ' num2str(k)]; end
-%             set(findobj('tag', 'ViewSelectTable'), 'RowName', visit_names');
 
             if prod(size(subpop_names, 1)) == 1
                 subpop_names = {subpop_names};
@@ -934,11 +956,6 @@ end
             if n_subpop > 0
                 set(findobj('tag', 'ViewSelectTable'), 'ColumnName', column_names');
             end
-
-%             % set the column names (contrasts)
-%             if n_subpop > 0
-%                 set(findobj('tag', 'ViewSelectTable'), 'ColumnName', subpop_names');
-%             end
             
         end
         
@@ -960,7 +977,7 @@ end
                 
                 for k=1:ddat.nVisit
                     for p=1:ddat.p
-                        if ddat.viewTracker(p, k) > 0
+                        if ddat.viewTracker(k, p) > 0
                             table_data{k, p} = 'yes';
                         else
                             table_data{k, p} = 'no';
@@ -980,7 +997,8 @@ end
                 
                 
                 % Contrast View Table Setup
-            else
+            elseif strcmp(get(get(findobj('tag', 'EffectTypeButtonGroup'),...
+                    'SelectedObject'), 'String'), 'Contrast View')
                 
                 % Check the contrast table to find how many contrasts have
                 % been created. This will be the number of columns
@@ -1003,7 +1021,7 @@ end
                 for k=1:ddat.nVisit
                     for p=1:length(ddat.valid_LC_contrast)
                         if ddat.valid_LC_contrast(p) == 1
-                            if ddat.viewTracker(p, k) > 0
+                            if ddat.viewTracker(k, p) > 0
                                 table_data{k, p} = 'yes';
                             else
                                 table_data{k, p} = 'no';
@@ -1013,26 +1031,42 @@ end
                 end
                 set(findobj('tag', 'ViewSelectTable'), 'Data', table_data);
                 set(findobj('tag', 'ViewSelectTable'), 'ColumnName', {});
-               
                 
                 % Set the visit names (rows)
                 for k=1:ddat.nVisit; visit_names{k} = ['Visit ' num2str(k)]; end
                 set(findobj('tag', 'ViewSelectTable'), 'RowName', visit_names');
-                
-%                 if prod(size(contrast_names, 1)) == 1
-%                     contrast_names = {contrast_names};
-%                 end
                 
                 % set the column names (contrasts)
                 if n_contrast > 0
                     set(findobj('tag', 'ViewSelectTable'), 'ColumnName', contrast_names');
                 end
                 
-%                 disp('currently this resets the view tracker...')
-%                 ddat.viewTracker = zeros(n_contrast, ddat.nVisit);
-%                 
-%                 disp('add contrast management tracking what was being viewed')
-%                 ddat.viewTracker(1, 1) = 1;
+            elseif strcmp(get(get(findobj('tag', 'EffectTypeButtonGroup'),...
+                    'SelectedObject'), 'String'), 'Cross-Visit Contrast View')
+                
+                ddat.viewTracker = ddat.saved_cross_visit_contrast_viewTracker;
+                
+                nCVC = length(ddat.LC_cross_visit_contrast_strings);
+                table_data = cell(nCVC, 1);
+                for k=1:nCVC
+                    if ddat.viewTracker(k, 1) > 0
+                        table_data{k, 1} = 'yes';
+                    else
+                        table_data{k, 1} = 'no';
+                    end
+                end
+                
+                set(findobj('tag', 'ViewSelectTable'), 'Data', table_data);
+                
+                % Row names are the cross-visit-contrast names
+                set(findobj('tag', 'ViewSelectTable'), 'RowName', ddat.LC_cross_visit_contrast_names);
+                
+                % set the column names (covariates)
+                set(findobj('tag', 'ViewSelectTable'), 'ColumnName', {'Viewing Contrast'});
+                
+            else
+                
+                disp('ERROR - unrecognized view type')
                 
             end
             
@@ -1051,11 +1085,20 @@ end
             selected_row = eventdata.Indices(1);
             
             % Get the corresponding population
-            selected_pop = eventdata.Indices(2);
-            
-            % Find the visit this corresponds to, this will be the column
-            % of the img object we load in
-            visit_number = str2double(eventdata.Source.RowName{selected_row}(end-1:end));
+            selected_col = eventdata.Indices(2);
+  
+            % If doing cross-visit contrast, have to fix this up
+%             cvc_selected = strcmp(get(get(findobj('tag',...
+%                 'EffectTypeButtonGroup'), 'SelectedObject'),...
+%                 'String'), 'Cross-Visit Contrast View');
+%             if cvc_selected == 1
+%                 visit_number = 1;
+%                 selected_pop = selected_row;
+%             else
+%                 % Find the visit this corresponds to, this will be the column
+%                 % of the img object we load in
+%                 visit_number = str2double(eventdata.Source.RowName{selected_row}(end-1:end));
+%             end
             
             % Make sure that this column is valid. It will always be valid
             % for group, subpop, or regular beta. However, it might not be
@@ -1065,40 +1108,41 @@ end
                 'EffectTypeButtonGroup'), 'SelectedObject'),...
                 'String'), 'Contrast View');
             if strcmp(ddat.type, 'beta') & contrast_selected
-                isValidColumn = ddat.valid_LC_contrast(selected_pop);
+                isValidColumn = ddat.valid_LC_contrast(selected_col);
             elseif strcmp(ddat.type, 'subpop')
-                isValidColumn = ddat.valid_LC_subpop(selected_pop);
+                isValidColumn = ddat.valid_LC_subpop(selected_col);
             end
             
             if isValidColumn == 1
             
             % If not viewed, add to viewer, else remove
-            if strcmp(eventdata.Source.Data{selected_row, selected_pop}, 'no')
+            
+%             if cvc_selected == 1
+%                 isNo = strcmp(eventdata.Source.Data{selected_pop, 1}, 'no');
+%             else
+%                 isNo = strcmp(eventdata.Source.Data{selected_row, selected_pop}, 'no');
+%             end
+            isNo = strcmp(eventdata.Source.Data{selected_row, selected_col}, 'no');
+            
+            if isNo
                 
                 % Set to yes
-                eventdata.Source.Data{selected_row, selected_pop} = 'yes';
+                eventdata.Source.Data{selected_row, selected_col} = 'yes';
                 
                 % Add to tracker
-                ddat.viewTracker(selected_pop, visit_number) = 1;
+                ddat.viewTracker(selected_row, selected_col) = 1;
                 ddat.viewTracker( ddat.viewTracker > 0 ) = cumsum( ddat.viewTracker(ddat.viewTracker > 0)); % renumber
-                
-                
-                % Update axes visibility
-                %                 set(findobj('Tag', ['CoronalAxes'  num2str(selected_pop) '_'...
-                %                     num2str(visit_number)] ) , 'visible', 'on');
-                %                 set(findobj('Tag', ['AxialAxes'    num2str(selected_pop) '_'...
-                %                     num2str(visit_number)] ) , 'visible', 'on');
-                %                 set(findobj('Tag', ['SagittalAxes' num2str(selected_pop) '_'...
-                %                     num2str(visit_number)] ) , 'visible', 'on');
                 
                 % Update axes existence
                 set_number_of_brain_axes(0);
-                
-                % Refresh the display window with the new row
-                
+                                
                 % TODO remove below two lines; they are from old system
-                %editThreshold;
-                update_brain_maps('updateCombinedImage', [selected_pop, visit_number]);
+%                 if cvc_selected == 1
+%                     update_brain_maps('updateCombinedImage', [selected_pop, visit_number]);
+%                 else
+%                     update_brain_maps('updateCombinedImage', [selected_pop, visit_number]);
+%                 end
+                update_brain_maps('updateCombinedImage', [selected_row, selected_col]);
                 
                 % Stack the update chain at step 1
                 %update_brain_data;
@@ -1106,19 +1150,19 @@ end
             else
                 
                 % Set to no
-                eventdata.Source.Data{selected_row, selected_pop} = 'no';
+                eventdata.Source.Data{selected_row, selected_col} = 'no';
                 
                 % Remove from tracker
-                ddat.viewTracker(selected_pop, visit_number) = 0;
+                ddat.viewTracker(selected_row, selected_col) = 0;
                 ddat.viewTracker( ddat.viewTracker > 0 ) = cumsum( ddat.viewTracker(ddat.viewTracker > 0)); % renumber
                 
                 % Update axes visibility
-                set(findobj('Tag', ['CoronalAxes'  num2str(selected_pop) '_'...
-                    num2str(visit_number)] ) , 'visible', 'off');
-                set(findobj('Tag', ['AxialAxes'    num2str(selected_pop) '_'...
-                    num2str(visit_number)] ) , 'visible', 'off');
-                set(findobj('Tag', ['SagittalAxes' num2str(selected_pop) '_'...
-                    num2str(visit_number)] ) , 'visible', 'off');
+                set(findobj('Tag', ['CoronalAxes'  num2str(selected_row) '_'...
+                    num2str(selected_col)] ) , 'visible', 'off');
+                set(findobj('Tag', ['AxialAxes'    num2str(selected_row) '_'...
+                    num2str(selected_col)] ) , 'visible', 'off');
+                set(findobj('Tag', ['SagittalAxes' num2str(selected_row) '_'...
+                    num2str(selected_col)] ) , 'visible', 'off');
                 
                 % Update axes existence
                 set_number_of_brain_axes(0);
@@ -1144,9 +1188,13 @@ end
                     if effect_view_selected
                         ddat.saved_beta_viewTracker = ddat.viewTracker;
                     else
-                        % TODO check for type of contrast (cross visit or
-                        % within)
-                        ddat.saved_contrast_viewTracker = ddat.viewTracker;
+                        if strcmp(get(get(findobj('tag',...
+                        'EffectTypeButtonGroup'), 'SelectedObject'),...
+                        'String'), 'Contrast View');
+                            ddat.saved_contrast_viewTracker = ddat.viewTracker;
+                        else
+                            ddat.saved_cross_visit_contrast_viewTracker = ddat.viewTracker;
+                        end
                     end
 
                 case 'subj'
@@ -1670,7 +1718,7 @@ end
         % Change what display panels are seen based on what viewer is open.
         if strcmp(ddat.type, 'grp')
             
-            ddat.viewTracker = zeros(1, ddat.nVisit);
+            ddat.viewTracker = zeros(ddat.nVisit, 1);
             ddat.viewTracker(1, 1) = 1;
             
             set(findobj('Tag', 'useEmpiricalVar'), 'Visible', 'Off');
@@ -1732,7 +1780,7 @@ end
             
         elseif strcmp(ddat.type, 'subj')
             
-            ddat.viewTracker = zeros(1, ddat.nVisit);
+            ddat.viewTracker = zeros(ddat.nVisit, 1);
             ddat.viewTracker(1, 1) = 1;
             
             set(findobj('Tag', 'useEmpiricalVar'), 'Visible', 'Off');
@@ -2030,37 +2078,29 @@ end
                 
                 % Load each visit
                 for iVisit = 1:ddat.nVisit
-                    
                     newFile = [ddat.outdir '/' ddat.outpre '_aggregateIC_'...
                         num2str(sel_IC) '_visit' num2str(iVisit) '.nii'];
                     newData = load_nii(newFile);
                     %ddat.img{1, iVisit} = newData.img;
-                    ddat.oimg{1, iVisit} = newData.img;
-                    ddat.maskingStatus{1, iVisit} = ~isnan(ddat.oimg{1, iVisit});
-                    
+                    ddat.oimg{iVisit, 1} = newData.img;
+                    ddat.maskingStatus{iVisit, 1} = ~isnan(ddat.oimg{iVisit, 1});
                 end
                 
             % IC Selection Window
-            case 'icsel'
-                                    
+            case 'icsel'       
                 newData = load_nii([ddat.outdir '/_iniIC_' num2str(sel_IC) '.nii']);
                 ddat.oimg{1, 1} = newData.img;
                 ddat.maskingStatus{1, 1} = ~isnan(ddat.oimg{1, 1});
-               
-            case 'beta'
-                                
+            case 'beta'         
                 % Load each of the betas
                 beta_raw = {};
                 for p = 1:ddat.p
                     for iVisit = 1:ddat.nVisit
-                        
                         % File name
                         ndata = load_nii([ddat.outdir '/' ddat.outpre...
                             '_beta_cov' num2str(p) '_IC' num2str(sel_IC) '_visit'...
                             num2str(iVisit) '.nii']);
-
                         beta_raw{p, iVisit} = ndata.img;
-                        
                     end
                 end
                 
@@ -2090,7 +2130,8 @@ end
                                 disp('add random intercept')
                                 disp('check for interactions')
 
-                                % Cell to update
+                                % Cell to update - for contrast view
+                                % rows are visits and columns are contrasts
                                 iRow = indices(iUpdate, 1); iCol = indices(iUpdate, 2);
 
                                 % The column of the contrast is the linear
@@ -2098,9 +2139,10 @@ end
                                 ddat.oimg{iRow, iCol} = zeros(size(beta_raw{1, 1}));
                                 ddat.maskingStatus{iRow, iCol} = ~isnan(beta_raw{1, 1});
                                 % Main Effects
+                                % NOTE - beta raw is covariate x visit
                                 for xi = 1:ddat.p
                                     ddat.oimg{iRow, iCol} = ddat.oimg{iRow, iCol} + ...
-                                        str2double(ddat.LC_contrasts{iRow, xi}) .* beta_raw{xi, iCol};
+                                        str2double(ddat.LC_contrasts{iCol, xi}) .* beta_raw{xi, iRow};
                                 end
                             end
                         end % end of check that contrasts have been specified (standard view)
@@ -2110,8 +2152,6 @@ end
                             % Fill out each linear combination based on indices
                             nUpdate = size(indices, 1); 
                             for iUpdate = 1:nUpdate
-                                disp('add random intercept')
-                                disp('check for interactions')
                                 % Cell to update
                                 iRow = indices(iUpdate, 1); iCol = indices(iUpdate, 2);
                                 % The column of the contrast is the linear
@@ -2120,10 +2160,15 @@ end
                                 ddat.maskingStatus{iRow, iCol} = ~isnan(beta_raw{1, 1});
                                 % Main Effects
                                 % TODO change this to nVisit * P ?
-                                for xi = 1:ddat.p
-                                    ddat.oimg{iRow, iCol} = ddat.oimg{iRow, iCol} + ...
-                                        str2double(ddat.LC_cross_visit_contrasts{iRow, xi}) .* beta_raw{xi, iCol};
+                                ind = 0;
+                                for j = 1:ddat.nVisit
+                                    for xi = 1:ddat.p
+                                        ind = ind + 1;
+                                        ddat.oimg{iRow, iCol} = ddat.oimg{iRow, iCol} + ...
+                                            (ddat.LC_cross_visit_contrasts(iRow, ind)) .* beta_raw{xi, j};
+                                    end
                                 end
+                                
                             end 
                         end % end of check that contrasts have been specified (cross-visit view)
                     end
@@ -2153,7 +2198,7 @@ end
                             '_beta_cov' num2str(p) '_IC' num2str(sel_IC) '_visit'...
                             num2str(iVisit) '.nii']);
 
-                        beta_raw{p, iVisit} = ndata.img;                     
+                        beta_raw{iVisit, p} = ndata.img;                     
                     end
                 end
                 
@@ -2188,17 +2233,17 @@ end
                     % The column of the contrast is the linear
                     % combination currently viewing
                     if ddat.nVisit > 1
-                        ddat.oimg{iRow, iCol} = S0_maps + visit_effect{iCol};
+                        ddat.oimg{iRow, iCol} = S0_maps + visit_effect{iRow};
                     else
                         ddat.oimg{iRow, iCol} = S0_maps;
                     end
                     
                     ddat.maskingStatus{iRow, iCol} = ~isnan(S0_maps);
                     
-                    % Main Effects
+                    % Main Effects - rows are visits, columns are subpops
                     for xi = 1:ddat.p
                         ddat.oimg{iRow, iCol} = ddat.oimg{iRow, iCol} + ...
-                            str2double(ddat.LC_subpops{iRow, xi}) .* beta_raw{xi, iCol};
+                            str2double(ddat.LC_subpops{iCol, xi}) .* beta_raw{iRow, xi};
                     end
                 end
                 end
@@ -2320,8 +2365,8 @@ end
             allicsubj = subj_results.subICmean(:, :, iSubj, iVisit);
             new_image = zeros(runinfo.voxSize);
             new_image(valid_voxels) = allicsubj(iIC, :);
-            ddat.oimg{1, iVisit} = new_image;
-            ddat.maskingStatus{1, iVisit} = ~isnan(ddat.oimg{1, iVisit});
+            ddat.oimg{iVisit, 1} = new_image;
+            ddat.maskingStatus{iVisit, 1} = ~isnan(ddat.oimg{iVisit, 1});
 
         end
         
@@ -2344,10 +2389,22 @@ end
         cutoff = get( findobj('Tag', 'thresholdSlider'), 'value');
         set( findobj('Tag', 'manualThreshold'), 'string', num2str(cutoff) );
         
+        
+        cvc_selected = strcmp(get(get(findobj('tag',...
+                'EffectTypeButtonGroup'), 'SelectedObject'),...
+                'String'), 'Cross-Visit Contrast View');
+        
         for iUpdate = 1:nUpdate
             
             % Cell to update
             iRow = indices(iUpdate, 1); iCol = indices(iUpdate, 2);
+            
+            % Have to reverse the order for cross-visit contrast (need
+            % better solution to this long term)
+%             if cvc_selected == 1
+%                 iRow = indices(iUpdate, 2);
+%                 iCol = indices(iUpdate, 1);
+%             end
             
             % Scale the functional image
             tempImage = ddat.img{iRow, iCol};
@@ -2387,16 +2444,33 @@ end
         
         aspect = 1./ddat.daspect;
         
+%         % Testing a fix for reverse viewTracker in cross visit contrast
+%         % case
+%         if strcmp(get(get(findobj('tag',...
+%                 'EffectTypeButtonGroup'), 'SelectedObject'),...
+%                 'String'), 'Cross-Visit Contrast View');
+%             [nCol, nRow] = size(ddat.oimg);
+%         end
+
+        isCVC = strcmp(get(get(findobj('tag',...
+                 'EffectTypeButtonGroup'), 'SelectedObject'),...
+                 'String'), 'Cross-Visit Contrast View');
+
         for iRow = 1:nRow
             for iCol = 1:nCol
                 
                 % Check that this is in view before redisplaying
-                if ddat.viewTracker(iRow, iCol) > 0
-                    
-                    % Get the corresponding axes. This SHOULD be in
-                    % numerical order, but we include extra step here just
-                    % to be safe
-                    axes_index = ddat.viewTracker(iRow, iCol);
+                isViewed = ddat.viewTracker(iRow, iCol) > 0;
+                % Get the corresponding axes. This SHOULD be in
+                % numerical order, but we include extra step here just
+                % to be safe
+                axes_index = ddat.viewTracker(iRow, iCol);
+                if isCVC
+                    %isViewed = ddat.viewTracker(iCol, iRow) > 0;
+                    %axes_index = ddat.viewTracker(iCol, iRow);
+                end
+                
+                if isViewed
                     
                     % Grab the data for the selected slices and update axes obj.
                     for cl = 1:3
@@ -2755,9 +2829,9 @@ end
                 ddat.valid_LC_contrast(callbackdata.Indices(1)) = 1; 
                 
                 % Update the size of saved viewTracker
-                size_diff = size(callbackdata.Source.Data, 1) - size(ddat.saved_contrast_viewTracker, 1);
+                size_diff = size(callbackdata.Source.Data, 1) - size(ddat.saved_contrast_viewTracker, 2);
                 if size_diff > 0
-                    ddat.saved_contrast_viewTracker = [ddat.saved_contrast_viewTracker; zeros(size_diff, ddat.nVisit)];
+                    ddat.saved_contrast_viewTracker = [ddat.saved_contrast_viewTracker zeros(ddat.nVisit, size_diff)];
                 end
                 
             else
@@ -2765,9 +2839,9 @@ end
                 ddat.valid_LC_subpop(callbackdata.Indices(1)) = 1; 
                 
                 % Update the size of saved viewTracker
-                size_diff = size(callbackdata.Source.Data, 1) - size(ddat.saved_subpop_viewTracker, 1);
+                size_diff = size(callbackdata.Source.Data, 1) - size(ddat.saved_subpop_viewTracker, 2);
                 if size_diff > 0
-                    ddat.saved_subpop_viewTracker = [ddat.saved_subpop_viewTracker; zeros(size_diff, ddat.nVisit)];
+                    ddat.saved_subpop_viewTracker = [ddat.saved_subpop_viewTracker zeros(ddat.nVisit, size_diff)];
                 end
                 
             end
@@ -2972,33 +3046,32 @@ end
         % If looking at effect/contrast maps, go ahead and load all of the
         % variances for the currently selected IC and visits, this way we do not keep
         % reloading them during the loop
-        %current_vars = {};
         if strcmp('beta', ddat.type) && (Z_enabled == 1)
-%             for iVisit = 1:size(ddat.viewTracker, 2)
-%                 newMap = load(fullfile(ddat.outdir, [ddat.outpre '_BetaVarEst_IC'...
-%                     num2str(current_IC) '_visit' num2str(iVisit) '.mat']));
-%                 current_vars{iVisit} = newMap.be`taVarEst;
-%             end
+
               current_vars = load( fullfile(ddat.outdir, [ddat.outpre '_BetaVarEst_IC' num2str(current_IC)...
                             '.mat']) ).betaVarEst;
         end
         
-        for iPop = 1:size(ddat.viewTracker, 1)
-            for iVisit = 1:size(ddat.viewTracker, 2)
+        % Determine if cross-visit contrast
+        cvc_selected = strcmp(get(get(findobj('tag',...
+            'EffectTypeButtonGroup'), 'SelectedObject'),...
+            'String'), 'Cross-Visit Contrast View');
+        
+        for iPop = 1:size(ddat.viewTracker, 2)
+            for iVisit = 1:size(ddat.viewTracker, 1)
                 %if ddat.viewTracker(iPop, iVisit) > 0
                     
                     % Turn on Z-scores
                     if Z_enabled == 1
                         
                         if strcmp('beta', ddat.type)
-               
-                            
+
                             if (ddat.viewingContrast == 0)
                                 
                                 % create the appropriate vector multiplier
                                 % to pick out the current covariate at the
                                 % current visit
-                                csel = zeros( size(ddat.viewTracker, 1) + 1 , 1) ;
+                                csel = zeros( size(ddat.viewTracker, 2) + 1 , 1) ;
                                 csel(iPop + 1) = 1;
                                 ctr = createContrast( csel, iVisit, ddat.nVisit);
                                 
@@ -3012,51 +3085,90 @@ end
                                 
                                 % Scale using the variance estimate
                                 % theoretical estimate is q(p+1) * q(p+1)
-                                ddat.img{iPop, iVisit} = ddat.oimg{iPop, iVisit} ./...
+                                ddat.img{iVisit, iPop} = ddat.oimg{iVisit, iPop} ./...
                                     sqrt(current_var_est);
                                 
                                 
                             end
                             
                             if (ddat.viewingContrast == 1)
-                                contrastSettings = get(findobj('Tag', 'contrastDisplay'), 'Data');
                                 
-                                % create the appropriate vector multiplier
-                                % to pick out the current covariate at the
-                                % current visit
-                                csel = zeros( size(ddat.viewTracker, 1) + 1 , 1) ;
-                                for xi = 1:ddat.p
-                                    csel(xi + 1) = str2double(contrastSettings( get(findobj('Tag',...
-                                        ['contrastSelect' num2str(1)]), 'Value') , xi));
+                   
+                                
+                                if cvc_selected == 0
+                                    contrastSettings = get(findobj('Tag', 'contrastDisplay'), 'Data');
+                                    
+                                    disp('MAKE SURE THIS IS USING CORRECT POP ROW')
+
+                                    % create the appropriate vector multiplier
+                                    % to pick out the current covariate at the
+                                    % current visit
+                                    %% THIS MIGHT NEED TO BE P, not size of viewTracker, now that changed it
+                                    csel = zeros( size(ddat.viewTracker, 2) + 1 , 1) ;
+                                    for xi = 1:ddat.p
+                                        csel(xi + 1) = str2double(contrastSettings( get(findobj('Tag',...
+                                            ['contrastSelect' num2str(1)]), 'Value') , xi));
+                                    end
+                                    ctr = createContrast( csel, iVisit, ddat.nVisit);         
+
+                                    % Get the variance estimate; loop over each voxel
+                                    current_var_est = squeeze(mtimesx(mtimesx(ctr', current_vars(:, :, :, :, :) ), ctr));
+                                    ddat.img{iVisit, iPop} = ddat.oimg{iVisit, iPop} ./...
+                                        sqrt(current_var_est);
+                                else
+                                    
+                                    % this will be of length nVisit *
+                                    % nCovariateEffect, BUT we will also
+                                    % need to include the random intercept
+                                    % in any contrasts we write (with a 0
+                                    % coefficient, just there to make sure
+                                    % multiplies correctly with variance
+                                    % estimate)
+                                    
+
+                                    if iVisit == 1
+                                    
+                                        contrastSettings = ddat.LC_cross_visit_contrasts(iPop, :);
+
+
+                                        ctr_length = numel(contrastSettings) + ddat.nVisit - 1;
+                                        ctr = zeros(ctr_length, 1);
+                                        ind_ctr = 0;
+                                        ind_noalpha = 0;
+                                        for iVisit = 1:ddat.nVisit
+                                            for icov = 1:ddat.p
+                                             ind_ctr = ind_ctr + 1;
+                                             ind_noalpha = ind_noalpha + 1;
+                                             ctr(ind_ctr, :) = contrastSettings(1, ind_noalpha);
+                                            end
+                                            % skip an element for alpha..
+                                            ind_ctr = ind_ctr + 1;
+                                        end
+
+                                        % Get the variance estimate; loop over each voxel
+                                        current_var_est = squeeze(mtimesx(mtimesx(ctr', current_vars(:, :, :, :, :) ), ctr));
+                                        ddat.img{1, iPop} = ddat.oimg{1, iPop} ./...
+                                            sqrt(current_var_est);
+                                    end
                                 end
-                                ctr = createContrast( csel, iVisit, ddat.nVisit);         
-                                
-                                % Get the variance estimate; loop over each voxel
-                                current_var_est = squeeze(mtimesx(mtimesx(ctr', current_vars(:, :, :, :, :) ), ctr));
-                                ddat.img{iPop, iVisit} = ddat.oimg{iPop, iVisit} ./...
-                                    sqrt(current_var_est);
                             end
-                        
-                        % Update for sub-population level
-                        %elseif
-                            
-                        
+     
                         % Z-update for population or subject level
                         else
                             % Get the image restricted to the actual voxels
-                            tempImg = ddat.oimg{iPop, iVisit};
+                            tempImg = ddat.oimg{iVisit, iPop};
                             FinalImg = nan(size(tempImg));
                             % Calculate the Z-scores
                             FinalImg(ddat.validVoxels) = (tempImg(ddat.validVoxels) - mean(tempImg(ddat.validVoxels))) /...
                                 std(tempImg(ddat.validVoxels), 'omitnan');
-                            ddat.img{iPop, iVisit} = FinalImg;
+                            ddat.img{iVisit, iPop} = FinalImg;
                             set(findobj('Tag', 'manualThreshold'), 'max',1);
                             %editThreshold;
                         end
                         
                     % Turn off Z-scores (Revert to oimg)
                     else
-                        ddat.img{iPop, iVisit} = ddat.oimg{iPop, iVisit};
+                        ddat.img{iVisit, iPop} = ddat.oimg{iVisit, iPop};
                         %set(findobj('Tag', 'thresholdSlider'), 'Value', 0);
                         set(findobj('Tag', 'manualThreshold'), 'String', '');
                         %set(findobj('Tag', 'manualThreshold'), 'Value', 0);
@@ -3394,6 +3506,69 @@ end
         end
     end
 
+
+    function openCrossVisitContrastSpecificationWindow(hObject, callbackdata)
+       
+        % Store the old information. This will be used to
+        % control what is shown after adding or deleting cross-visit
+        % contrasts
+        oldViewTracker = ddat.saved_cross_visit_contrast_viewTracker;
+        oldCVCNames    = ddat.LC_cross_visit_contrast_names;
+        
+        % Open up the cross visit contrast specification window and
+        % update ddat structure with new contrasts and their names
+        [ddat.LC_cross_visit_contrasts,...
+            ddat.LC_cross_visit_contrast_names,...
+            ddat.LC_cross_visit_contrast_strings] =...
+            CrossVisitContrastSpecificationWindow(ddat.varNamesX,...
+                ddat.LC_cross_visit_contrasts,...
+                ddat.LC_cross_visit_contrast_names,...
+                ddat.nVisit);
+        
+        % Now update the cross visit contrast display box (lower RHS of window)
+        % with the new strings describing the contrasts
+        findobj('tag', 'crossVisitContrastDisplay')
+        set(findobj('tag', 'crossVisitContrastDisplay'), 'RowName', ddat.LC_cross_visit_contrast_names);
+        set(findobj('tag', 'crossVisitContrastDisplay'), 'ColumnName', []);
+        
+        set(findobj('tag', 'crossVisitContrastDisplay'), 'Data', ddat.LC_cross_visit_contrast_strings);
+        
+                
+        % To set the width of the column, get the width of the longest
+        % string
+        [~, cell_sizes] = cellfun(@size, ddat.LC_cross_visit_contrast_strings);
+        maxCellLength = 8 * max(cell_sizes);
+        set(findobj('tag', 'crossVisitContrastDisplay'), 'ColumnWidth', {maxCellLength} );
+        
+        % Update the stored CVC view information
+        nCVC = length(ddat.LC_cross_visit_contrast_strings);
+        ddat.saved_cross_visit_contrast_viewTracker = zeros(nCVC, 1);
+        for j = 1:nCVC
+            % See if this contrast was previously defined
+            comparison = strcmp(oldCVCNames, ddat.LC_cross_visit_contrast_names{j});
+            if any(comparison)
+                matchInd = find(comparison);
+                % See if this contrast was previously being viewed
+                if oldViewTracker(matchInd, 1) == 1
+                    ddat.saved_cross_visit_contrast_viewTracker(j, 1) = 1;
+                end
+            end
+        end
+        
+        % Update the view table appropriately
+        setup_ViewSelectTable;
+
+        [rowInd, colInd] = find( ones(size(ddat.viewTracker)) > 0);
+
+        if size([rowInd, colInd], 2) ~= 2
+            rowInd = rowInd(:); colInd = colInd(:);
+        end
+
+        load_functional_images( [rowInd, colInd] );                
+        
+        
+    end
+
     %
     % This function removes a specified sub-population. If that subpopualtion was also
     % a "valid" sub-population (fully filled out) then it is also removed from
@@ -3447,7 +3622,7 @@ end
                             % Clear out variables
                             ddat.LC_subpops(removeIndex, :) = []; 
                             ddat.valid_LC_subpop(removeIndex) = [];
-                            ddat.saved_subpop_viewTracker(removeIndex, :) = [];
+                            ddat.saved_subpop_viewTracker(:, removeIndex) = [];
                             disp('remove from subpop names') %TODO
                             
                         end
@@ -3490,7 +3665,7 @@ end
                         
                         % First need this intermediate step to delete
                         % any axes corresponding to deleted axes
-                        ddat.viewTracker(removeIndex, :) = zeros(1, ddat.nVisit);
+                        ddat.viewTracker(:, removeIndex) = zeros(ddat.nVisit, 1);
                         set_number_of_brain_axes(0);
 
                         % Now update viewTracker

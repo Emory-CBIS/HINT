@@ -31,14 +31,15 @@ h = waitbar(0,'Performing PCA...');
 steps = N;
 
 % Load the first data file and get its size.
-image_temp = load_nii(niifiles{1});
-[m,n,l,k] = size(image_temp.img);
+% image_temp = load_nii(niifiles{1});
+% [m,n,l,k] = size(image_temp.img);
 
 % subject-speicifc dimension reduction and whitening matrix, uses pcamat for PCA
 for i=1:N
     
     % Load the subject data
     image = load_nii(niifiles{i});
+    [m,n,l,k] = size(image.img);
     res = reshape(image.img,[], k)';
     
     % X tilde all is raw T x V subject level data for subject i
@@ -63,16 +64,16 @@ for i=1:N
     % whitening, dewhitening matrix and whitened data;
     my_whiteningMatrix = diag((D_q-sigma2_ML).^(-1/2)) * U_q';
     my_dewhiteningMatrix = U_q * diag((D_q-sigma2_ML) .^ (1/2));
-    deWhite(:,:,i) = my_dewhiteningMatrix;
+    %deWhite(:,:,i) = my_dewhiteningMatrix;
     my_whitesig = my_whiteningMatrix * X_tilde_all;
     
     if (i == 1)
         % transform matrix for the two-stage dim reduction and whitening;
-        H_matrix = my_whiteningMatrix * (eye(T)-1/T * ones(T));
+        H_matrix = my_whiteningMatrix * (eye(k)-1/k * ones(k));
         H_matrix_inv = my_dewhiteningMatrix;
         Y_tilde_all = my_whitesig;
     else
-        newHmat = my_whiteningMatrix * (eye(T)-1/T * ones(T));
+        newHmat = my_whiteningMatrix * (eye(k)-1/k * ones(k));
         H_matrix = blkdiag(H_matrix, newHmat);
         H_matrix_inv = blkdiag(H_matrix_inv, my_dewhiteningMatrix);
         Y_tilde_all = [Y_tilde_all; my_whitesig];

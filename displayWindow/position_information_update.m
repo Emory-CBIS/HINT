@@ -33,6 +33,10 @@ coordindex = 1;
 
 pp = ddat.roi_voxel;
 
+cvc_selected = strcmp(get(get(findobj('tag',...
+                'EffectTypeButtonGroup'), 'SelectedObject'),...
+                'String'), 'Cross-Visit Contrast View');
+
 % Loop over each of the population images. For most cases this will just be
 % one population. The exception is the subpopulation display window.
 for iPop = 1:size(ddat.viewTracker, 1)
@@ -178,13 +182,27 @@ for iPop = 1:size(ddat.viewTracker, 1)
     
     % Check to be sure that position is updated properly
     if get(findobj('Tag', 'viewZScores'), 'Value') == 0
-        set(findobj('Tag', 'crosshairVal'),'String',...
+       % Have to reverse the order for cross-visit contrast (need
+        % better solution to this long term)
+        if cvc_selected == 1
+             set(findobj('Tag', 'crosshairVal'),'String',...
+            sprintf('Value at Voxel: %4.2f',...%ddat.mri_struct.img(ddat.sag, ddat.cor, ddat.axi),
+            ddat.img{iPop, 1}(ddat.sag, ddat.cor, ddat.axi)));
+        else
+             set(findobj('Tag', 'crosshairVal'),'String',...
             sprintf('Value at Voxel: %4.2f',...%ddat.mri_struct.img(ddat.sag, ddat.cor, ddat.axi),
             ddat.img{iPop, iVisit}(ddat.sag, ddat.cor, ddat.axi)));
+        end
     elseif get(findobj('Tag', 'viewZScores'), 'Value') == 1
-        set(findobj('Tag', 'crosshairVal'),'String',...
+        if cvc_selected == 1
+            set(findobj('Tag', 'crosshairVal'),'String',...
+                sprintf('Z = %4.2f',...%ddat.mri_struct.img(ddat.sag, ddat.cor, ddat.axi),
+                ddat.img{iPop, 1}(ddat.sag, ddat.cor, ddat.axi)));
+        else
+            set(findobj('Tag', 'crosshairVal'),'String',...
             sprintf('Z = %4.2f',...%ddat.mri_struct.img(ddat.sag, ddat.cor, ddat.axi),
             ddat.img{iPop, iVisit}(ddat.sag, ddat.cor, ddat.axi)));
+        end
     end
     
     % josh blocked this off xxx, re add if re add
@@ -238,15 +256,29 @@ for iPop = 1:size(ddat.viewTracker, 1)
     for iVisit = 1:size(ddat.viewTracker, 2)
         % Check if axes exists, if not, create it
         if ddat.viewTracker(iPop, iVisit) > 0
-            if get(findobj('Tag', 'viewZScores'), 'Value') == 0
-                    set(findobj('Tag', ['VoxelValueBox' num2str(iPop) '_' num2str(iVisit)]),'String',...
-                        sprintf('Value at Voxel: %4.2f',...
-                        ddat.img{iPop, iVisit}(ddat.sag, ddat.cor, ddat.axi)));
+            
+            if cvc_selected == 1
+                if get(findobj('Tag', 'viewZScores'), 'Value') == 0
+                        set(findobj('Tag', ['VoxelValueBox' num2str(iPop) '_' num2str(iVisit)]),'String',...
+                            sprintf('Value at Voxel: %4.2f',...
+                            ddat.img{iPop, 1}(ddat.sag, ddat.cor, ddat.axi)));
+                else
+                        set(findobj('Tag', ['VoxelValueBox' num2str(iPop) '_' num2str(iVisit)]),'String',...
+                            sprintf('Z = %4.2f',...
+                            ddat.img{iPop, 1}(ddat.sag, ddat.cor, ddat.axi)));
+                end 
             else
-                    set(findobj('Tag', ['VoxelValueBox' num2str(iPop) '_' num2str(iVisit)]),'String',...
-                        sprintf('Z = %4.2f',...
-                        ddat.img{iPop, iVisit}(ddat.sag, ddat.cor, ddat.axi)));
+                if get(findobj('Tag', 'viewZScores'), 'Value') == 0
+                        set(findobj('Tag', ['VoxelValueBox' num2str(iPop) '_' num2str(iVisit)]),'String',...
+                            sprintf('Value at Voxel: %4.2f',...
+                            ddat.img{iPop, iVisit}(ddat.sag, ddat.cor, ddat.axi)));
+                else
+                        set(findobj('Tag', ['VoxelValueBox' num2str(iPop) '_' num2str(iVisit)]),'String',...
+                            sprintf('Z = %4.2f',...
+                            ddat.img{iPop, iVisit}(ddat.sag, ddat.cor, ddat.axi)));
+                end
             end
+            
         end
     end
 end
