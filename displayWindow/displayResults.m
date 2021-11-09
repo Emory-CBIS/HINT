@@ -3071,10 +3071,10 @@ end
                                 % create the appropriate vector multiplier
                                 % to pick out the current covariate at the
                                 % current visit
-                                csel = zeros( size(ddat.viewTracker, 2) + 1 , 1) ;
-                                csel(iPop + 1) = 1;
-                                ctr = createContrast( csel, iVisit, ddat.nVisit);
-                                
+                                csel = zeros( size(ddat.viewTracker, 2), 1) ;
+                                csel(iPop) = 1;
+                                ctr = createContrast( csel, ddat.p, ddat.nVisit);
+                                ctr = ctr(:, iVisit);
                                 % get the corresponding variance term
                                 
                                 % TODO preallcoate and stop re-doing this
@@ -3103,13 +3103,13 @@ end
                                     % create the appropriate vector multiplier
                                     % to pick out the current covariate at the
                                     % current visit
-                                    %% THIS MIGHT NEED TO BE P, not size of viewTracker, now that changed it
-                                    csel = zeros( size(ddat.viewTracker, 2) + 1 , 1) ;
+                                    csel = zeros( size(ddat.viewTracker, 2) , 1) ;
                                     for xi = 1:ddat.p
-                                        csel(xi + 1) = str2double(contrastSettings( get(findobj('Tag',...
+                                        csel(xi) = str2double(contrastSettings( get(findobj('Tag',...
                                             ['contrastSelect' num2str(1)]), 'Value') , xi));
                                     end
-                                    ctr = createContrast( csel, iVisit, ddat.nVisit);         
+                                    ctr = createContrast( csel, ddat.p, ddat.nVisit);   
+                                    ctr = ctr(:, iVisit);
 
                                     % Get the variance estimate; loop over each voxel
                                     current_var_est = squeeze(mtimesx(mtimesx(ctr', current_vars(:, :, :, :, :) ), ctr));
@@ -3130,21 +3130,8 @@ end
                                     
                                         contrastSettings = ddat.LC_cross_visit_contrasts(iPop, :);
 
-
-                                        ctr_length = numel(contrastSettings) + ddat.nVisit - 1;
-                                        ctr = zeros(ctr_length, 1);
-                                        ind_ctr = 0;
-                                        ind_noalpha = 0;
-                                        for iVisit = 1:ddat.nVisit
-                                            for icov = 1:ddat.p
-                                             ind_ctr = ind_ctr + 1;
-                                             ind_noalpha = ind_noalpha + 1;
-                                             ctr(ind_ctr, :) = contrastSettings(1, ind_noalpha);
-                                            end
-                                            % skip an element for alpha..
-                                            ind_ctr = ind_ctr + 1;
-                                        end
-
+                                        ctr = createContrast( contrastSettings, ddat.p, ddat.nVisit);       
+                                        
                                         % Get the variance estimate; loop over each voxel
                                         current_var_est = squeeze(mtimesx(mtimesx(ctr', current_vars(:, :, :, :, :) ), ctr));
                                         ddat.img{1, iPop} = ddat.oimg{1, iPop} ./...
