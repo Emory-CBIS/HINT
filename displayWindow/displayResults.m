@@ -3622,11 +3622,7 @@ end
                  
         % Check that a subpopulation exists
         if numel(get(findobj('Tag', 'subPopDisplay'), 'Data')) > 0
-            
-            % Keep track of if a contrast should be removed (vs user enter
-            % cancel)
-            %removeContrast = 0;
-            
+                  
             % open a window asking which contrast to remove
             waitingForResponse = 1;
             while waitingForResponse

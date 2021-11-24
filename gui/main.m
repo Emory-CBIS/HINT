@@ -501,6 +501,52 @@ data.analysisType = 'unselected';
         set(findobj('Tag','analysisFolder'), 'String', folderName);
     end
 
+%% Function to toggle the progressbar
+    function toggle_progress_bar(bar, complete)
+        
+        % bar is the tag. Will be one of:
+        % dataProgress, pcaProgress, iniProgress, icProgress
+        
+        enable = 'off';
+        backgroundColor = [0.94,0.94,0.94];
+        if complete == 1
+          enable = 'on';  
+          backgroundColor = [51/256,153/256,0/256];
+        end
+        
+        set(findobj('Tag', bar), 'BackgroundColor', backgroundColor,...
+            'ForegroundColor',[0.9255,0.9255,0.9255],...
+            'enable', enable);
+        
+    end
+
+% Check if the user wants to proceed
+    function proceedWithLoad = warn_user_ask_proceed(dataLoaded)
+        proceedWithLoad = 1;
+        if dataLoaded == 1
+            proceedWithLoad = 0; % default to 0 just to be safe
+            opts.Interpreter = 'tex';
+            opts.Default = 'No';
+            userAnswer = questdlg('Continuing will reset the current analysis, are you sure you want to continue?',...
+                'Continue?',...
+                'Yes', 'No', opts);
+            if strcmp(userAnswer, 'Yes')
+                proceedWithLoad = 1;
+            end
+        end
+    end
+
+% If user specified files using "import Nifti data" then this function is
+% used to check that all of the required input is there
+    function validFileInput = check_input_panel_files(fls)
+        validFileInput = 0;
+        if (~isempty(fls))
+            if (~isempty(fls{1}) && ~isempty(fls{2}) && ~isempty(fls{3}))
+                validFileInput = 1;
+            end
+        end
+    end
+
 % Load the nifti data, covariate file, and mask file specified by the
 % user.
     function loadDataButton_Callback(~,~)
@@ -509,23 +555,10 @@ data.analysisType = 'unselected';
         data.iniGuessComplete = 0;
         set(findobj('tag', 'saveContinueButton'), 'enable', 'off');
         
-        % Update the progress bar to reflect loading new data
-        set(findobj('Tag','dataProgress'),'BackgroundColor',...
-            [0.94,0.94,0.94],...%[51/256,153/256,0/256],...
-            'ForegroundColor',[0.9255,0.9255,0.9255],...
-            'enable','off');
-        set(findobj('Tag','pcaProgress'),'BackgroundColor',...
-            [0.94,0.94,0.94],...%[51/256,153/256,0/256],...
-            'ForegroundColor',[0.9255,0.9255,0.9255],...
-            'enable','off');
-        set(findobj('Tag','iniProgress'),'BackgroundColor',...
-            [0.94,0.94,0.94],...%[51/256,153/256,0/256],...
-            'ForegroundColor',[0.9255,0.9255,0.9255],...
-            'enable','off');
-        set(findobj('Tag','icProgress'),'BackgroundColor',...
-            [0.94,0.94,0.94],...%[51/256,153/256,0/256],...
-            'ForegroundColor',[0.9255,0.9255,0.9255],...
-            'enable','off');
+        toggle_progress_bar('dataProgress', 0);
+        toggle_progress_bar('pcaProgress', 0);
+        toggle_progress_bar('iniProgress', 0);
+        toggle_progress_bar('icProgress', 0);
         
         bGroup = findobj('Tag','loadDataRadioButtonPanel');
         dataType = get(get(bGroup,'SelectedObject'),'Tag');
@@ -534,7 +567,7 @@ data.analysisType = 'unselected';
         if (strcmp(dataType, 'matData') == 1)
             
             % Direct the user to load a runinfo file
-            [fname pathname] = uigetfile('.mat');
+            [fname, pathname] = uigetfile('.mat');
             
             % Make sure user did not close out window
             if fname ~= 0
@@ -542,219 +575,61 @@ data.analysisType = 'unselected';
                 % Waitbar while the data loads
                 waitLoad = waitbar(0,'Please wait while the data load');
                 
-                runinfo = load([pathname fname]);
+                runinfoFileName = fullfile(pathname, fname);
                 
-                % Update the appropriate data structures
-                waitbar(1/10)
-                data.qstar = runinfo.q;
-                data.q = runinfo.qold;
-                data.CmatStar = runinfo.CmatStar;
-                data.X = runinfo.X;
-                data.YtildeStar = runinfo.YtildeStar;
-                data.beta0Star = runinfo.beta0Star;
-                data.covariates = runinfo.covariates;
-                data.covf = runinfo.covfile;
-                data.covTypes = runinfo.covTypes;
-                data.maskf = runinfo.maskf;
-                data.niifiles = runinfo.niifiles;
-                data.numPCA = runinfo.numPCA;
-                data.thetaStar = runinfo.thetaStar;
-                data.time_num = runinfo.time_num;
-                data.nVisit = runinfo.nVisit;
+                [runinfo, loadErr] = load_runinfo_file(runinfoFileName);
                 
-                if data.nVisit > 1
-                    data.analysisType = 'Longitudinal';
-                else
-                    data.analysisType = 'Cross-Sectional';
+                if loadErr == 0
+                    
+                    data = add_all_structure_fields(data, runinfo);
+                    
+                    % Populate the display fields
+                    set(findobj('tag', 'numICA'), 'string', num2str(data.qold));
+                    set(findobj('tag', 'numPCA'), 'string', num2str(data.numPCA));
+                    [~, prefix, ~] = fileparts(data.prefix);
+                    set(findobj('tag', 'prefix'), 'string', prefix);
+                    set(findobj('tag', 'analysisFolder'), 'string', num2str(data.outfolder));
+                    
+                    data.preprocessingComplete = 1;
+                    data.iniGuessComplete = 1;
+                    data.tempiniGuessObtained = 1;
+                    set(findobj('tag', 'runButton'), 'enable', 'on');
+
+                    % Update the GUI to reflect the loaded information
+                    toggle_progress_bar('dataProgress', 1);
+                    toggle_progress_bar('pcaProgress', 1);
+                    toggle_progress_bar('iniProgress', 1);
+                    toggle_progress_bar('icProgress', 1);
+                    data.dataLoaded = 1;
+                    
                 end
-                
-                data.validVoxels = runinfo.validVoxels;
-                data.outpath = runinfo.outfolder;
-                data.prefix = '';
-                data.voxSize = runinfo.voxSize;
-                data.N = runinfo.N;
-                data.varNamesX = runinfo.varNamesX;
-                data.interactions = runinfo.interactions;
-                data.varInCovFile = runinfo.varInCovFile;
-                data.varInModel = runinfo.varInModel;
-                data.interactionsBase = runinfo.interactionsBase;
-                data.referenceGroupNumber = runinfo.referenceGroupNumber;
+               
                 waitbar(1)
                 close(waitLoad);
-                
-                % Populate the display fields
-                %set(findobj('tag', ''), 'string', num2str());
-                set(findobj('tag', 'numICA'), 'string', num2str(runinfo.qold));
-                set(findobj('tag', 'numPCA'), 'string', num2str(runinfo.numPCA));
-                set(findobj('tag', 'prefix'), 'string', '');
-                set(findobj('tag', 'analysisFolder'), 'string', num2str(runinfo.outfolder));
-                data.preprocessingComplete = 1;
-                data.iniGuessComplete = 1;
-                data.tempiniGuessObtained = 1;
-                set(findobj('tag', 'runButton'), 'enable', 'on');
-                
-                % Fill in the blanks to reflect what was loaded
-                
-                % Update the GUI to reflect the loaded information
-                set(findobj('Tag','dataProgress'),'BackgroundColor',[51/256,153/256,0/256],...
-                    'ForegroundColor',[0.9255,0.9255,0.9255],...
-                    'enable','on');
-                set(findobj('Tag','pcaProgress'),'BackgroundColor',[51/256,153/256,0/256],...
-                    'ForegroundColor',[0.9255,0.9255,0.9255],...
-                    'enable','on');
-                set(findobj('Tag','iniProgress'),'BackgroundColor',[51/256,153/256,0/256],...
-                    'ForegroundColor',[0.9255,0.9255,0.9255],...
-                    'enable','on');
-                set(findobj('Tag','icProgress'),'BackgroundColor',[51/256,153/256,0/256],...
-                    'ForegroundColor',[0.9255,0.9255,0.9255],...
-                    'enable','on');
-                data.dataLoaded = 1;
+           
             end
             
             % Handle data in nifti form.
         elseif (strcmp(dataType, 'niftiData') == 1)
             
-            % Check if data is already loaded, if so, warn the user that
-            % continuing will wipe out their current analysis settings
-            proceedWithLoad = 1;
-            if data.dataLoaded == 1
-                proceedWithLoad = 0; % default to 0 just to be safe
-                opts.Interpreter = 'tex';
-                opts.Default = 'No';
-                userAnswer = questdlg('Continuing will reset the current analysis, are you sure you want to continue?',...
-                    'Continue?',...
-                    'Yes', 'No', opts);
-                if strcmp(userAnswer, 'Yes')
-                    proceedWithLoad = 1;
-                end
-            end
-            
+            proceedWithLoad = warn_user_ask_proceed(data.dataLoaded);
             
             if proceedWithLoad
                 
                 fls = loadNii;
-                %                 if strcmp(data.analysisType, 'hcica')
-                %                     fls = loadNii;
-                %                 elseif strcmp(data.analysisType, 'lica')
-                %                     cov_and_mask_fls = input_load_cov_and_mask;
-                %                     varargoutttt = input_determine_visits_and_subject_names( cov_and_mask_fls{2} );
-                %                     fls = select_folder_structure_lica;
-                %                 else
-                %                     disp('ERROR - no valid analysis selected. This is a toolbox error, not user error.')
-                %                 end
+                
+                % validity check
+                validFileInput = check_input_panel_files(fls);
                 
                 % outer check makes sure anything was input
-                if (~isempty(fls))
-                    if (~isempty(fls{1}) && ~isempty(fls{2}) && ~isempty(fls{3}))
+                if validFileInput == 1
+                    
+                        inputDataParsed = parse_and_format_input_files(fls{2}, fls{3}, fls{4});
                         
-                        waitLoad = waitbar(0,'Please wait while the data load');
-                        niifiles = fls{1}; data.niifiles_raw = niifiles;
-                        maskf = fls{2}; data.maskf = maskf;
-                        covf = fls{3}; data.covf = covf;
-                        nfile = length(niifiles);
-                        data.nVisit = fls{4};
-                        
-                        if data.nVisit > 1
-                            data.analysisType = 'Longitudinal';
-                        else
-                            data.analysisType = 'Cross-Sectional';
-                        end
-                        
-                        % Make sure there is something to load
-                        if (nfile > 0)
-                            
-                            waitbar(1/10, waitLoad, 'Loading and sorting covariates')
-                            % Match up each covariate with its row in the covariate
-                            % file
-                            data.covariateTable = readtable(covf, 'Delimiter', ',');
-                            data.covariates = data.covariateTable.Properties.VariableNames;
-                            data.referenceGroupNumber = ones(1, length(data.covariates) - data.nVisit + 1);
-                            
-                            %% Extend the covariate table by repeating the
-                            % covariates for each subject nVisit times, then only
-                            ncov = length(data.covariates) - data.nVisit;
-                            cellCov = {nfile, ncov + 1};
-                            subjindex = 0;
-                            for iSubj = 1:(nfile/data.nVisit)
-                                for iVisit = 1:data.nVisit
-                                    subjindex = subjindex + 1;
-                                    cellCov(subjindex, 1) = niifiles(subjindex);
-                                    for icov = 1:ncov
-                                        cellCov{subjindex, icov+1} = data.covariateTable{iSubj, data.nVisit+icov};
-                                    end
-                                end
-                                
-                            end
-                            % Finalize into a new table
-                            newTable = cell2table(cellCov);
-                            % Update the structures in data
-                            % renaming covariates
-                            data.covariates = data.covariates(data.nVisit:length(data.covariates));
-                            data.covariates{1} = 'file';
-                            % update the column names of the new table and add it
-                            % to data
-                            newTable.Properties.VariableNames = data.covariates;
-                            data.covariateTable = newTable;
-                            
-                            
-                            % No longer need to do string matchinghere
-                            %[data.niifiles, tempcov] = matchCovariatesToNiifiles(data.niifiles_raw,...
-                            %    data.covariateTable, strMatch);
-                            % add these becuase we removed matchCovariatesToNiifiles
-                            tempcov = data.covariateTable;
-                            data.niifiles = niifiles;
-                            % Get rid of the subject part of the data frame
-                            data.covariates = tempcov(:, 2:width(tempcov));
-                            data.covariates.Properties.VariableNames =...
-                                data.covariateTable.Properties.VariableNames(2:length(data.covariateTable.Properties.VariableNames));
-                            
-                            % Create variables tracking whether or not the
-                            % covariate is to be included in the hc-ICA model
-                            data.varInCovFile = ones( width(tempcov) - 1, 1);
-                            data.varInModel = ones( width(tempcov) - 1, 1);
-                            
-                            % Identify categorical and continuous covariates
-                            data.covTypes = auto_identify_covariate_types(data.covariates);
-                            
-                            % Reference cell code based on covTypes, user can
-                            % change these types in model specification later
-                            [ data.X, data.varNamesX, data.interactions ] = ref_cell_code( data.covariates,...
-                                data.covTypes, data.varInModel,...
-                                0, zeros(0, length(data.covTypes)), 0, data.referenceGroupNumber  );
-                            
-                            % Create the (empty) interactions matrix
-                            [~, nCol] = size(data.X);
-                            data.interactions = zeros(0, nCol);
-                            data.interactionsBase = zeros(0, length(data.covTypes));
-                            
-                            % Load the first data file and get its size.
-                            waitbar(5/10, waitLoad, 'Loading the mask')
-                            image = load_nii(niifiles{1});
-                            [m,n,l,k] = size(image.img);
-                            
-                            % load the mask file.
-                            if(~isempty(maskf))
-                                mask = load_nii(maskf);
-                                validVoxels = find(mask.img == 1);
-                            else
-                                validVoxels = find(ones(m,n,l) == 1);
-                            end
-                            nValidVoxel = length(validVoxels);
-                            
-                            % Store the relevant information
-                            data.time_num = k;
-                            data.N = nfile / data.nVisit;
-                            data.validVoxels = validVoxels;
-                            data.voxSize = size(mask.img);
-                            data.dataLoaded = 1;
-                            waitbar(1)
-                            close(waitLoad);
-                        end
+                        data = add_all_structure_fields(data, inputDataParsed);
                         
                         % Update main gui window to show that data has been loaded.
-                        set(findobj('Tag','dataProgress'),'BackgroundColor',[51/256,153/256,0/256],...
-                            'ForegroundColor',[0.9255,0.9255,0.9255],...
-                            'enable','on');
+                        toggle_progress_bar('dataProgress', 1);
                         
                         % Update process trackers
                         data.preprocessingComplete = 0;
@@ -768,7 +643,6 @@ data.analysisType = 'unselected';
                         text(482,10,[num2str(0+round(100*0)),'%']);
                         drawnow;
                         
-                    end
                 end
                 %end % end of proceedWithLoad check
             end
@@ -804,17 +678,10 @@ data.analysisType = 'unselected';
             
             % Update GUI to show PCA completed
             data.dispPCA.String = 'PCA Completed';
-            set(findobj('Tag','pcaProgress'),'BackgroundColor',[51/256,153/256,0/256],...
-                'ForegroundColor',[0.9255,0.9255,0.9255],...
-                'enable','on');
             
-            % Make sure the further progress is not shown
-            set(findobj('Tag','iniProgress'),'BackgroundColor',[0.94,0.94,0.94],...
-                'ForegroundColor',[0.9255,0.9255,0.9255],...
-                'enable','on');
-            set(findobj('Tag','icProgress'),'BackgroundColor',[0.94,0.94,0.94],...
-                'ForegroundColor',[0.9255,0.9255,0.9255],...
-                'enable','on');
+            toggle_progress_bar('pcaProgress', 1);
+            toggle_progress_bar('iniProgress', 0);
+            toggle_progress_bar('icProgress', 0);
             
             % Update the data structure to know that preprocessing is
             % complete

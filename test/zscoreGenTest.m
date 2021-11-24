@@ -26,3 +26,8 @@ assert( isequal(ansTest2, mapset1) )
 %% Test 3: Beta Viewer, no contrast
 generate_zscore_maps('Effect View', 1, mapset1, '', validVoxels1, 999);
 
+
+
+
+
+
