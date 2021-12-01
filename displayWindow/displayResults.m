@@ -1753,7 +1753,7 @@ end
 
         elseif strcmp(ddat.type, 'beta')
             
-            ddat.viewTracker = zeros(ddat.p, ddat.nVisit);
+            ddat.viewTracker = zeros(ddat.nVisit, ddat.p);
             ddat.viewTracker(1, 1) = 1;
             
             ddat.viewingContrast = 0;
@@ -2179,8 +2179,8 @@ end
                     % of them
                     for p = 1:ddat.p
                         for iVisit = 1:ddat.nVisit
-                            ddat.oimg{p, iVisit} = beta_raw{p, iVisit};
-                            ddat.maskingStatus{p, iVisit} = ~isnan(ddat.oimg{p, iVisit});
+                            ddat.oimg{iVisit, p} = beta_raw{p, iVisit};
+                            ddat.maskingStatus{iVisit, p} = ~isnan(ddat.oimg{iVisit, p});
                         end
                     end
                     

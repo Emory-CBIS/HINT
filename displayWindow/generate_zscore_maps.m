@@ -33,10 +33,13 @@ if toZ == true
         
         case 'Effect View'
             
+            normalizationWaitbar = waitbar(0, 'Loading Variance Estimates');
+            
             varianceEst = load(varianceEstFile).betaVarEst;
             
             % Create the "contrast" corresponding to looking at each effect
             % at each visit
+            normalizationWaitbar = waitbar(0.1, 'Creating Contrast List');
             ctrIndexList = num2cell(eye(nCol), 1);
                      
             % Each cell is a covariate effect, within each cell we have the
@@ -50,9 +53,11 @@ if toZ == true
             ctrCells = horzcat(ctrCells{:});
                                     
             % Divide by estimated standard error
+            normalizationWaitbar = waitbar(0.2, 'Applying Z-transformation');
             newImgs = cellfun(@(x, y) se_normalize_image(x, varianceEst, y),...
                 oimg, ctrCells, 'uniformoutput', false);
             
+            close(normalizationWaitbar)
             
         case 'Contrast View'
             
