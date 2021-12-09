@@ -547,19 +547,71 @@ data.analysisType = 'unselected';
         end
     end
 
-% Load the nifti data, covariate file, and mask file specified by the
-% user.
-    function loadDataButton_Callback(~,~)
+% Progress bar function
+% level argument ->
+% 0 : nothing done
+% 1 : data loaded
+% 2 : pca complete
+% 3 : initial guess done
+% 4 : IC selection complete
+    function update_progress_bar(level)
         
-        data.preprocessingComplete = 0;
-        data.iniGuessComplete = 0;
-        set(findobj('tag', 'saveContinueButton'), 'enable', 'off');
-        
+        % Turn all off
         toggle_progress_bar('dataProgress', 0);
         toggle_progress_bar('pcaProgress', 0);
         toggle_progress_bar('iniProgress', 0);
         toggle_progress_bar('icProgress', 0);
         
+        set(findobj('tag', 'saveContinueButton'), 'enable', 'off');
+        
+        reset_run_progress_bar;
+        
+        if level > 0
+            data.dataLoaded = 1;
+            toggle_progress_bar('dataProgress', 1);
+        end
+        
+        if level > 1
+            data.preprocessingComplete = 1;
+            toggle_progress_bar('pcaProgress', 1);
+        end
+        
+        if level > 2
+            data.tempiniGuessObtained = 1;
+            toggle_progress_bar('iniProgress', 1);
+        end
+        
+        if level > 3
+            data.iniGuessComplete = 1;
+            toggle_progress_bar('icProgress', 1);
+            set(findobj('tag', 'saveContinueButton'), 'enable', 'on');
+        end
+        
+    end
+
+    function reset_run_progress_bar(~, ~)
+        axes(findobj('tag','analysisWaitbar'));
+        cla;
+        rectangle('Position',[0,0,0+(round(1000*0)),20],'FaceColor','g');
+        text(482,10,[num2str(0+round(100*0)),'%']);
+        drawnow;
+    end
+
+% Load the nifti data, covariate file, and mask file specified by the
+% user.
+    function loadDataButton_Callback(~,~)
+        
+%         data.preprocessingComplete = 0;
+%         data.iniGuessComplete = 0;
+%         set(findobj('tag', 'saveContinueButton'), 'enable', 'off');
+%         
+%         toggle_progress_bar('dataProgress', 0);
+%         toggle_progress_bar('pcaProgress', 0);
+%         toggle_progress_bar('iniProgress', 0);
+%         toggle_progress_bar('icProgress', 0);
+        
+        update_progress_bar(0);
+
         bGroup = findobj('Tag','loadDataRadioButtonPanel');
         dataType = get(get(bGroup,'SelectedObject'),'Tag');
         
@@ -590,17 +642,8 @@ data.analysisType = 'unselected';
                     set(findobj('tag', 'prefix'), 'string', prefix);
                     set(findobj('tag', 'analysisFolder'), 'string', num2str(data.outfolder));
                     
-                    data.preprocessingComplete = 1;
-                    data.iniGuessComplete = 1;
-                    data.tempiniGuessObtained = 1;
-                    set(findobj('tag', 'runButton'), 'enable', 'on');
-
                     % Update the GUI to reflect the loaded information
-                    toggle_progress_bar('dataProgress', 1);
-                    toggle_progress_bar('pcaProgress', 1);
-                    toggle_progress_bar('iniProgress', 1);
-                    toggle_progress_bar('icProgress', 1);
-                    data.dataLoaded = 1;
+                    update_progress_bar(4);
                     
                 end
                
@@ -628,20 +671,24 @@ data.analysisType = 'unselected';
                         
                         data = add_all_structure_fields(data, inputDataParsed);
                         
-                        % Update main gui window to show that data has been loaded.
-                        toggle_progress_bar('dataProgress', 1);
+                        % Update the GUI to reflect the loaded information
+                        update_progress_bar(1);
                         
-                        % Update process trackers
-                        data.preprocessingComplete = 0;
-                        data.iniGuessComplete = 0;
-                        data.tempiniGuessObtained = 0;
+%                         % Update main gui window to show that data has been loaded.
+%                         toggle_progress_bar('dataProgress', 1);
+%                         
+%                         % Update process trackers
+%                         data.preprocessingComplete = 0;
+%                         data.iniGuessComplete = 0;
+%                         data.tempiniGuessObtained = 0;
                         
                         % Reset the run window
-                        axes(findobj('tag','analysisWaitbar'));
-                        cla;
-                        rectangle('Position',[0,0,0+(round(1000*0)),20],'FaceColor','g');
-                        text(482,10,[num2str(0+round(100*0)),'%']);
-                        drawnow;
+%                         axes(findobj('tag','analysisWaitbar'));
+%                         cla;
+%                         rectangle('Position',[0,0,0+(round(1000*0)),20],'FaceColor','g');
+%                         text(482,10,[num2str(0+round(100*0)),'%']);
+%                         drawnow;
+                        
                         
                 end
                 %end % end of proceedWithLoad check
@@ -657,37 +704,22 @@ data.analysisType = 'unselected';
     function calculatePCA(~,~)
         
         if data.dataLoaded == 0;
+            
             warndlg('Please load data before preprocessing.');
+            
         else
             
-            data.preprocessingComplete = 0;
-            data.tempiniGuessObtained = 0;
-            data.iniGuessComplete = 0;
-            set(findobj('tag', 'saveContinueButton'), 'enable', 'off');
-            
-            % Reset the run window
-            axes(findobj('tag','analysisWaitbar'));
-            cla;
-            rectangle('Position',[0,0,0+(round(1000*0)),20],'FaceColor','g');
-            text(482,10,[num2str(0+round(100*0)),'%']);
-            drawnow;
+            update_progress_bar(1);
             
             data.q = str2double(get(findobj('Tag', 'numICA'), 'String'));
+            
             [data.Ytilde, data.C_matrix_diag, data.H_matrix_inv,  data.H_matrix, data.deWhite]...
                 = PreProcICA(data.niifiles, data.validVoxels, data.q, data.time_num, data.N*data.nVisit);
             
             % Update GUI to show PCA completed
             data.dispPCA.String = 'PCA Completed';
             
-            toggle_progress_bar('pcaProgress', 1);
-            toggle_progress_bar('iniProgress', 0);
-            toggle_progress_bar('icProgress', 0);
-            
-            % Update the data structure to know that preprocessing is
-            % complete
-            data.preprocessingComplete = 1;
-            data.tempiniGuessObtained = 0;
-            data.iniGuessComplete = 0;
+            update_progress_bar(2);
             
             % write PCA information to log file.
             if (writelog == 1)
@@ -724,21 +756,19 @@ data.analysisType = 'unselected';
             end
             
             if proceed == 1
-                data.iniGuessComplete = 0;
-                data.tempiniGuessObtained = 0;
-                set(findobj('tag', 'saveContinueButton'), 'enable', 'off');
-                % Reset the run window
-                axes(findobj('tag','analysisWaitbar'));
-                cla;
-                rectangle('Position',[0,0,0+(round(1000*0)),20],'FaceColor','g');
-                text(482,10,[num2str(0+round(100*0)),'%']);
-                drawnow;
+                
+                update_progress_bar(2);
+                
                 data.q = str2double(get(findobj('Tag', 'numICA'), 'String'));
+                
                 global keeplist;
+                
                 keeplist = ones(data.q,1);
-                %addpath('FastICA_25');
+                
                 numberOfPCs = findobj('Tag', 'numPCA');
+                
                 data.prefix = get(findobj('Tag', 'prefix'), 'String');
+                
                 data.outpath = get(findobj('Tag', 'analysisFolder'), 'String');
                 
                 % Perform GIFT
@@ -777,14 +807,7 @@ data.analysisType = 'unselected';
                 
                 % Update the gui main window to show that initial values
                 % calculation is completed.
-                set(findobj('Tag','iniProgress'),'BackgroundColor',[51/256,153/256,0/256],...
-                    'ForegroundColor',[0.9255,0.9255,0.9255],...
-                    'enable','on');
-                data.tempiniGuessObtained = 1;
-                data.iniGuessComplete = 0;
-                set(findobj('Tag','icProgress'),'BackgroundColor',[0.94,0.94,0.94],...
-                    'ForegroundColor',[0.9255,0.9255,0.9255],...
-                    'enable','on');
+                update_progress_bar(3);
                 
                 chooseIC;
             end % end of check that proceed == 1
@@ -795,6 +818,7 @@ data.analysisType = 'unselected';
 
 % Open viewer to allow user to select which ICs to use for hc-ICA.
     function chooseIC(~)
+        
         if data.tempiniGuessObtained == 1
             global keeplist;
             keeplist = ones(data.q,1);
@@ -812,22 +836,19 @@ data.analysisType = 'unselected';
                 data.beta0Star = data.beta0;
                 data.YtildeStar = data.Ytilde;
                 data.CmatStar = data.C_matrix_diag;
+                
                 % Lock user out of re-restimate buttons
                 set( findobj('Tag', 'reEstButton') ,'Enable','Off')
                 set( findobj('Tag', 'viewReduced') ,'Enable','Off')
-                % Fill in the progress bar to let the user know that they can
-                % move on to the analysis
-                set(findobj('Tag','icProgress'),'BackgroundColor',[51/256,153/256,0/256],...
-                    'ForegroundColor',[0.9255,0.9255,0.9255],...
-                    'enable','on');
-                data.iniGuessComplete = 1;
-                set(findobj('tag', 'saveContinueButton'), 'enable', 'on');
+                
+                update_progress_bar(4);
             end
             % Else, if the user did select only a subset of ICs, allow them to
             % re-estimate the intial guess
             if (data.qstar < data.q)
-                data.iniGuessComplete = 0;
-                set(findobj('tag', 'saveContinueButton'), 'enable', 'off');
+                
+                update_progress_bar(3);
+                
                 set( findobj('Tag', 'reEstButton') ,'Enable','On')
                 set( findobj('Tag', 'viewReduced') ,'Enable','On')
             end
@@ -865,12 +886,7 @@ data.analysisType = 'unselected';
         global keeplist;
         data.qstar = sum(keeplist);
         
-        % Reset the run window
-        axes(findobj('tag','analysisWaitbar'));
-        cla;
-        rectangle('Position',[0,0,0+(round(1000*0)),20],'FaceColor','g');
-        text(482,10,[num2str(0+round(100*0)),'%']);
-        drawnow;
+        update_progress_bar(3);
         
         % Call function to re-estimate the initial values for the hc-ica
         % algorithm based on the selected ICs
@@ -881,12 +897,12 @@ data.analysisType = 'unselected';
         
         % Fill in the progress bar to let the user know that they can
         % move on to the analysis
-        set(findobj('Tag','icProgress'),'BackgroundColor',[51/256,153/256,0/256],...
-            'ForegroundColor',[0.9255,0.9255,0.9255],...
-            'enable','on');
-        data.iniGuessComplete = 1;
-        set(findobj('tag', 'saveContinueButton'), 'enable', 'on');
-        
+%         set(findobj('Tag','icProgress'),'BackgroundColor',[51/256,153/256,0/256],...
+%             'ForegroundColor',[0.9255,0.9255,0.9255],...
+%             'enable','on');
+%         data.iniGuessComplete = 1;
+%         set(findobj('tag', 'saveContinueButton'), 'enable', 'on');
+        update_progress_bar(4);
     end
 
     function resetButtonCallback(~, ~)
@@ -894,11 +910,9 @@ data.analysisType = 'unselected';
         close(hs);
         hs = addcomponents;
         data = struct();
+        
         % Initial progress states
-        data.preprocessingComplete = 0;
-        data.tempiniGuessObtained = 0;
-        data.iniGuessComplete = 0;
-        data.dataLoaded = 0;
+        update_progress_bar(0);
     end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

@@ -81,6 +81,8 @@ function [InputData] = parse_and_format_input_files(maskf, covf, nVisit)
         %nValidVoxel = length(validVoxels);
 
         % Store the relevant information
+        InputData.covf = covf;
+        InputData.maskf = maskf;
         InputData.time_num = k;
         InputData.N = nfile / InputData.nVisit;
         InputData.validVoxels = validVoxels;
