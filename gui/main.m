@@ -600,17 +600,6 @@ data.analysisType = 'unselected';
 % Load the nifti data, covariate file, and mask file specified by the
 % user.
     function loadDataButton_Callback(~,~)
-        
-%         data.preprocessingComplete = 0;
-%         data.iniGuessComplete = 0;
-%         set(findobj('tag', 'saveContinueButton'), 'enable', 'off');
-%         
-%         toggle_progress_bar('dataProgress', 0);
-%         toggle_progress_bar('pcaProgress', 0);
-%         toggle_progress_bar('iniProgress', 0);
-%         toggle_progress_bar('icProgress', 0);
-        
-        update_progress_bar(0);
 
         bGroup = findobj('Tag','loadDataRadioButtonPanel');
         dataType = get(get(bGroup,'SelectedObject'),'Tag');
@@ -659,6 +648,8 @@ data.analysisType = 'unselected';
             
             if proceedWithLoad
                 
+                update_progress_bar(0);
+                
                 fls = loadNii;
                 
                 % validity check
@@ -674,30 +665,12 @@ data.analysisType = 'unselected';
                         % Update the GUI to reflect the loaded information
                         update_progress_bar(1);
                         
-%                         % Update main gui window to show that data has been loaded.
-%                         toggle_progress_bar('dataProgress', 1);
-%                         
-%                         % Update process trackers
-%                         data.preprocessingComplete = 0;
-%                         data.iniGuessComplete = 0;
-%                         data.tempiniGuessObtained = 0;
-                        
-                        % Reset the run window
-%                         axes(findobj('tag','analysisWaitbar'));
-%                         cla;
-%                         rectangle('Position',[0,0,0+(round(1000*0)),20],'FaceColor','g');
-%                         text(482,10,[num2str(0+round(100*0)),'%']);
-%                         drawnow;
-                        
-                        
                 end
                 %end % end of proceedWithLoad check
             end
             
         end % end of check that user did not press cancel
     end
-
-
 
 % Perform the PCA data reduction. Output is Ytilde, C_matrix_diag,
 %    H_matrix_inv, H_matrix, and deWhite.
@@ -820,14 +793,17 @@ data.analysisType = 'unselected';
     function chooseIC(~)
         
         if data.tempiniGuessObtained == 1
+            
             global keeplist;
             keeplist = ones(data.q,1);
             displayResults(data.q, data.outpath, data.prefix,...
                 data.N, 'icsel', data.covariates, data.X, data.covTypes,...
                 data.interactions, 1, data.validVoxels, data.voxSize);
             uiwait()
+            
             % qStar <= q contains the number of selected ICs.
             data.qstar = sum(keeplist);
+            
             % If the user selected all ICs, then there is no reason to
             % re-estimate the values. Save the current set of values and lock
             % the user out of the re-estimate buttons.
@@ -843,6 +819,7 @@ data.analysisType = 'unselected';
                 
                 update_progress_bar(4);
             end
+            
             % Else, if the user did select only a subset of ICs, allow them to
             % re-estimate the intial guess
             if (data.qstar < data.q)
@@ -895,13 +872,6 @@ data.analysisType = 'unselected';
             str2double(get(findobj('tag', 'numPCA'), 'String')), data.outpath,...
             data.prefix, data.X, data.maskf, data.validVoxels )
         
-        % Fill in the progress bar to let the user know that they can
-        % move on to the analysis
-%         set(findobj('Tag','icProgress'),'BackgroundColor',[51/256,153/256,0/256],...
-%             'ForegroundColor',[0.9255,0.9255,0.9255],...
-%             'enable','on');
-%         data.iniGuessComplete = 1;
-%         set(findobj('tag', 'saveContinueButton'), 'enable', 'on');
         update_progress_bar(4);
     end
 
@@ -1007,17 +977,20 @@ data.analysisType = 'unselected';
             path = get(findobj('Tag','analysisFolder'),'String');
             
             
-            
+            % TODO split this function up so that name is more descriptive
             data.theoretical_beta_se_est = save_analysis_results(analysisPrefix, data);
             
             % Disable the stop button
             set(findobj('Tag','stopButton'),'enable','off');
+            
             % Enable the "Display Results" button
             set(findobj('Tag','displayResultsButton'),'enable','on');
+            
             % Re-enable the analysis buttons
             set(findall(findobj('tag', 'analysisSetup'),...
                 '-property', 'enable'), 'enable', 'on');
             set(findobj('tag','runButton'),'enable','on');
+            
             % Enable the display results button
             %set(findobj('Tag','displayResultsButton'),'enable','off');
             
