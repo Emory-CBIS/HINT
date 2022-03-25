@@ -1,4 +1,4 @@
-function [InputData] = parse_and_format_input_files(maskf, covf, nVisit)
+function [InputData] = parse_and_format_input_files(maskf, covf, nVisit, studyType)
 % returns InputData - a struct with covariate and niifiles information        
 
         InputData = struct();
@@ -72,12 +72,14 @@ function [InputData] = parse_and_format_input_files(maskf, covf, nVisit)
         [m,n,l,k] = size(image.img);
 
         % load the mask file.
-        if(~isempty(maskf))
-            mask = load_nii(maskf);
-            validVoxels = find(mask.img == 1);
-        else
-            validVoxels = find(ones(m,n,l) == 1);
-        end
+%         if(~isempty(maskf))
+%             mask = load_nii(maskf);
+%             validVoxels = find(mask.img == 1);
+%         else
+%             validVoxels = find(ones(m,n,l) == 1);
+%         end
+        [mask, validVoxels, V] = load_mask(maskf);
+        disp(['Identified ', num2str(V), ' voxels in brain mask.'])
         %nValidVoxel = length(validVoxels);
 
         % Store the relevant information
@@ -88,4 +90,5 @@ function [InputData] = parse_and_format_input_files(maskf, covf, nVisit)
         InputData.validVoxels = validVoxels;
         InputData.voxSize = size(mask.img);
         InputData.dataLoaded = 1;
+        InputData.studyType = studyType;
 end

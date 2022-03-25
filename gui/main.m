@@ -41,7 +41,7 @@ data.preprocessingComplete = 0;
 data.tempiniGuessObtained = 0;
 data.iniGuessComplete = 0;
 data.dataLoaded = 0;
-data.analysisType = 'unselected';
+data.studyType = 'unselected';
 
     function hs = addcomponents
         % Add components, save handles in a struct
@@ -658,7 +658,7 @@ data.analysisType = 'unselected';
                 % outer check makes sure anything was input
                 if validFileInput == 1
                     
-                        inputDataParsed = parse_and_format_input_files(fls{2}, fls{3}, fls{4});
+                        inputDataParsed = parse_and_format_input_files(fls{2}, fls{3}, fls{4}, fls{5});
                         
                         data = add_all_structure_fields(data, inputDataParsed);
                         
@@ -948,7 +948,7 @@ data.analysisType = 'unselected';
                     CoeffpICA_EM (data.YtildeStar, data.X, data.thetaStar, ...
                     data.CmatStar, data.beta0Star, data.maxiter, ...
                     data.epsilon1, data.epsilon2, 'approxVec_Experimental',...
-                    data.outpath, data.prefix, 0, data.analysisType);
+                    data.outpath, data.prefix, 0, data.studyType);
                 
                 % User selected exact EM algorithm, not currently included in
                 % package
@@ -966,7 +966,7 @@ data.analysisType = 'unselected';
                     CoeffpICA_EM (data.Ytilde, data.X, data.theta0, ...
                     data.C_matrix_diag, data.beta0, data.maxiter, ...
                     data.epsilon1, data.epsilon2, 'exact', data.outpath,...
-                    data.prefix, 0, data.analysisType);
+                    data.prefix, 0, data.studyType);
             end
             
             % Analysis finished, write to log file.

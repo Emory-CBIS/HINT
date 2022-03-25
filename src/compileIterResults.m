@@ -25,9 +25,11 @@ runinfo = load(runinfopath);
 prefix = runinfo.prefix;
 
 % Load the mask file
-maskf = maskpath;
-mask = load_nii(maskf);
-validVoxels = find(mask.img == 1);
+%maskf = maskpath;
+%mask = load_nii(maskf);
+%validVoxels = find(mask.img == 1);
+[mask, validVoxels, V] = load_mask(maskf);
+
 nValidVoxel = length(validVoxels);
 voxSize = size(mask.img);
 
