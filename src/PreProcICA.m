@@ -27,7 +27,7 @@ function [Ytilde, C_matrix_diag, H_matrix_inv, H_matrix, deWhite] =...
 deWhite = zeros(T, q, N);
 
 % Waitbar during PCA
-h = waitbar(0,'Performing PCA...');
+h = waitbar(0,'Performing PCA...', 'windowstyle', 'modal');
 steps = N;
 
 % Load the first data file and get its size.
@@ -44,12 +44,17 @@ for i=1:N
     
     % X tilde all is raw T x V subject level data for subject i
     X_tilde_all = res(:,validVoxels);
+    
+    % Verify that the data are valid
+    if any(any(isnan(X_tilde_all)))
+        disp('Subjects masked data contains missing values')
+    end
         
     % Center the data
     [X_tilde_all, ] = remmean(X_tilde_all);
     
     % run pca on X_tilde_all`
-    [U_incr, D_incr] = pcamat(X_tilde_all);
+    [U_incr, D_incr] = pcamat(X_tilde_all, 1, size (X_tilde_all, 1),'off', 'off');
     
     % sort the eig values, IX:index
     lambda = sort(diag(D_incr),'descend');
@@ -80,12 +85,18 @@ for i=1:N
     end
     
     % Update the waitbar
-    waitbar(i / steps)
+    if isvalid(h)
+        waitbar(i / steps, h)
+    else
+        h = waitbar(i / steps, 'Performing PCA...', 'windowstyle', 'modal');
+    end
     
 end
 
 % close the waitbar
-close(h)
+if isvalid(h)
+    close(h)
+end
 
 C_matrix = H_matrix * H_matrix';
 C_matrix_diag = diag(C_matrix);

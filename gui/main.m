@@ -51,7 +51,8 @@ data.studyType = 'unselected';
             'Name','HINT',...
             'Resize','off',...
             'Visible','off',...
-            'Color',[51/256, 63/256, 127/256]);
+            'Color',[51/256, 63/256, 127/256],...
+            'WindowStyle', 'modal');
         % adjust the figure to look better on windows machines
         if ispc
             set(findobj('tag', 'hcica'), 'position', [50 15 119 30.8]);
@@ -190,13 +191,17 @@ data.studyType = 'unselected';
             'Position',[0.55 0.8 0.2 0.13],...
             'FontSize',myfont,'HorizontalAlignment',textalign,...
             'Tag', 'numPCA',...
-            'BackgroundColor','white'); %#ok<NASGU>
-        edit3 = uicontrol('Parent',t1p3,'Style','edit','units', 'character',...
+            'BackgroundColor','white',...
+            'Callback', @edit_pcnum_callback); %#ok<NASGU>
+        edit3 = uicontrol('Parent',t1p3,...
+            'Style','edit',...
+            'units', 'character',...
             'units', 'normalized',...
             'Position',[0.55 0.65 0.2 0.13],...
             'FontSize',myfont,'HorizontalAlignment',textalign,...
             'Tag', 'numICA',...
-            'BackgroundColor','white'); %#ok<NASGU>
+            'BackgroundColor','white',...
+            'Callback', @edit_icnum_callback); %#ok<NASGU>
         % Explanation of number of PCs
         pchelpbutton = uicontrol('Parent',t1p3,'Style','pushbutton',...
             'String', '?', 'FontSize',myfont, 'units', 'normalized',...
@@ -204,7 +209,7 @@ data.studyType = 'unselected';
             'Position', [0.8 0.83 0.09 0.09],...
             'Callback', @pcahelpcallback);
         t1button4 = uicontrol('Parent',t1p3,'Style','pushbutton',...
-            'String','PCA dimension reduction','Callback',@calculatePCA,...
+            'String','PCA dimension reduction','Callback',@getprewhitenedtimecourses,...
             'FontSize',myfont, 'units', 'normalize',...
             'units', 'normalized',...
             'Position',[0.275 0.45 0.45 0.15]); %#ok<NASGU>
@@ -467,6 +472,110 @@ data.studyType = 'unselected';
         helpbox = msgbox('This is the number of principal components to be used in the first stage of dimension reduction in TC-GICA')
     end
 
+    function edit_icnum_callback(hObject, callbackdata)
+        
+        % Verify a whole number was input
+        userInput  = str2double(hObject.String);
+        validInput = 1;
+        
+        % Verify a number was input
+        if isnan(userInput)
+            disp('Please enter a whole number')
+            validInput = 0;
+        end
+        
+        % Verify that the number was a whole number
+        if userInput ~= floor(userInput)
+            disp('Please enter a whole number')
+            validInput = 0;
+        end
+        
+        if validInput && data.preprocessingComplete == 1;
+            if data.q ~= userInput
+                
+                % Ask user if they wish to redo preprocessing with the new
+                % number of components
+                questionString = ['Changing the number of components will ',...
+                    'require redoing the preprocessing. Do you still ',...
+                    'want to proceed?'];
+                answer = questdlg(questionString, ...
+                    'Yes', 'No');
+                
+                % Handle response
+                switch answer
+                    case 'Yes'
+                        update_progress_bar(1);
+                    otherwise
+                        validInput = 0;
+                end
+            end
+        end
+        
+        % Finally, if not changing q, revert to what it was before
+        % this is either an empty space if no processing has been done yet,
+        % or the old value for q if it has.
+        if validInput == 0
+            if data.preprocessingComplete == 1
+                hObject.String = num2str(data.q);
+            else
+                hObject.String = '';
+            end
+        end
+        
+    end
+
+    function edit_pcnum_callback(hObject, callbackdata)
+        
+        % Verify a whole number was input
+        userInput  = str2double(hObject.String);
+        validInput = 1;
+        
+        % Verify a number was input
+        if isnan(userInput)
+            disp('Please enter a whole number')
+            validInput = 0;
+        end
+        
+        % Verify that the number was a whole number
+        if userInput ~= floor(userInput)
+            disp('Please enter a whole number')
+            validInput = 0;
+        end
+        
+        if validInput && data.preprocessingComplete == 1;
+            if data.numPCA ~= userInput
+
+                % Ask user if they wish to redo preprocessing with the new
+                % number of components
+                questionString = ['Changing the number of components will ',...
+                    'require redoing the preprocessing. Do you still ',...
+                    'want to proceed?'];
+                answer = questdlg(questionString, ...
+                    'Yes', 'No');
+                
+                % Handle response
+                switch answer
+                    case 'Yes'
+                        update_progress_bar(1);
+                    otherwise
+                        validInput = 0;
+                end
+            end
+        end
+        
+        % Finally, if not changing q, revert to what it was before
+        % this is either an empty space if no processing has been done yet,
+        % or the old value for q if it has.
+        if validInput == 0
+            if data.preprocessingComplete == 1
+                hObject.String = num2str(data.numPCA);
+            else
+                hObject.String = '';
+            end
+        end
+        
+    end
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%% Functions for Panel 1 %%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -672,11 +781,10 @@ data.studyType = 'unselected';
         end % end of check that user did not press cancel
     end
 
-% Perform the PCA data reduction. Output is Ytilde, C_matrix_diag,
-%    H_matrix_inv, H_matrix, and deWhite.
-    function calculatePCA(~,~)
+% Perform the PCA data reduction for each subject's nifti file
+    function getprewhitenedtimecourses(~,~)
         
-        if data.dataLoaded == 0;
+        if data.dataLoaded == 0
             
             warndlg('Please load data before preprocessing.');
             
@@ -684,7 +792,8 @@ data.studyType = 'unselected';
             
             update_progress_bar(1);
             
-            data.q = str2double(get(findobj('Tag', 'numICA'), 'String'));
+            data.numPCA = str2double(get(findobj('Tag', 'numPCA'), 'String'));
+            data.q      = str2double(get(findobj('Tag', 'numICA'), 'String'));
             
             [data.Ytilde, data.C_matrix_diag, data.H_matrix_inv,  data.H_matrix, data.deWhite]...
                 = PreProcICA(data.niifiles, data.validVoxels, data.q, data.time_num, data.N*data.nVisit);
@@ -719,7 +828,7 @@ data.studyType = 'unselected';
                     'Re-estimating the intitial guess will require'...
                     'performing preprocessing again. Would you like to continue?']);
                 if strcmp(redoPreproc, 'Yes')
-                    calculatePCA;
+                    getprewhitenedtimecourses;
                     proceed = 1;
                 else
                     proceed = 0;
