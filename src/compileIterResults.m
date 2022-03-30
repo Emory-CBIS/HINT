@@ -28,7 +28,7 @@ prefix = runinfo.prefix;
 %maskf = maskpath;
 %mask = load_nii(maskf);
 %validVoxels = find(mask.img == 1);
-[mask, validVoxels, V] = load_mask(maskf);
+[mask, validVoxels, V, maskOriginator] = load_mask(maskf);
 
 nValidVoxel = length(validVoxels);
 voxSize = size(mask.img);

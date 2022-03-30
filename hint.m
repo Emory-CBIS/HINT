@@ -7,13 +7,21 @@ function varargout = hint(varargin)
 %
 %See also: hint.m
 
+    hintFnPath = which('hint.m');
+    [hcicadir, ~, ~] = fileparts(hintFnPath);
+
     % Add paths to all subfolders
-    addpath(genpath('toolboxes'))
-    addpath(genpath('displayWindow'))
-    addpath('src')
-    addpath(genpath('gui'))
-    addpath(genpath('toolboxes/GroupICATv4.0b'))
-    addpath(genpath('test'))
+    addpath(genpath(fullfile(hcicadir, 'toolboxes')))
+    addpath(genpath(fullfile(hcicadir, 'displayWindow')))
+    addpath(genpath(fullfile(hcicadir, 'src')))
+    addpath(genpath(fullfile(hcicadir, 'gui')))
+    addpath(genpath(fullfile(hcicadir, 'test')))    
+%     
+%     addpath(genpath('displayWindow'))
+%     addpath('src')
+%     addpath(genpath('gui'))
+%     addpath(genpath('toolboxes/GroupICATv4.0b'))
+%     addpath(genpath('test'))
 
     % Run the main GUI script
     main();

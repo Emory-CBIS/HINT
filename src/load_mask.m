@@ -1,4 +1,4 @@
-function [mask, validVoxels, V] = load_mask(maskFile)
+function [mask, validVoxels, V, originator] = load_mask(maskFile)
 %UNTITLED Summary of this function goes here
 %   Detailed explanation goes here
 
@@ -22,6 +22,8 @@ else
 end
 
 V = length(validVoxels);
+
+originator = mask.hdr.hist.originator;
 
 end
 

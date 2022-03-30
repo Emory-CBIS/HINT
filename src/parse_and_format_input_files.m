@@ -78,7 +78,7 @@ function [InputData] = parse_and_format_input_files(maskf, covf, nVisit, studyTy
 %         else
 %             validVoxels = find(ones(m,n,l) == 1);
 %         end
-        [mask, validVoxels, V] = load_mask(maskf);
+        [mask, validVoxels, V, maskOriginator] = load_mask(maskf);
         disp(['Identified ', num2str(V), ' voxels in brain mask.'])
         %nValidVoxel = length(validVoxels);
 
@@ -91,4 +91,5 @@ function [InputData] = parse_and_format_input_files(maskf, covf, nVisit, studyTy
         InputData.voxSize = size(mask.img);
         InputData.dataLoaded = 1;
         InputData.studyType = studyType;
+        InputData.maskOriginator = maskOriginator;
 end

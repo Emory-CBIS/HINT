@@ -19,7 +19,7 @@ currentPath = pwd();
 cd(path);
 
 % If the initial guess directory does not exist then create it
-if 1 ~= exist([prefix, '_iniguess'], 'dir')
+if 0 == exist([prefix, '_iniguess'], 'dir')
     mkdir([prefix, '_iniguess']);
 end
 
