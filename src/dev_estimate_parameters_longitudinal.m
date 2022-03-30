@@ -335,7 +335,7 @@ for iter = 1:maxit
     
     % Write to the log file
     if isScriptVersion == 0 && writelog == 1
-        outfile = fopen(outfilename_full, 'a' );
+        outfile = fopen(logfile_full, 'a' );
         fprintf(outfile, 'iteration %6.0f: the difference is %6.6f for theta and %6.6f for beta \n',...
             itr, theta_change_iter, beta_change_iter);
     end

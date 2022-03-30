@@ -51,9 +51,9 @@ function [theta, beta, z_mode, subICmean, subICvar, grpICmean, grpICvar,...
     global writelog
     keepRunning = 1;
     
-    global outfilename_full;
+    global logfile_full;
     if isScriptVersion == 0 && writelog == 1
-        outfile = fopen(outfilename_full, 'a' );
+        outfile = fopen(logfile_full, 'a' );
         fprintf(outfile, '\n');
         fprintf(outfile, strcat('Starting the estimation using approximate EM algorithm ...'));
     end
@@ -151,7 +151,7 @@ function [theta, beta, z_mode, subICmean, subICvar, grpICmean, grpICvar,...
 
             % Write to the log file
             if isScriptVersion == 0 && writelog == 1
-                outfile = fopen(outfilename_full, 'a' );
+                outfile = fopen(logfile_full, 'a' );
                 fprintf(outfile, 'iteration %6.0f: the difference is %6.6f for theta and %6.6f for beta \n',...
                     itr, err1, err2);
             end

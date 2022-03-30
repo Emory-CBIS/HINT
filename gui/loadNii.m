@@ -224,10 +224,10 @@ handles.output={handles.niifiles,...
 % write chosen files to output text
 %handles = guidata(hObject);
 %hh = guidata(object_handle)
-global outfilename;
+global logfile;
 global writelog
 if (writelog == 1)
-outfile = fopen(outfilename, 'a' );
+outfile = fopen(logfile, 'a' );
 niinames = getappdata(handles.figure1,'niifiles');
 maskname = getappdata(handles.figure1,'maskf');
 covname = getappdata(handles.figure1,'covf');

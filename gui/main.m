@@ -10,9 +10,8 @@ function varargout = main(varargin)
 % Add paths
 varargout = cell(1);
 % Global variables
-global outpath;
-global outfilename;
-global outfilename_full;
+global logfile;
+global logfile_full;
 global writelog;
 writelog = 0;
 global strMatch;
@@ -112,9 +111,13 @@ hintFnPath = which('hint.m');
             'FontSize',myfont,'HorizontalAlignment',textalign,...
             'Tag','analysisFolder',...
             'BackgroundColor','white'); %#ok<NASGU>
-        t1button1 = uicontrol('Parent',t1p1,'Style','pushbutton',...
-            'String','Browse', 'units', 'normalized',...
-            'Position',[0.67 0.65 0.2 0.28], 'Callback',@button1_Callback,'UserData','hello'); %#ok<NASGU>
+        outputDirectoryButton = uicontrol('Parent',t1p1,...
+            'Style','pushbutton',...
+            'String','Browse',...
+            'units', 'normalized',...
+            'Position',[0.67 0.65 0.2 0.28],...
+            'Callback',@output_directory_button_callback,...
+            'UserData','hello'); %#ok<NASGU>
         % Text for specifying the prefix
         text2 = uicontrol('Parent',t1p1,'Style','text','units', 'normalized',...
             'Position',[0.05 0.5 0.2 0.28],...
@@ -132,7 +135,7 @@ hintFnPath = which('hint.m');
             'String','Create session log','FontSize',myfont,...
             'HorizontalAlignment',textalign); %#ok<NASGU>
         cb1 = uicontrol('Parent',t1p1,'Style','checkbox', 'units', 'normalized',...
-            'Tag','logCheckBox','Callback',@logCheckBox_Callback,...
+            'Tag','logCheckBox','Callback',@log_checkbox_callback,...
             'Position',[0.4 0.32 0.1 0.2]); %#ok<NASGU>
         
         %2. Input data panel
@@ -578,39 +581,10 @@ hintFnPath = which('hint.m');
         
     end
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%% Functions for Panel 1 %%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%      General GUI functions      %%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-% Check if the hc-ICA session is to be logged. Create log file.
-    function logCheckBox_Callback(hObject,~)
-        if strcmp(get(findobj('tag', 'analysisFolder'), 'string'), '')
-            warndlg('Please specify an analysis folder before writing a log file.')
-            set(hObject, 'Value', 0);
-        else
-            if (get(hObject,'Value') == get(hObject,'Max'))
-                writelog = 1;
-                prefix = '';
-                outdir = get(findobj('tag', 'analysisFolder'), 'string');
-                outfilename = strcat(outdir, '/', prefix, '_textlog_', date(),...
-                    '_', datestr(now, 'HH_MM_SS') );
-                outfile = fopen(outfilename, 'wt' );
-                fprintf(outfile, strcat('Log for hcica session on',...
-                    [' ', date()], ' started at: ',...
-                    [' ', datestr(now, 'HH_MM_SS')] ) );
-            end
-        end
-    end
-
-% Allow the user to select the output directory for the analysis.
-    function button1_Callback(~,~)
-        folderName = uigetdir(pwd);
-        if folderName==0
-            folderName='';
-        end
-        outpath = folderName;
-        set(findobj('Tag','analysisFolder'), 'String', folderName);
-    end
 
 %% Function to toggle the progressbar
     function toggle_progress_bar(bar, complete)
@@ -631,32 +605,6 @@ hintFnPath = which('hint.m');
         
     end
 
-% Check if the user wants to proceed
-    function proceedWithLoad = warn_user_ask_proceed(dataLoaded)
-        proceedWithLoad = 1;
-        if dataLoaded == 1
-            proceedWithLoad = 0; % default to 0 just to be safe
-            opts.Interpreter = 'tex';
-            opts.Default = 'No';
-            userAnswer = questdlg('Continuing will reset the current analysis, are you sure you want to continue?',...
-                'Continue?',...
-                'Yes', 'No', opts);
-            if strcmp(userAnswer, 'Yes')
-                proceedWithLoad = 1;
-            end
-        end
-    end
-
-% If user specified files using "import Nifti data" then this function is
-% used to check that all of the required input is there
-    function validFileInput = check_input_panel_files(fls)
-        validFileInput = 0;
-        if (~isempty(fls))
-            if (~isempty(fls{1}) && ~isempty(fls{2}) && ~isempty(fls{3}))
-                validFileInput = 1;
-            end
-        end
-    end
 
 % Progress bar function
 % level argument ->
@@ -706,6 +654,89 @@ hintFnPath = which('hint.m');
         rectangle('Position',[0,0,0+(round(1000*0)),20],'FaceColor','g');
         text(482,10,[num2str(0+round(100*0)),'%']);
         drawnow;
+    end
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%% Functions for Panel 1: 1. Setup %%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Check if the hc-ICA session is to be logged. Create log file.
+    function log_checkbox_callback(hObject,~)
+        
+        % If disabling logfile, then just end here
+        if hObject.Value == 0
+            writelog = 0;
+            return
+        end
+        
+        % Check user input for analysis folder
+        outdir = get(findobj('tag', 'analysisFolder'), 'string');
+        
+        % Verify that analysis folder specified, if not, request user input
+        % and terminate early
+        if strcmp(outdir, '')
+            warndlg('Please specify an analysis folder before writing a log file.')
+            set(hObject, 'Value', 0);
+            return
+        end
+        
+        % Set global to 1, indicates that should write to log
+        writelog = 1;
+
+        fname = strcat('_textlog_', date(), '_', datestr(now, 'HH_MM_SS'));
+
+        logfile = fullfile(outdir, fname);
+
+        % Open up a new log
+        log_create_file(logfile);
+
+    end
+
+% Allow the user to select the output directory for the analysis.
+    function output_directory_button_callback(~,~)
+        
+        % Request output folder from user
+        folderName = uigetdir(pwd);
+        
+        % Handle case where user did not input anything
+        if folderName==0
+            folderName='';
+        end
+                
+        set(findobj('Tag','analysisFolder'), 'String', folderName);
+    end
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%% Functions for Panel 1: 2. Input %%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+% Check if the user wants to proceed
+    function proceedWithLoad = warn_user_ask_proceed(dataLoaded)
+        proceedWithLoad = 1;
+        if dataLoaded == 1
+            proceedWithLoad = 0; % default to 0 just to be safe
+            opts.Interpreter = 'tex';
+            opts.Default = 'No';
+            userAnswer = questdlg('Continuing will reset the current analysis, are you sure you want to continue?',...
+                'Continue?',...
+                'Yes', 'No', opts);
+            if strcmp(userAnswer, 'Yes')
+                proceedWithLoad = 1;
+            end
+        end
+    end
+
+% If user specified files using "import Nifti data" then this function is
+% used to check that all of the required input is there
+    function validFileInput = check_input_panel_files(fls)
+        validFileInput = 0;
+        if (~isempty(fls))
+            if (~isempty(fls{1}) && ~isempty(fls{2}) && ~isempty(fls{3}))
+                validFileInput = 1;
+            end
+        end
     end
 
 % Load the nifti data, covariate file, and mask file specified by the
@@ -807,7 +838,7 @@ hintFnPath = which('hint.m');
             
             % write PCA information to log file.
             if (writelog == 1)
-                outfile = fopen(outfilename, 'a' );
+                outfile = fopen(logfile, 'a' );
                 fprintf(outfile, strcat('\n\n----------------- Preprocessing -----------------'));
                 fprintf(outfile, strcat('\nPerformed PCA reduction to ', [' ',num2str(data.q),], ' components') );
             end
@@ -864,7 +895,7 @@ hintFnPath = which('hint.m');
 
         % Write to log file that initial guess stage is complete.
         if (writelog == 1)
-            outfile = fopen(outfilename, 'a' );
+            outfile = fopen(logfile, 'a' );
             fprintf(outfile, strcat('\nCalculated initial guess values '));
         end
 
@@ -1035,7 +1066,7 @@ hintFnPath = which('hint.m');
             
             % Write out algorithm information to log file.
             if (writelog == 1)
-                outfile = fopen(outfilename, 'a' );
+                outfile = fopen(logfile, 'a' );
                 fprintf(outfile, '\n\n----------------- EM Algorithm Running -----------------');
             end
                         
@@ -1206,12 +1237,14 @@ hintFnPath = which('hint.m');
         % Now cleanup earlier files (iniGuess and logfile) using the new
         % prefix
         
-        % Version of outfilename that includes the prefix
+        % Version of logfile that includes the prefix
         if (writelog == 1)
-            outfilename_full = strcat(data.outpath, '/', prefix, '_textlog_', date(),...
-                '_', datestr(now, 'HH_MM_SS') );
-            %Copy the log file to the new file that includes the prefix
-            copyfile(outfilename, outfilename_full);
+            logname =  strcat(prefix, '_textlog_', date(), '_',...
+                datestr(now, 'HH_MM_SS') );
+            logfile_full = fullfile(data.outpath, logname);
+            
+            %Copy the log file to the new log file that includes the prefix
+            copyfile(logfile, logfile_full);
         end
         set(findobj('Tag', 'runButton'), 'enable', 'on');
         set(findobj('Tag','tabGroup'),'SelectedTab',findobj('Tag','tab2'))
