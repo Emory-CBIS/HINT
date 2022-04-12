@@ -1,0 +1,7 @@
+The covariates file should be in csv format. Each row of the file corresponds to a single subject.
+
+The first column of the covariate file should contain the full filepath to the NIFI file containing that subject's fMRI time courses.
+
+If the study is longitudinal with J visits, then the first J columns should contain the filepaths to the NIFTI files for each corresponding visit. For example, row 5 column 1 should contain the filepath to subject 5's first visit NIFTI file. row 5, column 2 should contain the filepath to subject 5's second visit NIFTI file and so on.
+
+The remaining columns should contain the covariate values. Data should be cleaned to remove missing data. The covariates can be in any format (strings, numbers, etc). One of the next steps in the toolbox allows you to code the covariates and add interactions.

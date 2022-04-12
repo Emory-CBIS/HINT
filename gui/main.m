@@ -740,78 +740,88 @@ hintFnPath = which('hint.m');
     end
 
 % Load the nifti data, covariate file, and mask file specified by the
-% user.
+% user. Alternatively, load a saved runinfo file if the user has already
+% run an analysis
     function loadDataButton_Callback(~,~)
 
         bGroup = findobj('Tag','loadDataRadioButtonPanel');
-        dataType = get(get(bGroup,'SelectedObject'),'Tag');
+        dataInputType = get(get(bGroup,'SelectedObject'),'Tag');
         
-        % Handle input data in .mat form. This will load runinfo file
-        if (strcmp(dataType, 'matData') == 1)
-            
-            % Direct the user to load a runinfo file
-            [fname, pathname] = uigetfile('.mat');
-            
-            % Make sure user did not close out window
-            if fname ~= 0
+        switch dataInputType
+            case 'matData'
                 
-                % Waitbar while the data loads
-                waitLoad = waitbar(0,'Please wait while the data load');
+                % Direct the user to load a runinfo file
+                [fname, pathname] = uigetfile('.mat');
                 
+                if fname == 0
+                    return
+                end
+
                 runinfoFileName = fullfile(pathname, fname);
                 
+                % Waitbar while the data loads, does not actually get
+                % updated, just here to prevent using toolbox while data
+                % load.
+                waitLoad = waitbar(0, 'Please wait while the data load');
+
                 [runinfo, loadErr] = load_runinfo_file(runinfoFileName);
                 
-                if loadErr == 0
-                    
-                    data = add_all_structure_fields(data, runinfo);
-                    
-                    % Populate the display fields
-                    set(findobj('tag', 'numICA'), 'string', num2str(data.qold));
-                    set(findobj('tag', 'numPCA'), 'string', num2str(data.numPCA));
-                    [~, prefix, ~] = fileparts(data.prefix);
-                    set(findobj('tag', 'prefix'), 'string', prefix);
-                    set(findobj('tag', 'analysisFolder'), 'string', num2str(data.outfolder));
-                    
-                    % Update the GUI to reflect the loaded information
-                    update_progress_bar(4);
-                    
+                if loadErr == 1
+                    return
                 end
-               
+
+                data = add_all_structure_fields(data, runinfo);
+
+                % Populate the display fields
+                set(findobj('tag', 'numICA'), 'string', num2str(data.qold));
+                set(findobj('tag', 'numPCA'), 'string', num2str(data.numPCA));
+                [~, prefix, ~] = fileparts(data.prefix);
+                set(findobj('tag', 'prefix'), 'string', prefix);
+                set(findobj('tag', 'analysisFolder'), 'string', num2str(data.outfolder));
+
+                % Update the GUI to reflect the loaded information
+                update_progress_bar(4);
+
                 waitbar(1)
                 close(waitLoad);
-           
-            end
-            
-            % Handle data in nifti form.
-        elseif (strcmp(dataType, 'niftiData') == 1)
-            
-            proceedWithLoad = warn_user_ask_proceed(data.dataLoaded);
-            
-            if proceedWithLoad
+
                 
+            case 'niftiData'
+                
+                proceedWithLoad = warn_user_ask_proceed(data.dataLoaded);
+                
+                if proceedWithLoad == 0
+                    return
+                end
+
                 update_progress_bar(0);
+
+                fls = gui_input_mask_and_covariates;
+                uiwait()
                 
-                fls = loadNii;
-                
+                if isempty(fls);
+                    return
+                end
+
                 % validity check
                 validFileInput = check_input_panel_files(fls);
-                
+
                 % outer check makes sure anything was input
                 if validFileInput == 1
-                    
+
                         inputDataParsed = parse_and_format_input_files(fls{2}, fls{3}, fls{4}, fls{5});
-                        
+
                         data = add_all_structure_fields(data, inputDataParsed);
-                        
+
                         % Update the GUI to reflect the loaded information
                         update_progress_bar(1);
-                        
+
                 end
-                %end % end of proceedWithLoad check
-            end
-            
-        end % end of check that user did not press cancel
+                
+            otherwise
+                % do nothing
+        end
+       
     end
 
 % Perform the PCA data reduction for each subject's nifti file

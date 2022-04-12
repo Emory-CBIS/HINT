@@ -59,25 +59,6 @@ guidata(handles.figure1, handles);
 set(handles.figure1,'WindowStyle','modal');
 uiwait(hObject);
 
-% Choose default command line output for loadNii
-
-%size(getappdata(handles.figure1,'Y'))
-%getappdata(handles.figure1,'N')
-%getappdata(hObject,'T')
-%size(getappdata(hObject,'X'))
-
-%set(hObject,'Visible','off')
-
-%handles.output={100,getappdata(hObject,'Y'),getappdata(hObject,'X')}
-%handles.output={100}
-%handles.output = {10, getappdata(hObject,'N'), getappdata(hObject,'T')}%...
-    %getappdata(hObject,'N'), getappdata(hObject,'T')};
-
-% Update handles structure
-% guidata(hObject, handles);
-
-
-
 
 % --- Outputs from this function are returned to the command line.
 function varargout = loadNii_OutputFcn(hObject, eventdata, handles) 

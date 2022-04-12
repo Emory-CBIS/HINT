@@ -731,8 +731,8 @@ end
             
             % Determine if should show standard contrast information or
             % cross-visit contrast information
-            if strcmp( get(findobj('tag', 'EffectTypeButtonGroup'),...
-                    'SelectedObject').String, 'Cross-Visit Contrast View')
+            SelObject = get(findobj('tag', 'EffectTypeButtonGroup'),'SelectedObject');
+            if strcmp( SelObject.String, 'Cross-Visit Contrast View')
                 set( findobj('tag', 'editCrossVisitContrasts'), 'visible', 'on' );
                 set( findobj('tag', 'crossVisitContrastDisplay'), 'visible', 'on' );
                 set( findobj('tag', 'newContrast'), 'visible', 'off' );
