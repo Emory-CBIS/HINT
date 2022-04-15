@@ -1,0 +1,11 @@
+This window can be used to generate the full output of the HINT program 
+based on previously saved results from the EM algorithm.
+
+HINT outputs the state of the parameter estimates after each EM iteration. By 
+default, the most recent 2 iterations are saved. The variables in these .mat
+files can be used to generate all output needed for visualizing the study results.
+
+To do this, use the provided buttons to select an output folder, the iteration results
+that you want to use, and the runinfo file that was used in the analysis. Optionally,
+you can also provide an alternative mask file, in case the mask file in the runinfo 
+file is not longer valid.

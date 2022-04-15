@@ -1,0 +1,9 @@
+By default, HINT will automatically load the mask file provided in the
+runinfo file. However, in some cases, that mask file may not exist. This
+can happen if some folders were rearranged, or if the analysis was conducted
+on a remote server and now the results are being compiled on a local machine.
+
+Selecting "manually specify mask location" will tell HINT to override the mask
+in the runinfo file with whatever mask you select using the "Select Mask" button.
+This should prevent any potential errors if HINT needs to load the mask
+at a later stage.

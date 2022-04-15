@@ -797,7 +797,7 @@ hintFnPath = which('hint.m');
                 update_progress_bar(0);
 
                 fls = gui_input_mask_and_covariates;
-                uiwait()
+                %uiwait()
                 
                 if isempty(fls);
                     return
