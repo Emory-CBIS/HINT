@@ -214,7 +214,7 @@ hintFnPath = which('hint.m');
             'Position', [0.8 0.83 0.09 0.09],...
             'Callback', @pcahelpcallback);
         t1button4 = uicontrol('Parent',t1p3,'Style','pushbutton',...
-            'String','PCA dimension reduction','Callback',@getprewhitenedtimecourses,...
+            'String','PCA dimension reduction','Callback',@get_prewhitened_timecourses,...
             'FontSize',myfont, 'units', 'normalize',...
             'units', 'normalized',...
             'Position',[0.275 0.45 0.45 0.15]); %#ok<NASGU>
@@ -825,7 +825,11 @@ hintFnPath = which('hint.m');
     end
 
 % Perform the PCA data reduction for each subject's nifti file
-    function getprewhitenedtimecourses(~,~)
+    function get_prewhitened_timecourses(~,~)
+        
+        
+        %[theta, guessBeta, popAvgComponents] = initial_guess_crosssectional(stackedWhitenedData, S0Init, data.X);
+
         
         if data.dataLoaded == 0
             
@@ -838,8 +842,12 @@ hintFnPath = which('hint.m');
             data.numPCA = str2double(get(findobj('Tag', 'numPCA'), 'String'));
             data.q      = str2double(get(findobj('Tag', 'numICA'), 'String'));
             
-            [data.Ytilde, data.C_matrix_diag, data.H_matrix_inv,  data.H_matrix, data.deWhite]...
-                = PreProcICA(data.niifiles, data.validVoxels, data.q, data.time_num, data.N*data.nVisit);
+%             [data.Ytilde, data.C_matrix_diag, data.H_matrix_inv,...
+%                 data.H_matrix, data.deWhite] = PreProcICA(data.niifiles,...
+%                 data.validVoxels, data.q, data.time_num, data.N*data.nVisit);
+
+            [data.Ytilde, data.S0Init] = initial_guess_preproc_fastica(data.niifiles,...
+                data.validVoxels, data.numPCA, data.q, data.time_num);
             
             % Update GUI to show PCA completed
             data.dispPCA.String = 'PCA Completed';
@@ -856,8 +864,7 @@ hintFnPath = which('hint.m');
         end
     end
 
-% Calculate the initial guess parameters for hc-ICA. 2 options: tc-gica
-% and GIFT. GIFT is the better option.
+% Calculate the initial guess parameters for hc-ICA
     function calculate_initial_guess(~,~)
         
         % Verify that preprocessing is complete before running
@@ -875,7 +882,7 @@ hintFnPath = which('hint.m');
                 'Re-estimating the intitial guess will require'...
                 'performing preprocessing again. Would you like to continue?']);
             if strcmp(redoPreproc, 'Yes')
-                getprewhitenedtimecourses;
+                get_prewhitened_timecourses;
             else
                 return;
             end
@@ -893,15 +900,23 @@ hintFnPath = which('hint.m');
         data.prefix = get(findobj('Tag', 'prefix'), 'String');
         data.outpath = get(findobj('Tag', 'analysisFolder'), 'String');
 
-        % Perform GIFT
-        [ data.theta0, data.beta0, data.s0, s0_agg ] = ...
-            ObtainInitialGuess(data.niifiles,...
-            data.maskf, ...
-            data.prefix,...
-            data.outpath,...
-            data.numPCA,...
-            data.N, data.q, data.X, data.Ytilde, data.hcicadir, data.nVisit);
-
+%         % Perform GIFT
+%         [ data.theta0, data.beta0, data.s0, s0_agg ] = ...
+%             ObtainInitialGuess(data.niifiles,...
+%             data.maskf, ...
+%             data.prefix,...
+%             data.outpath,...
+%             data.numPCA,...
+%             data.N, data.q, data.X, data.Ytilde, data.hcicadir, data.nVisit);
+        %[theta, betaGuessAll, popAvgComponents]
+        switch data.studyType
+            case 'Cross-Sectional'
+                [ data.theta0, data.beta0, popAvgComponents ] = initial_guess_crosssectional(data.Ytilde, data.S0Init, data.X);
+            case 'Longitudinal'
+                [ data.theta0, data.beta0, popAvgComponents ] = initial_guess_longitudinal(data.Ytilde, data.S0Init, data.X, data.nVisit);
+            otherwise
+                disp('WARNING - unrecognized study type')
+        end  
 
         % Write to log file that initial guess stage is complete.
         if (writelog == 1)
@@ -909,37 +924,32 @@ hintFnPath = which('hint.m');
             fprintf(outfile, strcat('\nCalculated initial guess values '));
         end
 
-        % Turn all the initial group ICs into nifti files to allow user to
-        % view and select the ICs for hc-ICA.
-        %template = zeros(data.voxSize);
-        %template = reshape(template, [prod(data.voxSize), 1]);
-
-        %anat = load_nii(data.maskf);
+        % Write the inital population aggregate maps to nifti files so the
+        % user can inspect them.
         for ic=1:data.q
-            %newIC = template;
-            %newIC(data.validVoxels) = s0_agg(ic, :)';
-            %IC = reshape( s0_agg(ic, :), data.voxSize);
-            IC = convert_vec_to_braindim(s0_agg(ic, :), data.validVoxels,...
-                data.voxSize);
             
+            % Format IC as a brain
+            IC = convert_vec_to_braindim(popAvgComponents(ic, :), data.validVoxels,...
+                 data.voxSize);
+            
+            % Make a NIFTI file and add the originator information back in
             newIC = make_nii(IC);
             newIC.hdr.hist.originator = data.maskOriginator;
             
+            % Save File
             fname = [data.prefix '_iniIC_' num2str(ic) '.nii'];
             niftiPath = fullfile(data.outpath, fname);
-            %save_nii(newIC, niftiPath, 'IC');
             save_nii(newIC, niftiPath);
+            
         end
 
         % Update the gui main window to show that initial values
         % calculation is completed.
         update_progress_bar(3);
-
-        %chooseIC;
    
     end
 
-% Open viewer to allow user to select which ICs to use for hc-ICA.
+    % Open viewer to allow user to select which ICs to use for hc-ICA.
     function chooseIC(~)
         
         if data.tempiniGuessObtained == 1
@@ -961,7 +971,7 @@ hintFnPath = which('hint.m');
                 data.thetaStar = data.theta0;
                 data.beta0Star = data.beta0;
                 data.YtildeStar = data.Ytilde;
-                data.CmatStar = data.C_matrix_diag;
+                data.CmatStar = 0.0;
                 
                 % Lock user out of re-restimate buttons
                 set( findobj('Tag', 'reEstButton') ,'Enable','Off')
@@ -1064,11 +1074,6 @@ hintFnPath = which('hint.m');
             cla
             pause(1)
             
-            % Get all the settings.
-            global prefix;
-            global keeplist;
-            %selectAlg = findobj('Tag', 'algoSelection');
-            %selected_algo=get(selectAlg,'Value');
             selected_algo = 1;
             data.maxiter = str2double(get(findobj('Tag','maxIter'),'String'));
             data.epsilon1 = str2double(get(findobj('Tag','epsilon1'),'String'));
@@ -1140,9 +1145,7 @@ hintFnPath = which('hint.m');
             set(findall(findobj('tag', 'analysisSetup'),...
                 '-property', 'enable'), 'enable', 'on');
             set(findobj('tag','runButton'),'enable','on');
-            
-            % Enable the display results button
-            %set(findobj('Tag','displayResultsButton'),'enable','off');
+           
             
         else
             warndlg('Please complete all preprocessing and obtain initial guess before running EM algorithm.')
@@ -1236,8 +1239,6 @@ hintFnPath = which('hint.m');
     end
 
 %%%%%%%%%%% Functions to Fix or classify %%%%%%%%%%
-    function dataselection(~,~)
-    end
 
 % Save the run infoformation into a file called runinfo.mat.
     function saveContinueButton_Callback(~,~)
