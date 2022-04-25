@@ -1,5 +1,5 @@
 function [theta_new, beta_new, z_mode, subICmean, subICvar,...
-        grpICmean, grpICvar, err, G_z_dict] = UpdateThetaBetaAprx_Vect_Experimental (...
+        grpICmean, grpICvar, err, G_z_dict, PostProbs] = UpdateThetaBetaAprx_Vect_Experimental (...
         Y, X_mtx, theta, C_matrix_diag, beta, N, T, nVisit, q, p, m, V)
 % UpdateThetaBetaAprx_Vect - Function to run hc-ICA approximate EM algorithm
 % Each run of this function performs one iteration of EM approximate
@@ -57,6 +57,8 @@ function [theta_new, beta_new, z_mode, subICmean, subICvar,...
     grpICmean = zeros(q, V);
     grpICvar = zeros(q, q, V);
     A = zeros( (N * T), (N * q) ) ;
+    
+    PostProbs = zeros(q, 2, V);
     
     % Store the mixing matrix (A) in proper format
     for i = 1:N
@@ -141,6 +143,10 @@ function [theta_new, beta_new, z_mode, subICmean, subICvar,...
     VoxelIC = squeeze( maxid_all_new);
     clear('maxid_all_new')
     z_mode = VoxelIC;
+    
+    for v = 1:V
+        PostProbs(z_mode(v), 1, v) = 1;
+    end
 
     % Variance and mean terms for calculating expectation of s0, si, beta
     sigma23z_diag = bsxfun( @rdivide, eye((N + 1) * q ), Sigma23z);
