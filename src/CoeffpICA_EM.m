@@ -76,7 +76,7 @@ function [theta, beta, z_mode, subICmean, subICvar, grpICmean, grpICvar,...
         nVisit = 1;
     else
         nVisit = size(theta0.A, 4);
-        X_mtx = X(1:nVisit:end, :)';
+        X_mtx = X';
     end
     N = size(X_mtx, 2);
     p = size(X_mtx, 1);

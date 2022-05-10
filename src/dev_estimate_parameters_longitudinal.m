@@ -42,7 +42,25 @@ sum_Yij_sq =  sum(Yij(:).^2);
 
 X_mtx2 = X_mtx;               % no intercept for alpha p*N
 X_mtx = [ones([1 N]); X_mtx];
-sumXiXiT_inv  = eye(p+1)/(X_mtx*X_mtx');  sumXiXiT_inv2  = eye(p)/(X_mtx2*X_mtx2');
+
+Xtemp = X_mtx';
+Xtemp(:, 1) = [];
+X = [];
+% Create X as a N x P*nVisit matrix.
+for i = 1:N
+    X = [X; kron(eye(J), Xtemp(i, :))];
+end
+
+% Next we add a column for the intercept (S0) followed by the effects
+% coded visit effects
+basicBlock = [-1 * ones(1, J-1) ; eye(J - 1)];
+X = [repmat(basicBlock, [N, 1]) X];
+
+
+%sumXiXiT_inv  = eye(p+1)/(X_mtx*X_mtx');
+%sumXiXiT_inv2  = eye(p)/(X_mtx2*X_mtx2');
+
+sumXiXiT_inv = inv(X' * X);
 
 %% Josh Version
 
@@ -72,10 +90,17 @@ Ebgeit = zeros(q, q, V);
 Si_term_A = zeros(q, V);
 xbbx = zeros(q, q, V);
 
+% for i = 1:N
+%     for j = 1:J
+%         XB(:, :, i, j)    = squeeze(mtimesx(beta(:, :, :, j), X_mtx(:, i) ));
+%     end
+% end
+XBall = mtimesx(beta, X');
+ind = 0;
 for i = 1:N
     for j = 1:J
-        %XB(:, :, i, j)    = squeeze(mtimesx(theta.iniguessCeta(:, :, :, j), X_mtx(:, i) ));
-        XB(:, :, i, j)    = squeeze(mtimesx(beta(:, :, :, j), X_mtx(:, i) ));
+        ind = ind + 1;
+        XB(:, :, i, j)    = squeeze(XBall(:, ind, :));
     end
 end
 
@@ -179,8 +204,8 @@ for iter = 1:maxit
     varrat = post_var_Sij / theta.sigma1_sq;
     
     
-    beta_new =  zeros(q,p+1,V, J);
-    
+    %beta_new =  zeros(q,p+1,V, J);
+    beta_new =  zeros(q,J-1+p*J,V);
     
     tausq = trace(sum(ES0S0t, 3)) * N * J;
     sum_tr_ESiSit = 0.0;
@@ -249,11 +274,13 @@ for iter = 1:maxit
             
             %% Contribtion to update for fixed effects
             resid = ESi(:, :, i, j) - ES0 - Eb(:, :, i); % q by V
-            if j == 1
-                beta_new(:,2:(p+1),:,j) = beta_new(:,2:(p+1),:,j)+mtimesx(reshape(resid,[q 1 V]), X_mtx2(:,i)');
-            else
-                beta_new(:,:,:,j)       = beta_new(:,:,:,j) + mtimesx(reshape(resid,[q 1 V]), X_mtx(:,i)');
-            end
+            ind = ((i-1)*J) + j;
+            beta_new(:,:,:) = beta_new(:,:,:) + mtimesx(reshape(resid,[q 1 V]), X( ind ,:));
+%             if j == 1
+%                 beta_new(:,2:(p+1),:,j) = beta_new(:,2:(p+1),:,j)+mtimesx(reshape(resid,[q 1 V]), X_mtx2(:,i)');
+%             else
+%                 beta_new(:,:,:,j)       = beta_new(:,:,:,j) + mtimesx(reshape(resid,[q 1 V]), X_mtx(:,i)');
+%             end
             
         end % end loop over visits
         
@@ -275,19 +302,31 @@ for iter = 1:maxit
     theta_new.D  = diag(theta_new.D);
     
     %% Finish updating betas
-    for j = 1:J
-        if j==1
-            beta_new(:,2:(p+1),:,j)= mtimesx(beta_new(:,2:(p+1),:,j), sumXiXiT_inv2);  % new Ceta_j(v), coefficient matrix at voxel v
-        else
-            beta_new(:,:,:,j)      = mtimesx(beta_new(:,:,:,j), sumXiXiT_inv);  % new Ceta_j(v), coefficient matrix at voxel v
+%     for j = 1:J
+%         if j==1
+%             beta_new(:,2:(p+1),:,j)= mtimesx(beta_new(:,2:(p+1),:,j), sumXiXiT_inv2);  % new Ceta_j(v), coefficient matrix at voxel v
+%         else
+%             beta_new(:,:,:,j)      = mtimesx(beta_new(:,:,:,j), sumXiXiT_inv);  % new Ceta_j(v), coefficient matrix at voxel v
+%         end
+%     end
+    beta_new(:,:,:)      = mtimesx(beta_new(:,:,:), sumXiXiT_inv);
+    
+    %% Finish updating tau using new XB term
+    
+    % Get new XB term
+    XBall(:, :, :) = mtimesx(beta_new, X');
+    ind = 0;
+    for i = 1:N
+        for j = 1:J
+            ind = ind + 1;
+            XB(:, :, i, j)    = squeeze(XBall(:, ind, :));
         end
     end
     
-    %% Finish updating tau using new XB term
     tausq = tausq + sum_tr_ESiSit;
     for i = 1:N
         for j = 1:J
-            XB(:, :, i, j) = squeeze(mtimesx(beta_new(:, :, :, j), X_mtx(:, i)));
+            %XB(:, :, i, j) = squeeze(mtimesx(beta_new(:, :, :, j), X_mtx(:, i)));
             tausq = tausq ...
                 + sum(sum(squeeze(XB(:, :, i, j)).^2)) ...
                 + 2 * sum(sum(squeeze(XB(:, :, i, j)) .* squeeze((ES0 + Eb(:, :, i) - ESi(:, :, i, j)))));

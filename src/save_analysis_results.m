@@ -1,4 +1,4 @@
-function [ theory_var ] = save_analysis_results( prefix, data )
+function save_analysis_results( prefix, data )
 %save_analysis_results - function to save all the output from the EM
 %algorithm. Saves aggregate maps, ic maps, beta maps, and standard
 %deviations
@@ -44,26 +44,33 @@ for i=1:data.qstar
         
     % Save in the longitudinal case
     else
-        for iVisit = 1:data.nVisit
-            for k = 1:size(data.beta_est,2) - 1
-                % Setup the filename
-                bfilename = [prefix '_beta_cov' num2str(k) '_IC'...
+        % Save the alpha maps
+        ind = 0;
+        for iVisit = 2:data.nVisit
+            ind = ind + 1;
+            bfilename = [prefix '_visit_effect_IC'...
                     num2str(i) '_visit' num2str(iVisit) '.nii'];
-                % Save the map
-                nmat = nan(vxl);
-                nmat(locs) = data.beta_est(i, k+1, :, iVisit);
-                nii = make_nii(nmat);
-                save_nii(nii,strcat(path,bfilename));
-            end
-            % Save the random intercept for this visit
-            ri_filename = [prefix '_visit_effect' '_IC'...
-                    num2str(i) '_visit' num2str(iVisit) '.nii'];
-            % Save the map
-            nmat = nan(vxl);
-            nmat(locs) = data.beta_est(i, 1, :, iVisit);
+            nmat = convert_vec_to_braindim(data.beta_est(i, ind, :),...
+                data.validVoxels, data.voxSize);
             nii = make_nii(nmat);
-            save_nii(nii,strcat(path,ri_filename));
+            nii.hdr.hist.originator = data.maskOriginator;
+            save_nii(nii, fullfile(path, bfilename));
         end
+            
+        % Save the covariate effects 
+        for iVisit = 1:data.nVisit
+            for p = 1:size(data.X, 2)
+                ind = ind + 1;
+                bfilename = [prefix '_beta_cov' num2str(p) '_IC'...
+                    num2str(i) '_visit' num2str(iVisit) '.nii'];
+                nmat = convert_vec_to_braindim(data.beta_est(i, ind, :),...
+                    data.validVoxels, data.voxSize);
+                nii = make_nii(nmat);
+                nii.hdr.hist.originator = data.maskOriginator;
+                save_nii(nii, fullfile(path, bfilename));
+            end
+        end
+          
     end
     
     %% Create aggregate IC maps
@@ -108,7 +115,7 @@ waitbar((data.qstar+1) / (2+data.qstar), waitSave, 'Estimating variance of covar
 % Cross Sectional
 if data.nVisit == 1
     
-    theory_var = VarEst_hcica(data.theta_est, data.beta_est, data.X,...
+    VarEst_hcica(data.theta_est, data.beta_est, data.X,...
         data.z_mode, data.YtildeStar, data.G_z_dict, data.voxSize,...
         data.validVoxels, prefix, data.outpath);
         data.theoretical_beta_se_est = theory_var;
@@ -123,11 +130,11 @@ else
 %         data.validVoxels, prefix, data.outpath);
 %         data.theoretical_beta_se_est = theory_var;
         
-    theory_var = VarEstLICAExact(data.theta_est, data.beta_est, data.X,...
+    VarEstLICAExact(data.theta_est, data.beta_est, data.X,...
         data.PostProbs, data.YtildeStar, data.voxSize,...
         data.validVoxels, prefix, data.outpath);
     
-    data.theoretical_beta_se_est = theory_var;
+    %data.theoretical_beta_se_est = theory_var;
     
 end
 

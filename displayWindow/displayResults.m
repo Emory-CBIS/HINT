@@ -2972,7 +2972,7 @@ end
             % This will be the new way of loading the contrast
             for p = 1:ddat.p
                 for iVisit = 1:ddat.nVisit
-                    
+                    disp('WHY IS THIS SET TO IC 1')
                     % Load the File
                     ndata = load_nii([ddat.outdir '/' ddat.outpre...
                         '_beta_cov' num2str(p) '_IC1_visit'...

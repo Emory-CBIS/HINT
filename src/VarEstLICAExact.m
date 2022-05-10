@@ -1,6 +1,7 @@
-function [ VarEsts ] = VarEstLICAExact( theta_est, beta_est, X,...
+function VarEstLICAExact( theta_est, beta_est, Xin,...
     PostProbs, YtildeStar, voxSize,...
     validVoxels, prefix, outpath )
+
 %var_est_longitudinal - Summary of this function goes here
 %   Detailed explanation goes here
 
@@ -8,86 +9,53 @@ function [ VarEsts ] = VarEstLICAExact( theta_est, beta_est, X,...
 q = size(theta_est.sigma3_sq, 1) ;
 T =  size(theta_est.A, 4);
 V = size(beta_est, 3);
-K = size(beta_est, 4) - 1;
-p = size(beta_est, 2) - 1;
+K = T - 1;
+p = size(beta_est, 2);
 N = size(theta_est.A, 3);
 
-X = [ones(N, 1), X(1:T:end, :)]';
-
-% Allocate space
-Zvalue1 = zeros(q*p*(T+1),V);
-varCeta1 = zeros(q*(p+1)*(K+1),q*(p+1)*(K+1),V);
-W_var1 = zeros(q*(K+1),q*(K+1),V);
-%W_var2 = zeros(q*(K+1),q*(K+1),V);
-%W_var3 = zeros(q*(K+1),q*(K+1),V);
-%W_var4 = zeros(q*(K+1),q*(K+1),V);
-U = kron(ones(K+1, 1), eye(q));
-
-% Calculate variance at each voxel
-for v = 1:V
-    
-    % Theoretical
-    Sigma3z = sum(PostProbs(:, :, v) .* theta_est.sigma3_sq, 2);
-    
-    W_var1(:,:,v) = (theta_est.tau_sq + theta_est.sigma1_sq) *...
-        eye(q*(K+1)) + U * diag(theta_est.D+Sigma3z)*U';
-    
-    %Ceta_matrix = zeros(q*(K+1),p+1,V);
-    %for j = 0:K
-    %    Ceta_matrix((1+q*j):(q+q*j),:,:) = theta_est.iniguessCeta(:,:,:,j+1);
-    %end
-    
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    
-    W_varinv1 = inv(W_var1(:,:,v));
-    
-    
-    %%%%%%%%%%%%   Estimate the Covariance of Ceta; %%%%%%%%%%%%%%%
-    X0star = eye(K+1);
-    X0star(:,1) = ones(K+1, 1);
-    X0star = kron(X0star,eye(q));
-    
-    for i =1:N
-        Xistar = kron(eye(K+1),kron(X(2:(p+1),i)',eye(q)));
-        Xiplus = [X0star Xistar];
-        
-        varCeta1(:,:,v) = varCeta1(:,:,v)+ Xiplus'*W_varinv1*Xiplus;
-    end
-    
-    varCeta1(:,:,v) = inv(varCeta1(:,:,v));
+% Fixup the model matrix to include visit information
+Xtemp = Xin;
+X = [];
+% Create X as a N x P*nVisit matrix.
+for i = 1:N
+    X = [X; kron(eye(T), Xtemp(i, :))];
 end
 
-% Finished estimate the covariance matrix for C(v)
-%save([path_data 'varCeta_sel2.mat'],'varCeta1','-v7.3')
-VarEsts = zeros( [T*(p+1) - 1, T*(p+1) - 1, V,  q]);
+% Next we add a column for the intercept (S0) followed by the effects
+% coded visit effects
+basicBlock = [-1 * ones(1, T-1) ; eye(T - 1)];
+X = [repmat([ones(T, 1) basicBlock], [N, 1]) X];
 
-% Create the maps for each IC based on the theoretical variance
-% estimator
-for iIC = 1:q
-    for iVisit = 1:T
-        
-        % Create an indexing array to grab the right elements of the
-        % estimates
-        
-        % THIS IS INDEXING ASSUMING THAT IT GOES:
-        %indArrStart = (iVisit-1)*( (p+1)*q ) + (iIC-1)*(p+1) + 1;
-        indArrStart = q + iIC;
-        indArr = indArrStart:q:size(varCeta1, 1);
-        %disp(indArr)
+% Estimate using loop over components
+% Mog variance contribution
+sigma3All = sum( bsxfun(@times, PostProbs, theta_est.sigma3_sq), 2 );
+varEstIC = zeros(p+1, p+1, V);
+for qq = 1:q
 
-        % Fill out the variance estimate
-        newMap = zeros( [T*(p+1) - 1, T*(p+1) - 1, voxSize] ); % empty for intermediate var map
-        tempData = squeeze(varCeta1(indArr, indArr, :));
-        newMap( :,:, validVoxels ) = tempData;
-        betaVarEst = newMap;
+    baseVar = (theta_est.tau_sq + theta_est.sigma1_sq) * eye(T);
+    
+    mogContrib = theta_est.D(qq)+sigma3All(qq, :);
         
-        VarEsts(:, :, :, iIC) = tempData;
-
-        % Save as a .mat file to be loaded in the display viewer
-        fname = fullfile(outpath, [prefix '_BetaVarEst_IC' num2str(iIC)...
-            '.mat']);
-        save(fname, 'betaVarEst');
+    % Invert (sherman morrison formula based)
+    Winv = diag(1.0 ./ diag(baseVar));
+    subtractTerm = (mogContrib ./ (baseVar(1,1)^2 + T * baseVar(1,1) .* mogContrib) );
+    Winv = Winv - bsxfun(@times, reshape(subtractTerm(:), [1, 1, V]), ones(T, T, V));
+    
+    % Multiply for each subjects
+    indEnd = 0;
+    for i = 1:N
+        indStart = indEnd + 1;
+        indEnd = indEnd + T;
+                
+        varEstIC(:,:,:) = varEstIC(:,:,:) +...
+            mtimesx( mtimesx(X(indStart:indEnd, :)', Winv), X(indStart:indEnd, :));
     end
+        
+    % Save the estimates to a .mat file
+    fname = fullfile(outpath, [prefix '_BetaVarEst_IC' num2str(qq)...
+            '.mat']);
+    save(fname, 'varEstIC');
+
 end
 
 

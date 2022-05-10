@@ -61,6 +61,40 @@ function [InputData] = parse_and_format_input_files(maskf, covf, nVisit, studyTy
         [ InputData.X, InputData.varNamesX, InputData.interactions ] = ref_cell_code( InputData.covariates,...
             InputData.covTypes, InputData.varInModel,...
             0, zeros(0, length(InputData.covTypes)), 0, InputData.referenceGroupNumber  );
+        
+        % Initial settings for moving between design and model matrix under
+        % effects coding. These get further modified in the
+        % model_specification_window as needed
+        effectsCodingsEncoders = cell(1, length(InputData.covTypes));
+        for p = 1:length(InputData.covTypes)
+            effectsCodingsEncoders{p} = generate_effects_coding(InputData.covariates{1:nVisit:end, p});
+        end
+        InputData.effectsCodingsEncoders = effectsCodingsEncoders;
+        InputData.covariates = InputData.covariates(1:nVisit:end, :);
+        N = size(InputData.covariates, 1);
+        
+        % Setup the initial model matrix
+        X = zeros(N, 0);
+        varNamesX = {};
+        for p = 1:length(InputData.covTypes)
+            covariateValues = InputData.covariates{:, p};
+            varName = InputData.covariates.Properties.VariableNames{p};
+            if InputData.covTypes(p) == 1
+                X = [X apply_effects_coding(covariateValues, effectsCodingsEncoders{p})];
+                for iset = 1:length(effectsCodingsEncoders{p}.variableNames)
+                    varNamesX{length(varNamesX) + 1} = [varName '_' effectsCodingsEncoders{p}.variableNames{iset}];
+                end
+            else
+                X = [X covariateValues];
+                varNamesX{length(varNamesX) + 1} = varName;
+            end
+        end
+        InputData.varNamesX = varNamesX;
+        InputData.X = X;
+        InputData.weighted = true;
+        InputData.unitScale = 1;
+        InputData.covariateNames = InputData.covariates.Properties.VariableNames;
+
 
         % Create the (empty) interactions matrix
         [~, nCol] = size(InputData.X);
@@ -71,22 +105,14 @@ function [InputData] = parse_and_format_input_files(maskf, covf, nVisit, studyTy
         image = load_nii(niifiles{1});
         [m,n,l,k] = size(image.img);
 
-        % load the mask file.
-%         if(~isempty(maskf))
-%             mask = load_nii(maskf);
-%             validVoxels = find(mask.img == 1);
-%         else
-%             validVoxels = find(ones(m,n,l) == 1);
-%         end
         [mask, validVoxels, V, maskOriginator] = load_mask(maskf);
         disp(['Identified ', num2str(V), ' voxels in brain mask.'])
-        %nValidVoxel = length(validVoxels);
 
         % Store the relevant information
         InputData.covf = covf;
         InputData.maskf = maskf;
         InputData.time_num = k;
-        InputData.N = nfile / InputData.nVisit;
+        InputData.N = N;
         InputData.validVoxels = validVoxels;
         InputData.voxSize = size(mask.img);
         InputData.dataLoaded = 1;

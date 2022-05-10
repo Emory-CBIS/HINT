@@ -48,22 +48,18 @@ function [theta, betaGuessAll, popAvgComponents] = initial_guess_longitudinal(st
     theta.A = Ai;
 
     % Modified version of the design matrix to work better below:
-    Xorig = X;
-    selectRows = 1:nVisit:N*nVisit; % one row per subject
-    Xtemp = Xorig(selectRows, :);
+    Xtemp = X;
     X = [];
     % Create X as a N x P*nVisit matrix.
     for i = 1:N
         X = [X; kron(eye(nVisit), Xtemp(i, :))];
     end
     
-    % Next we add a column for the intercept (S0) followed by nVisit-1
-    % columns corresponding to the visit effects for visits 2-nVisit;
-    % Easiest way to do the second is to add a column for each visit and
-    % then remove the column for visit 1
-    tempCols = [ones(N*nVisit, 1) kron(ones(N, 1), eye(nVisit)) ];
-    tempCols(:, 2) = [];
-    X = [tempCols X];
+    % Next we add a column for the intercept (S0) followed by the effects
+    % coded visit effects
+    basicBlock = [-1 * ones(1, nVisit-1) ; eye(nVisit - 1)];
+    blockWithS0 = [ones(nVisit, 1) basicBlock];
+    X = [repmat(blockWithS0, [N, 1]) X];
     
     
     % Fit regression model at each voxel to get the initial values
@@ -106,14 +102,19 @@ function [theta, betaGuessAll, popAvgComponents] = initial_guess_longitudinal(st
     
     % Now create a combined version of alpha and beta to return as the
     % initial guess
-    betaGuessAll = zeros(Q, P+1, V, nVisit);
-    for j = 1:nVisit
-        if j > 1
-            betaGuessAll(:, 1, :, j) = guessAlpha(j-1, :, :);
-        end
-        for qq = 1:Q
-            betaGuessAll(qq, 2:(P+1), :, j) = guessBeta((P*(j-1)+1):(j*P),qq, :);
-        end
+%     betaGuessAll = zeros(Q, P+1, V, nVisit);
+%     for j = 1:nVisit
+%         if j > 1
+%             betaGuessAll(:, 1, :, j) = guessAlpha(j-1, :, :);
+%         end
+%         for qq = 1:Q
+%             betaGuessAll(qq, 2:(P+1), :, j) = guessBeta((P*(j-1)+1):(j*P),qq, :);
+%         end
+%     end
+    betaGuessAll = zeros(Q, nVisit-1+P*nVisit, V);
+    for qq = 1:Q
+        betaGuessAll(qq, 1:nVisit-1, :) = guessAlpha(:,qq,:);
+        betaGuessAll(qq, nVisit:end, :) = guessBeta(:,qq,:);
     end
     
     
