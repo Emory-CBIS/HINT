@@ -1127,7 +1127,7 @@ end
            
         
         if ddat.isPreview
-            imagePath = fullfile(ddat.outdir, [ddat.outpre, '_iniIC_1.nii']);
+            imagePath = fullfile(ddat.outdir, '_iniIC_1.nii');
         else
             imagePath = fullfile(ddat.outdir, [ddat.outpre, '_S0_IC_1.nii']);
         end
@@ -1179,7 +1179,7 @@ end
         
         
         if ddat.isPreview
-            imagePath = fullfile(ddat.outdir, [ddat.outpre, '_iniIC_1.nii']);
+            imagePath = fullfile(ddat.outdir, ['_iniIC_1.nii']);
         else
             imagePath = fullfile(ddat.outdir, [ddat.outpre, '_S0_IC_1.nii']);
         end
