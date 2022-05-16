@@ -45,13 +45,18 @@ waitbar(17/20)
 varInCovFile = data.varInCovFile;
 referenceGroupNumber = data.referenceGroupNumber;
 waitbar(18/20)
+variableCodingInformation = struct();
+variableCodingInformation.effectsCodingsEncoders = data.effectsCodingsEncoders;
+variableCodingInformation.weighted = data.weighted;
+variableCodingInformation.unitScale = data.unitScale;
+
 
 save(fname, 'q', ...
     'time_num', 'X', 'validVoxels', 'niifiles', 'maskf', 'covfile', 'numPCA', ...
     'outfolder', 'prefix', 'covariates', 'covTypes', 'beta0Star', 'CmatStar',...
     'YtildeStar', 'thetaStar', 'voxSize', 'N', 'qold', 'varNamesX',...
     'interactions', 'varInModel', 'varInCovFile', 'interactionsBase',...
-    'referenceGroupNumber', 'nVisit');
+    'referenceGroupNumber', 'nVisit', 'variableCodingInformation');
 
 waitbar(20/20)
 

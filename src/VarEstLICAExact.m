@@ -50,6 +50,11 @@ for qq = 1:q
         varEstIC(:,:,:) = varEstIC(:,:,:) +...
             mtimesx( mtimesx(X(indStart:indEnd, :)', Winv), X(indStart:indEnd, :));
     end
+    
+    % Now convert precision to variance
+    for v = 1:size(varEstIC, 3)
+        varEstIC(:,:,v) = inv(varEstIC(:,:,v));
+    end
         
     % Save the estimates to a .mat file
     fname = fullfile(outpath, [prefix '_BetaVarEst_IC' num2str(qq)...

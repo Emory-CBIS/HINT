@@ -19,6 +19,7 @@ save(subjFilename, 'subICmean');
 
 waitbar(1 / (2+data.qstar))
 
+
 % Loop over each independent component
 for i=1:data.qstar
     
@@ -36,11 +37,22 @@ for i=1:data.qstar
     if data.nVisit == 1
         for k=1:size(data.beta_est,1)
             bfilename = [prefix '_beta_cov' num2str(k) '_IC' num2str(i) '_visit1' '.nii'];
-            nmat = nan(vxl);
-            nmat(locs) = data.beta_est(k,i,:);
+            nmat = convert_vec_to_braindim(data.beta_est(k, i, :),...
+            data.validVoxels, data.voxSize);
             nii = make_nii(nmat);
-            save_nii(nii,strcat(path,bfilename));
+            nii.hdr.hist.originator = data.maskOriginator;
+            save_nii(nii, fullfile(path, bfilename));
         end
+        
+        % Save .mat version of ALL covariate effects, along with S0 in the
+        % first position. This will make creating sub-populations later
+        % easier
+        allCoefs = zeros(size(data.beta_est, 1) + 1, length(data.validVoxels));
+        allCoefs(1, :) = data.grpICmean(i, :);
+        allCoefs(2:end, :) = squeeze(data.beta_est(:, i, :));
+        fname = [prefix '_all_effect_ests_IC'...
+                    num2str(i) '.mat'];
+        save( fullfile(path, fname), 'allCoefs');
         
     % Save in the longitudinal case
     else
@@ -66,10 +78,20 @@ for i=1:data.qstar
                 nmat = convert_vec_to_braindim(data.beta_est(i, ind, :),...
                     data.validVoxels, data.voxSize);
                 nii = make_nii(nmat);
-                nii.hdr.hist.originator = data.maskOriginator;
+                %nii.hdr.hist.originator = data.maskOriginator;
                 save_nii(nii, fullfile(path, bfilename));
             end
         end
+        
+        % Save .mat version of ALL covariate effects, along with S0 in the
+        % first position. This will make creating sub-populations later
+        % easier
+        allCoefs = zeros(size(data.beta_est, 2) + 1, length(data.validVoxels));
+        allCoefs(1, :) = data.grpICmean(i, :);
+        allCoefs(2:end, :) = squeeze(data.beta_est(i, :, :));
+        fname = [prefix '_all_effect_ests_IC'...
+                    num2str(i) '.mat'];
+        save( fullfile(path, fname), 'allCoefs');
           
     end
     
@@ -118,10 +140,7 @@ if data.nVisit == 1
     VarEst_hcica(data.theta_est, data.beta_est, data.X,...
         data.z_mode, data.YtildeStar, data.G_z_dict, data.voxSize,...
         data.validVoxels, prefix, data.outpath);
-        data.theoretical_beta_se_est = theory_var;
-        
-        data.theoretical_beta_se_est = theory_var;
-        
+                
 else
     
     % this is old version

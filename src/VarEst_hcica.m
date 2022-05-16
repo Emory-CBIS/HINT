@@ -80,16 +80,18 @@ function [varBeta1] = VarEst_hcica(theta_est, beta_est, X,...
     for iIC = 1:q
         % Create an indexing array to grab the right elements of the
         % estimates
-        indArrStart = (iIC + q);
+        indArrStart = q;
         indArr = indArrStart:q:size(varBeta1, 1);
         % Fill out the variance estimate
         newMap = zeros( [p, p, voxSize] ); % empty for intermediate var map
         tempData = squeeze(varBeta1(indArr, indArr, :));
-        newMap( :,:, validVoxels ) = tempData;
-        betaVarEst = newMap;
+%         newMap( :,:, validVoxels ) = tempData;
+%         betaVarEst = newMap;
+        
+        varEstIC = tempData;
         % Save as a .mat file to be loaded in the display viewer
         fname = fullfile(outpath, [prefix '_BetaVarEst_IC' num2str(iIC) '.mat']);
-        save(fname, 'betaVarEst');
+        save(fname, 'varEstIC');
     end
 
 end

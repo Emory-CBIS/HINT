@@ -12,7 +12,7 @@ X = cellstr(X);
 
 % Get problem dimensions
 N = length(X);
-nLevels = length(unique(X));
+nLevels = length(covariateEffectsCoding.encoder);
 
 % Apply the encoder
 XCoded = zeros(N, nLevels - 1);

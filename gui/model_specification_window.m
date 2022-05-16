@@ -778,6 +778,7 @@ delete(hs.fig);
     function display_current_model_matrix
         
         % First, get the main effects for each covariate
+        % TODO replace with generate_model_matrix function from src folder
         ModelSpecData.X = [];
         ModelSpecData.varNamesX = {};
         for p = 1:length(ModelSpecData.covTypes)
@@ -818,6 +819,7 @@ delete(hs.fig);
         % Display
         set(findobj('tag', 'modelMatrixTable'), 'Data', table2cell(ModelSpecData.modelMatrix));
         set(findobj('tag', 'modelMatrixTable'), 'ColumnName',  ModelSpecData.varNamesX);
+        
         
     end
 
