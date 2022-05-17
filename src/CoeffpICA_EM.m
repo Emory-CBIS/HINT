@@ -110,7 +110,7 @@ function [theta, beta, z_mode, subICmean, subICvar, grpICmean, grpICvar,...
     plotIncr = 1;
     tic()
     
-    currentPlotRange = 10;
+    currentPlotRange = 1;
     
     % start of temporary setup for very different EM types
     
@@ -158,7 +158,7 @@ function [theta, beta, z_mode, subICmean, subICvar, grpICmean, grpICvar,...
 
             % count up by 10 for the plot axes
             if itr > currentPlotRange
-                currentPlotRange = currentPlotRange + 10;
+                currentPlotRange = currentPlotRange + 1;
             end
 
             theta = theta_new;

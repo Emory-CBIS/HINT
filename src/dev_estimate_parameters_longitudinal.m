@@ -21,9 +21,8 @@ function [theta_new,...
     maxit,...
     isScriptVersion, writelog)
 
-
-% Josh renaming a few things here
-disp(['Time points: ', num2str(J)])
+global keepRunning
+keepRunning = 1;
 
 iter_time = [];
 
@@ -104,7 +103,7 @@ for i = 1:N
     end
 end
 
-currentPlotRange = 10;
+currentPlotRange = 1;
 theta_change = zeros(maxit, 1);
 beta_change = zeros(maxit, 1);
 
@@ -379,10 +378,11 @@ for iter = 1:maxit
             itr, theta_change_iter, beta_change_iter);
     end
     updatePlot=1;
-    % count up by 10 for the plot axes
+    % count up by 1 for the plot axes
     if iter > currentPlotRange
-        currentPlotRange = currentPlotRange + 10;
+        currentPlotRange = currentPlotRange + 1;
     end
+    
     % If the gui version is being run then update the GUI
     if isScriptVersion == 0 && (updatePlot || iter == maxiter)
 
@@ -422,6 +422,19 @@ for iter = 1:maxit
     beta = beta_new;
     
     iter_time = [iter_time; toc];
+    
+    % Check for user-requested termination
+    if ( keepRunning == 0 )
+        success = 0; 
+        disp('Terminating by user request');
+        
+        % Get the most likely latent state configuration for each voxel
+        z_mode = zeros(q, V);
+        for v = 1:V
+            [~, z_mode(:, v)] = max(PostProbs(:, :, v), [], 2);
+        end
+        return;
+    end
     
     
     
