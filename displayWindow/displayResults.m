@@ -183,6 +183,7 @@ end
             
         %% Toolbar
         
+        % FILE
         fileMenu = uimenu('Label', 'File');
         
         SaveOpt = uimenu(fileMenu, 'Label', 'Save',...
@@ -196,13 +197,22 @@ end
             'Callback', @load_saved_viewer_options);
         
         % Load anatomical file
-%         LoadAnat = uimenu(fileMenu, 'Label', 'Load',...
-%             'Callback', @load_saved_viewer_options);
+        LoadAnat = uimenu(fileMenu, 'Label', 'Load Anatomical Image',...
+            'Separator','on',...
+            'Callback', @load_anatomical);
         
         % Font size
         TextSize = uimenu(fileMenu, 'Label', 'Change Font Size',...
+            'Separator','on',...
             'Callback', @change_text_size);
         
+        % EXPORTS
+        exportMenu = uimenu('Label', 'Export');
+        
+        SaveNii = uimenu(fileMenu, 'Label', 'Save to .nii',...
+            'tag', 'SaveNii',...
+            'enable', 'on',...
+            'Callback', @save_nifti_file);
 
         
         % Default Panel - this panel contains the main display windows and options
@@ -381,7 +391,7 @@ end
         
     end
 
-    %% Toolbar functions
+    %% Toolbar functions - File
     function save_viewer_options(src, event)
         
         % Ask user to name file
@@ -429,7 +439,7 @@ end
         end
         
         ddat = tempDdat.ddat;
-
+        ImageData.anatomicalFile = tempDdat.anatomicalFile;
         
         % Load the "non followers" first
         %lic(1)
@@ -449,7 +459,41 @@ end
         
         % enable saving over the current file
         set(findobj('tag', 'saveOpt'), 'enable', 'on');
+        
+        % Apply potential menu settings
+        set(findall(gcf,'-property','FontSize'),'FontSize', ddat.textSize)
          
+        
+    end
+
+    function load_anatomical(src, event)
+        
+        [fname, pathname] = uigetfile('.nii', '', ddat.outdir);
+        if fname == 0
+            return
+        end
+        
+        % Quick check that this file is the right size;
+        anatFile = fullfile(pathname, fname);
+        tempAnat = load_nii(anatFile);
+        
+        if ~all(size(tempAnat.img) == ddat.voxSize)
+            disp('Mismatch between anatomical size and brain map size.')
+            disp('Anatomical image had dimension:')
+            disp(size(tempAnat.img))
+            disp('Brain maps have size:')
+            disp(ddat.voxSize)
+            disp('Cancelling anatomical load.')
+        end
+        
+        % Check dimension
+                
+        ImageData.anatomicalFile = anatFile;
+        initialize_anatomical;
+        
+        for index = 1:ddat.nViewer
+            frc(index);
+        end
         
     end
 
@@ -469,6 +513,11 @@ end
         ddat.textSize = newFontSize;
         
         set(findall(gcf,'-property','FontSize'),'FontSize', ddat.textSize)
+    end
+
+    %% Toolbar functions - Export
+    
+    function save_nifti_file(src, event)
     end
 
 
@@ -1312,7 +1361,7 @@ end
             newImg(ddat.validVoxels) = 1;
             ImageData.anatomical{1} = newImg;
         else
-            anatRaw = load_nii(anatfl);
+            anatRaw = load_nii(ImageData.anatomicalFile);
             ImageData.anatomical{1} = anatRaw.img;
         end
         
