@@ -9,6 +9,13 @@ function [theta, guessBeta, popAvgComponents] = initial_guess_crosssectional(sta
     Q = size(S0Init, 1);
     N = QN / Q;
     P = size(X, 2);
+    
+    % Flip signs of S0 so that "bulk" of activity is in the positive
+    % direction
+    signs = sign(mean(S0Init, 2));
+    for q = 1:Q
+        S0Init(q, :) = S0Init(q, :) .* signs(q);
+    end
 
     projectionMat = S0Init' * inv(S0Init * S0Init');
     Ai  = zeros(Q, Q, N);

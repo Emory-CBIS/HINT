@@ -11,6 +11,20 @@ end
 
 runinfo = load(runinfoFileName);
 
+% Resolve a naming inconsistency
+runinfo.outpath = runinfo.outfolder;
+runinfo.qstar = runinfo.q;
+runinfo.covf = runinfo.covfile;
+runinfo.effectsCodingsEncoders = runinfo.variableCodingInformation.effectsCodingsEncoders;
+runinfo.weighted = runinfo.variableCodingInformation.weighted;
+runinfo.unitScale = runinfo.variableCodingInformation.unitScale;
+
+if runinfo.nVisit > 1
+    runinfo.studyType = 'Longitudinal';
+else
+    runinfo.studyType = 'Cross-Sectional';
+end
+
 %% Space is reserved to check for fields or do any extra work required for
 % different forms of hcica
 

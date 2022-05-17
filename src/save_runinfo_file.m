@@ -6,11 +6,15 @@ function save_runinfo_file(fname, prefix, data)
 waitSave = waitbar(0,'Please wait while the analysis setup saves to the runinfo file');
 
 %  save the run info
-q = data.qstar; time_num = data.time_num; X = data.X;       
+q = data.qstar; 
+time_num = data.time_num;
+X = data.X;       
 waitbar(1/20)
-validVoxels=data.validVoxels; niifiles = data.niifiles;     
+validVoxels=data.validVoxels;
+niifiles = data.niifiles;     
 waitbar(2/20)
-maskf = data.maskf; covfile = data.covf;                    
+maskf = data.maskf; covfile = data.covf;    
+studyType = data.studyType;
 waitbar(3/20)
 numPCA = data.numPCA;
 waitbar(4/20)
@@ -49,6 +53,7 @@ variableCodingInformation = struct();
 variableCodingInformation.effectsCodingsEncoders = data.effectsCodingsEncoders;
 variableCodingInformation.weighted = data.weighted;
 variableCodingInformation.unitScale = data.unitScale;
+maskOriginator = data.maskOriginator;
 
 
 save(fname, 'q', ...
@@ -56,7 +61,8 @@ save(fname, 'q', ...
     'outfolder', 'prefix', 'covariates', 'covTypes', 'beta0Star', 'CmatStar',...
     'YtildeStar', 'thetaStar', 'voxSize', 'N', 'qold', 'varNamesX',...
     'interactions', 'varInModel', 'varInCovFile', 'interactionsBase',...
-    'referenceGroupNumber', 'nVisit', 'variableCodingInformation');
+    'referenceGroupNumber', 'nVisit', 'variableCodingInformation', 'studyType',...
+    'maskOriginator');
 
 waitbar(20/20)
 

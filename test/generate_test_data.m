@@ -124,6 +124,44 @@ covariates = table('Size', [N, J + P],...
 
 niipath = testdatapath;
 
+if not(isfolder(fullfile(testdatapath, 'Medication')))
+    mkdir(fullfile(testdatapath, 'Medication'))
+end
+
+
+%% Create the effects coded covariate matrix
+covariatesTemp = table('Size', [N, P],...
+    'VariableNames', variableNames(J+1:end),...
+    'VariableTypes', variableTypes(J+1:end));
+for i = 1:N
+    covariatesTemp(i, 1) = {Ages(i)};
+    covariatesTemp(i, 2) = {Groups( GroupNum(i) )};
+    covariatesTemp(i, 3) = {medTypes( medNum(i) )};
+end
+covariateNamesTemp = covariatesTemp.Properties.VariableNames;
+covTypes           = [0 1 1];
+effectsCodingsEncoders = cell(1, length(covTypes));
+for p = 1:length(covTypes)
+    effectsCodingsEncoders{p} = generate_effects_coding(covariatesTemp{:, p});
+end
+% Create the corresponding model matrix
+weighted = true;
+unitScale = 1;
+cm = zeros(length(covariateNamesTemp), 1);
+sds = zeros(length(covariateNamesTemp), 1);
+for p = 1:length(covariateNames)
+    if covTypes(p) == 0
+        cm(p) = mean(covariatesTemp{:, p});
+        sds(p) = std(covariatesTemp{:, p});
+    end
+end
+covariateMeans = cm;
+covariateSDevs = sds;
+[X, varNamesX] = generate_model_matrix(covTypes, [1 1 1],...
+    covariatesTemp, effectsCodingsEncoders, unitScale, weighted,...
+    zeros(0, P), covariateNamesTemp, covariateMeans, covariateSDevs);
+
+
 % Create variance estimate files
 varEstDim = P + (P+1)*(J-1);
 betaVarEst = ones( varEstDim, varEstDim, dx, dy, dz );
@@ -132,11 +170,11 @@ varEst2 = ones( varEstDim, varEstDim, dx, dy, dz );
 % Save the data 
 % TODO create correct version of variance at each voxel using the true
 % sigmas
-fname1 = fullfile(testdatapath, 'testdata_longitudinal_set1_varianceest_IC1.mat');
+fname1 = fullfile(testdatapath, 'Medication', 'medication_data_varianceest_IC1.mat');
 save(fname1, 'betaVarEst')
 
 % Create a mask file for this longitudinal example
-maskf = fullfile(niipath, 'testdata_longitudinal_set1_mask.nii');
+maskf = fullfile(niipath, 'Medication', 'medication_data_mask.nii');
 mask = zeros(dx, dy, dz);
 mask(validVoxels) = 1;
 masknii = make_nii(mask);
@@ -156,18 +194,18 @@ for i = 1:N
     covariates(i, J+1) = {Ages(i)};
     covariates(i, J+2) = {Groups( GroupNum(i) )};
     covariates(i, J+3) = {medTypes( medNum(i) )};
-    
-    cov_2_effect = zeros(size(beta2_1));
-    if strcmp(covariates{i, J+2}, "Traditional") 
-        cov_2_effect = beta2_1(:, :, :);
-    end
-    if strcmp(covariates{i, J+2}, "Novel") 
-        cov_2_effect = beta2_1(:, :, :) + beta2_2(:, :, :);
-    end
     for j = 1:J
         
+        vis2 = -1;
+        vis3 = -1;
+        if j == 2
+            vis2 = 1; vis3 = 0;
+        elseif j == 2
+            vis2 = 0; vis3 = 1;
+        end
+        
         % File path information for this subject
-        fname = fullfile(niipath, ['testdata_longitudinal_set1_subj_', num2str(i), '_visit', num2str(j), '.nii']);
+        fname = fullfile(niipath, 'Medication', ['medication_data_subj_', num2str(i), '_visit', num2str(j), '.nii']);
         covariates(i, j) = {fname};
         
         % Create this subject's mixing matrix
@@ -175,10 +213,8 @@ for i = 1:N
         Aij = Aij_temp*real(inv(Aij_temp'*Aij_temp)^(1/2));
         
         % Create this subjects IC maps (Sij)
-        % recall: beta(:, 1, :, :) is ALPHA
-        Sij = s0 +...
-            squeeze(alpha(:, :, j)) +...
-            squeeze(covariates{i, 4}*beta1(:, :, j)) + squeeze(cov_2_effect(:, :, j)) +...
+        Sij = s0 + vis2*squeeze(alpha(:, :, 2)) + vis3*squeeze(alpha(:, :, 3)) + ...
+            squeeze(X(i, 1)*beta1(:, :, j)) + squeeze(X(i, 2)*beta2_1(:, :, j)) + squeeze(X(i, 3)*beta2_2(:, :, j)) + ...
             level2errors(:, :, i, j);
         
         % Generate the prewhitened time series for this subject
@@ -219,10 +255,10 @@ for i = 1:N
 end
 
 % Store the csv file for loading
-writetable(covariates, fullfile(niipath, ['testdata_longitudinal_set1_covariates.csv']));
+writetable(covariates, fullfile(niipath, 'Medication', ['medication_data_covariates.csv']));
 
 % Save relevant test quantities/parameters/etc
-fname = fullfile(niipath, ['testdata_longitudinal_set1_truevals.mat']);
+fname = fullfile(niipath, 'Medication', ['medication_data_truevals.mat']);
 save(fname, 'Ytilde', 'sigma1sq', 'sigma2sq', 's0', 'beta1', 'beta2_1','beta2_2', 'alpha');
 
 
