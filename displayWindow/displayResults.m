@@ -4,6 +4,8 @@ function varargout = displayResults(varargin)
 % Inputs: 
 %
 
+% set(findall(gcf,'-property','FontSize'),'FontSize',12)
+
 % See
 % https://undocumentedmatlab.com/articles/additional-uicontrol-tooltip-hacks
 
@@ -31,6 +33,16 @@ ddat.covariateNames = varargin{10};
 ddat.covariates = varargin{11};
 ddat.variableCodingInformation = varargin{12};
 ddat.isPreview = varargin{13};
+
+% Some other useful quantities
+ddat.sagDim = ddat.voxSize(1);
+ddat.corDim = ddat.voxSize(2);
+ddat.axiDim = ddat.voxSize(3);
+
+
+% Menu settings
+ddat.textSize = 10;
+ddat.currentSaveFile = '';
 
 % Determine default sub-population table information
 % for categorical covariates - will be the reference group
@@ -62,9 +74,6 @@ ddat.defaultSubPopTableData = defaultSubPopTableData;
 ddat.P = length(ddat.varNamesX);
 
 varargout = cell(1);
-
-% Keep tracker of the user's preferred settings
-ddat.tileType = 'vertical';
 
 %% Things that need to be saved
 ddat.axiPos = cell(0);
@@ -142,6 +151,11 @@ ImageData.VarCov = cell(0);
 ImageData.CoefEsts = cell(0);
 ImageData.maskingLayer = cell(0);
 ImageData.maskingFile  = cell(0);
+ImageData.anatomicalFile = '';
+ImageData.anatomical = cell(0);
+ImageData.anatomicalAxiSlices = cell(0);
+ImageData.anatomicalCorSlices = cell(0);
+ImageData.anatomicalSagSlices = cell(0);
 
 % Check if an instance of displayResults already running
 hs = findall(0,'tag','hint_image_display');
@@ -149,7 +163,7 @@ if (isempty(hs))
     hs = addcomponents;
     set(hs.fig,'Visible','on');
     %initialDisp;
-    temporary_initial_display;
+    initial_display;
 else
     figure(hs);
 end
@@ -166,10 +180,30 @@ end
             'Resize','on',...
             'Visible','off');
             %'WindowKeyPressFcn', @KeyPress);
+            
+        %% Toolbar
         
-        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        % Brain Display Windows
-        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        fileMenu = uimenu('Label', 'File');
+        
+        SaveOpt = uimenu(fileMenu, 'Label', 'Save',...
+            'tag', 'saveOpt',...
+            'enable', 'off',...
+            'Callback', @update_saved_viewer_options);
+        SaveAsOpt = uimenu(fileMenu, 'Label', 'Save as',...
+            'Callback', @save_viewer_options);
+        
+        LoadOpt = uimenu(fileMenu, 'Label', 'Load',...
+            'Callback', @load_saved_viewer_options);
+        
+        % Load anatomical file
+%         LoadAnat = uimenu(fileMenu, 'Label', 'Load',...
+%             'Callback', @load_saved_viewer_options);
+        
+        % Font size
+        TextSize = uimenu(fileMenu, 'Label', 'Change Font Size',...
+            'Callback', @change_text_size);
+        
+
         
         % Default Panel - this panel contains the main display windows and options
         % other primary panels are placed on it, so that it can be
@@ -346,6 +380,97 @@ end
         movegui(hs.fig, 'center')
         
     end
+
+    %% Toolbar functions
+    function save_viewer_options(src, event)
+        
+        % Ask user to name file
+        newName = inputdlg('Input name for saved viewer file', 'File Name');
+
+        if isempty(newName); return; end
+        if isempty(strtrim(newName{1})); return; end
+        
+        newName = strtrim(newName{1});
+        
+        fname = fullfile(ddat.outdir, [ddat.outpre '_SavedViewer_' newName]);
+        ddat.currentSaveFile = fname;
+        anatomicalFile = ImageData.anatomicalFile;
+
+        save( ddat.currentSaveFile, 'ddat', 'anatomicalFile');
+        
+        % enable one-click saving
+        set(findobj('tag', 'saveOpt'), 'enable', 'on');
+        
+    end
+
+    % callback for basic save button
+    function update_saved_viewer_options(src, event)
+        anatomicalFile = ImageData.anatomicalFile;
+        save( ddat.currentSaveFile, 'ddat', 'anatomicalFile');
+    end
+
+    function load_saved_viewer_options(src, event)
+        
+        % Request the file from the user
+        [fname, pathname] = uigetfile('.mat', '', ddat.outdir);
+        if fname == 0
+            return
+        end
+        tempDdat = load(fullfile(pathname, fname));
+        
+        if ~isfield(tempDdat, 'ddat')
+            disp('This does not appear to be a valid saved viewer file. Cancelling load request.')
+            return
+        end
+                
+        % Start by creating viewers (with incorrect positioning)
+        for index = 2:tempDdat.ddat.nViewer
+            add_brain_view(findobj('tag', 'AddBrainViewButton_1'), matlab.ui.eventdata.ButtonPushedData)
+        end
+        
+        ddat = tempDdat.ddat;
+
+        
+        % Load the "non followers" first
+        %lic(1)
+        initialize_anatomical;
+        
+        % First those that are synced to a different 
+        for index = 1:ddat.nViewer
+            lic(index)
+        end
+        
+        
+        %initial_display;
+        
+        set_subpopulation_quantities;
+        
+        set_contrast_quantities;
+        
+        % enable saving over the current file
+        set(findobj('tag', 'saveOpt'), 'enable', 'on');
+         
+        
+    end
+
+    function change_text_size(src, event)
+
+        % Ask user for new text size
+        newFontSize = inputdlg(['Current Font Size: ' num2str(ddat.textSize)], 'Font Size');
+
+        % Check for valid input
+        if isempty(newFontSize); return; end
+        if isempty(strtrim(newFontSize{1})); return; end
+        
+        % Make sure valid numeric input
+        newFontSize = str2num(newFontSize{1});
+        if isempty(newFontSize); return; end
+        
+        ddat.textSize = newFontSize;
+        
+        set(findall(gcf,'-property','FontSize'),'FontSize', ddat.textSize)
+    end
+
 
     %% 
     
@@ -1129,8 +1254,7 @@ end
     % This gets called when a new brain display is created
     % TODO choose type based on other current views
     function initialize_image_storage(index)
-           
-        
+          
         if ddat.isPreview
             imagePath = fullfile(ddat.outdir, '_iniIC_1.nii');
         else
@@ -1179,8 +1303,35 @@ end
         
     end
 
+    % If an anatomical file has been provided, then this loads it and sets
+    % up the anatomical image. Otherwise the mask file details are used to
+    % create an underlay
+    function initialize_anatomical
+        if isempty(ImageData.anatomicalFile)
+            newImg = zeros(ddat.voxSize);
+            newImg(ddat.validVoxels) = 1;
+            ImageData.anatomical{1} = newImg;
+        else
+            anatRaw = load_nii(anatfl);
+            ImageData.anatomical{1} = anatRaw.img;
+        end
+        
+        % If first initialization (not loading) this might be case
+        if ddat.nViewer == 0
+            ImageData.anatomicalAxiSlices{1} = ImageData.anatomical{1}(:, :, ceil(ddat.axiDim/2));
+            ImageData.anatomicalCorSlices{1} = squeeze(ImageData.anatomical{1}(:, ceil(ddat.corDim/2), :));
+            ImageData.anatomicalSagSlices{1} = squeeze(ImageData.anatomical{1}(ceil(ddat.sagDim/2), :, :));
+        end
+        
+        for index = 1:ddat.nViewer
+            ImageData.anatomicalAxiSlices{index} = ImageData.anatomical{1}(:, :, ddat.axiPos{index});
+            ImageData.anatomicalCorSlices{index} = squeeze(ImageData.anatomical{1}(:, ddat.corPos{index}, :));
+            ImageData.anatomicalSagSlices{index} = squeeze(ImageData.anatomical{1}(ddat.sagPos{index}, :, :));
+        end
+        
+    end
 
-    function temporary_initial_display
+    function initial_display
         
         
         if ddat.isPreview
@@ -1190,17 +1341,8 @@ end
         end
         imageRaw = load_nii(imagePath);
         
-        
-        anatfl = '/Users/joshlukemire/Documents/Research/cbis/project_hcica/softwaredev/HINT/test/testresources/brain.nii';
-        anatRaw = load_nii(anatfl);
-        ImageData.anatomical{1} = anatRaw.img;
-        ImageData.anatomicalAxiSlices{1} = anatRaw.img(:, :, 30);
-        ImageData.anatomicalCorSlices{1} = squeeze(anatRaw.img(:, 30, :));
-        ImageData.anatomicalSagSlices{1} = squeeze(anatRaw.img(30, :, :));
-        
-        [ddat.sagDim, ddat.corDim, ddat.axiDim] = size( anatRaw.img);
-        
-        
+        initialize_anatomical;
+
         add_default_brain_view;
         
          % get list of components
@@ -1208,32 +1350,32 @@ end
         
         initialize_image_storage(1);
         
-        %% Slider Setup
-        xslider_step(1) = 1/(ddat.sagDim);
-        xslider_step(2) = 1.00001/(ddat.sagDim);
-        set(findobj('Tag', 'SagSlider_1'), 'Min', 1, 'Max',ddat.sagDim, ...
-            'SliderStep',xslider_step,...
-            'Value',ddat.sagPos{1}); %%Sagittal Y-Z, adjust x direction
-        
-        yslider_step(1) = 1/(ddat.corDim);
-        yslider_step(2) = 1.00001/(ddat.corDim);
-        set(findobj('Tag', 'CorSlider_1'), 'Min', 1, 'Max',ddat.corDim, ...
-            'SliderStep', yslider_step,...
-            'Value',ddat.corPos{1}); %%Sagittal Y-Z, adjust x direction
-        
-        zslider_step(1) = 1/(ddat.axiDim);
-        zslider_step(2) = 1.00001/(ddat.axiDim);
-        set(findobj('Tag', 'AxiSlider_1'), 'Min', 1, 'Max',ddat.axiDim, ...
-            'SliderStep', zslider_step,...
-            'Value',ddat.axiPos{1}); %%Sagittal Y-Z, adjust x direction
-        
+%         %% Slider Setup
+%         xslider_step(1) = 1/(ddat.sagDim);
+%         xslider_step(2) = 1.00001/(ddat.sagDim);
+%         set(findobj('Tag', 'SagSlider_1'), 'Min', 1, 'Max',ddat.sagDim, ...
+%             'SliderStep',xslider_step,...
+%             'Value',ddat.sagPos{1}); %%Sagittal Y-Z, adjust x direction
+%         
+%         yslider_step(1) = 1/(ddat.corDim);
+%         yslider_step(2) = 1.00001/(ddat.corDim);
+%         set(findobj('Tag', 'CorSlider_1'), 'Min', 1, 'Max',ddat.corDim, ...
+%             'SliderStep', yslider_step,...
+%             'Value',ddat.corPos{1}); %%Sagittal Y-Z, adjust x direction
+%         
+%         zslider_step(1) = 1/(ddat.axiDim);
+%         zslider_step(2) = 1.00001/(ddat.axiDim);
+%         set(findobj('Tag', 'AxiSlider_1'), 'Min', 1, 'Max',ddat.axiDim, ...
+%             'SliderStep', zslider_step,...
+%             'Value',ddat.axiPos{1}); %%Sagittal Y-Z, adjust x direction
+%         
         
         %% end slider setup
         
         set_subpopulation_quantities;
         
         set_contrast_quantities;
-        
+         
         frc(1);
         
     end
