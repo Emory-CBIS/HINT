@@ -33,6 +33,8 @@ ddat.covariateNames = varargin{10};
 ddat.covariates = varargin{11};
 ddat.variableCodingInformation = varargin{12};
 ddat.isPreview = varargin{13};
+ddat.originator = varargin{14};
+
 
 % Some other useful quantities
 ddat.sagDim = ddat.voxSize(1);
@@ -209,7 +211,7 @@ end
         % EXPORTS
         exportMenu = uimenu('Label', 'Export');
         
-        SaveNii = uimenu(fileMenu, 'Label', 'Save to .nii',...
+        SaveNii = uimenu(exportMenu, 'Label', 'Save to .nii',...
             'tag', 'SaveNii',...
             'enable', 'on',...
             'Callback', @save_nifti_file);
@@ -518,6 +520,72 @@ end
     %% Toolbar functions - Export
     
     function save_nifti_file(src, event)
+        
+        % Get user input from gui
+        saveInfo = display_get_nifti_export_info(ddat.nViewer, ddat.currentViewerType, ddat.outdir);
+        
+        % check if user canceled request
+        if saveInfo.validRequest == false
+            return
+        end
+        
+        % Create space for the new nifti image
+        newNiftiImage = zeros(ddat.sagDim, ddat.corDim, ddat.axiDim, length(saveInfo.saveViews));
+        
+        % Construct each page of the new nifti file
+        for i = 1:length(saveInfo.saveViews)
+            index = saveInfo.saveViews(i);
+            
+            % If user has requested p-values then z-scores must be created
+            useZ = ddat.viewZScores{index};
+            if ~strcmp(saveInfo.mapTypeSelection, 'Output brain map');
+                if useZ == 0
+                    disp(['P-values were requested, converting map ' num2str(index) ' to Z-scores...'])
+                    useZ = 1;
+                end
+            end
+            
+            % This is the base image - either raw or Z, thresholded
+            newNiftiImage(:, :, :, i) = create_full_volume(ImageData.rawImages{index},...
+                ddat.thresholdVal{index},...
+                ImageData.imageScaleFactors{index},...
+                useZ,...
+                ImageData.maskingLayer{index}) ;
+            
+            % If user requested p-values, make the conversion
+            if ~strcmp(saveInfo.mapTypeSelection, 'Output brain map')
+                pvalues = newNiftiImage(:, :, :, i);
+                pvalues = pvalues(ddat.validVoxels);
+                % Construct p-values from Z-scores
+                pvalues = 2 * (1 - normcdf(abs(pvalues)));
+
+                % If user requested -log p-values, make the conversion
+                if strcmp(saveInfo.mapTypeSelection, 'Output -log p-value maps')
+                    pvalues = -1.0 * log(pvalues);
+                end
+                newNiiPage = zeros(ddat.voxSize);
+                newNiiPage(ddat.validVoxels) = pvalues;
+                newNiftiImage(:, :, :, i) = newNiiPage;
+            end
+            
+            
+        end
+        
+        % Create the corresponding nifti file
+        newNii = make_nii(newNiftiImage);
+        newNii.hdr.hist.originator = ddat.originator;
+        
+        % Write out
+        % First check if exports directory already exists
+        outputDir = fullfile(ddat.outdir, extractBefore(ddat.outpre, '/'), 'exports');
+        if not(isfolder(outputDir))
+            mkdir(outputDir);
+        end
+       
+        fname = fullfile(outputDir, saveInfo.filename );
+        save_nii(newNii, fname);
+        
+        
     end
 
 
@@ -622,44 +690,6 @@ end
     function eic(index);
         
         frc(index);
-        
-    end
-
-    function set_widget_visibility(index)
-        
-        % Start by turning all off
-        set(findobj('tag', ['CovSelectDropdown_' num2str(index)]), 'visible', 'off');
-        set(findobj('tag', ['VisitSelectDropdown_' num2str(index)]), 'visible', 'off');
-        set(findobj('tag', ['SubPopSelectDropdown_' num2str(index)]), 'visible', 'off');
-        set(findobj('tag', ['ContrastSelectDropdown_' num2str(index)]), 'visible', 'off');
-        
-        switch ddat.currentViewerType{index}
-            
-            case 'Population'
-   
-            case 'Covariate Effect'
-                set(findobj('tag', ['CovSelectDropdown_' num2str(index)]), 'visible', 'on');
-                if ddat.nVisit > 1
-                    set(findobj('tag', ['VisitSelectDropdown_' num2str(index)]), 'visible', 'on');
-                end
-            case 'Sub-Population'
-                if ddat.nVisit > 1
-                    set(findobj('tag', ['VisitSelectDropdown_' num2str(index)]), 'visible', 'on');
-                end
-                set(findobj('tag', ['SubPopSelectDropdown_' num2str(index)]), 'visible', 'on');
-            case 'Contrast'
-                set(findobj('tag', ['ContrastSelectDropdown_' num2str(index)]), 'visible', 'on');
-            case 'Preview'
-                set(findobj('tag', 'SubPopulationAddNew'), 'enable', 'off');
-                set(findobj('tag', 'SubPopulationRename'), 'enable', 'off');
-                set(findobj('tag', 'SubPopulationDelete'), 'enable', 'off');
-                set(findobj('tag', 'ContrastAddNew'), 'enable', 'off');
-                set(findobj('tag', 'ContrastRename'), 'enable', 'off');
-                set(findobj('tag', 'ContrastDelete'), 'enable', 'off');
-            otherwise
-                disp('Unrecognized viewer type')
-        end
-        
         
     end
 
@@ -807,7 +837,45 @@ end
         
     end
 
-    %%
+    %% Widget Values
+    
+    function set_widget_visibility(index)
+        
+        % Start by turning all off
+        set(findobj('tag', ['CovSelectDropdown_' num2str(index)]), 'visible', 'off');
+        set(findobj('tag', ['VisitSelectDropdown_' num2str(index)]), 'visible', 'off');
+        set(findobj('tag', ['SubPopSelectDropdown_' num2str(index)]), 'visible', 'off');
+        set(findobj('tag', ['ContrastSelectDropdown_' num2str(index)]), 'visible', 'off');
+        
+        switch ddat.currentViewerType{index}
+            
+            case 'Population'
+   
+            case 'Covariate Effect'
+                set(findobj('tag', ['CovSelectDropdown_' num2str(index)]), 'visible', 'on');
+                if ddat.nVisit > 1
+                    set(findobj('tag', ['VisitSelectDropdown_' num2str(index)]), 'visible', 'on');
+                end
+            case 'Sub-Population'
+                if ddat.nVisit > 1
+                    set(findobj('tag', ['VisitSelectDropdown_' num2str(index)]), 'visible', 'on');
+                end
+                set(findobj('tag', ['SubPopSelectDropdown_' num2str(index)]), 'visible', 'on');
+            case 'Contrast'
+                set(findobj('tag', ['ContrastSelectDropdown_' num2str(index)]), 'visible', 'on');
+            case 'Preview'
+                set(findobj('tag', 'SubPopulationAddNew'), 'enable', 'off');
+                set(findobj('tag', 'SubPopulationRename'), 'enable', 'off');
+                set(findobj('tag', 'SubPopulationDelete'), 'enable', 'off');
+                set(findobj('tag', 'ContrastAddNew'), 'enable', 'off');
+                set(findobj('tag', 'ContrastRename'), 'enable', 'off');
+                set(findobj('tag', 'ContrastDelete'), 'enable', 'off');
+            otherwise
+                disp('Unrecognized viewer type')
+        end
+        
+        
+    end
 
     function set_brain_slider_positions(index)
         set(findobj('Tag', ['SagSlider_' num2str(index)] ), 'Value', ddat.sagPos{index});
@@ -1399,33 +1467,11 @@ end
         
         initialize_image_storage(1);
         
-%         %% Slider Setup
-%         xslider_step(1) = 1/(ddat.sagDim);
-%         xslider_step(2) = 1.00001/(ddat.sagDim);
-%         set(findobj('Tag', 'SagSlider_1'), 'Min', 1, 'Max',ddat.sagDim, ...
-%             'SliderStep',xslider_step,...
-%             'Value',ddat.sagPos{1}); %%Sagittal Y-Z, adjust x direction
-%         
-%         yslider_step(1) = 1/(ddat.corDim);
-%         yslider_step(2) = 1.00001/(ddat.corDim);
-%         set(findobj('Tag', 'CorSlider_1'), 'Min', 1, 'Max',ddat.corDim, ...
-%             'SliderStep', yslider_step,...
-%             'Value',ddat.corPos{1}); %%Sagittal Y-Z, adjust x direction
-%         
-%         zslider_step(1) = 1/(ddat.axiDim);
-%         zslider_step(2) = 1.00001/(ddat.axiDim);
-%         set(findobj('Tag', 'AxiSlider_1'), 'Min', 1, 'Max',ddat.axiDim, ...
-%             'SliderStep', zslider_step,...
-%             'Value',ddat.axiPos{1}); %%Sagittal Y-Z, adjust x direction
-%         
-        
-        %% end slider setup
-        
         set_subpopulation_quantities;
         
         set_contrast_quantities;
          
-        frc(1);
+        lic(1);
         
     end
 
@@ -1962,7 +2008,8 @@ end
         maskedImage = create_mask_data(ImageData.rawImages{index},...
             ddat.thresholdVal{index},...
             ImageData.imageScaleFactors{index},...
-            ddat.viewZScores{index});
+            ddat.viewZScores{index},...
+            ImageData.maskingLayer{index});
         
         % Save the mask
         newNii = make_nii(maskedImage);
@@ -1973,13 +2020,18 @@ end
         
     end
 
-    function [thrImage] = create_mask_data(rawImage, thresholdLevel, scale, viewZ)
-        
+    function [fullImage] = create_full_volume(rawImage, thresholdLevel, scale, viewZ, mask) 
         if viewZ == 1
             newImage = rawImage ./ sqrt(scale);
         else
             newImage = rawImage;
         end
+        fullImage = newImage .* mask .* (abs(newImage) > thresholdLevel);
+    end
+
+    function [thrImage] = create_mask_data(rawImage, thresholdLevel, scale, viewZ, mask)
+        
+        newImage = create_full_volume(rawImage, thresholdLevel, scale, viewZ, mask);
         thrImage = 1.0 .* (abs(newImage) > thresholdLevel);
         
     end
@@ -2146,6 +2198,9 @@ end
             set(findobj('tag', ['BrainPanel_' num2str(newIndex)]),...
                 'Position', [0.0, tot 1.0 new_denom]);
             
+            set(findobj('tag', ['BrainViewPanel_' num2str(newIndex)]),...
+                'Title', ['Brain View: ' num2str(newIndex)]);
+            
             % Shift the corresponding ddat quantities
             ddat.axiPos{newIndex} = ddat.axiPos{altIndex};
             ddat.corPos{newIndex} = ddat.corPos{altIndex};
@@ -2202,7 +2257,7 @@ end
             ImageData.sagSlices{newIndex} = ImageData.sagSlices{altIndex};
             ImageData.maskingFile{newIndex}  = ImageData.maskingFile{altIndex};
             ImageData.maskingLayer{newIndex} = ImageData.maskingLayer{altIndex};
-
+            
         end        
         
     end

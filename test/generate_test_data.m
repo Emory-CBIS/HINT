@@ -346,17 +346,54 @@ for q = 1:Q
 end
 
 % Setup covariate table (some initialized to missing)
-Ages = 1:N; % something simple for testing
-Ages = Ages - mean(Ages);
+Scores = unifrnd(0, 2, N, 1); % something simple for testing
+Scores = (Scores - mean(Scores)); % center
+Scores = (Scores) / max(abs(Scores)); % scale
 GroupNum = [ones(N/2, 1); 2*ones(N/2, 1)];
-Groups = ["grpA"; "grpB"];
-variableNames = ["File", "Age", "Group"];
+Groups = ["HC"; "AD"];
+variableNames = ["File", "CogScore", "Group"];
 variableTypes = ["string", "double", "string"];
 covariates = table('Size', [N, P + 1],...
     'VariableNames', variableNames,...
     'VariableTypes', variableTypes);
 
 niipath = testdatapath;
+
+if not(isfolder(fullfile(testdatapath, 'CogAssessment')))
+    mkdir(fullfile(testdatapath, 'CogAssessment'))
+end
+
+%% Create the effects coded covariate matrix
+covariatesTemp = table('Size', [N, P],...
+    'VariableNames', variableNames(2:end),...
+    'VariableTypes', variableTypes(2:end));
+for i = 1:N
+    covariatesTemp(i, 1) = {Scores(i)};
+    covariatesTemp(i, 2) = {Groups( GroupNum(i) )};
+end
+covariateNamesTemp = covariatesTemp.Properties.VariableNames;
+covTypes           = [0 1];
+effectsCodingsEncoders = cell(1, length(covTypes));
+for p = 1:length(covTypes)
+    effectsCodingsEncoders{p} = generate_effects_coding(covariatesTemp{:, p});
+end
+% Create the corresponding model matrix
+weighted = true;
+unitScale = 1;
+cm = zeros(length(covariateNamesTemp), 1);
+sds = zeros(length(covariateNamesTemp), 1);
+for p = 1:length(covariateNamesTemp)
+    if covTypes(p) == 0
+        cm(p) = mean(covariatesTemp{:, p});
+        sds(p) = std(covariatesTemp{:, p});
+    end
+end
+covariateMeans = cm;
+covariateSDevs = sds;
+[X, varNamesX] = generate_model_matrix(covTypes, [1 1],...
+    covariatesTemp, effectsCodingsEncoders, unitScale, weighted,...
+    zeros(0, P), covariateNamesTemp, covariateMeans, covariateSDevs);
+
 
 % Create variance estimate files
 varEstDim = P;
@@ -366,11 +403,11 @@ varEst2 = ones( varEstDim, varEstDim, dx, dy, dz );
 % Save the data 
 % TODO create correct version of variance at each voxel using the true
 % sigmas
-fname1 = fullfile(testdatapath, 'testdata_crosssectional_set1_varianceest_IC1.mat');
-save(fname1, 'betaVarEst')
+% fname1 = fullfile(testdatapath, 'testdata_crosssectional_set1_varianceest_IC1.mat');
+% save(fname1, 'betaVarEst')
 
 % Create a mask file for this longitudinal example
-maskf = fullfile(niipath, 'testdata_crosssectional_set1_mask.nii');
+maskf = fullfile(niipath, 'CogAssessment', 'CogAssessment_mask.nii');
 mask = zeros(dx, dy, dz);
 mask(validVoxels) = 1;
 masknii = make_nii(mask);
@@ -395,7 +432,7 @@ for i = 1:N
     end
         
     % File path information for this subject
-    fname = fullfile(niipath, ['testdata_crosssectional_set1_subj_', num2str(i), '.nii']);
+    fname = fullfile(niipath, 'CogAssessment', ['CogAssessment_subj_', num2str(i), '.nii']);
     covariates(i, 1) = {fname};
 
     % Create this subject's mixing matrix
@@ -445,60 +482,9 @@ for i = 1:N
 end
 
 % Store the csv file for loading
-writetable(covariates, fullfile(niipath, ['testdata_crosssectional_set1_covariates.csv']));
+writetable(covariates, fullfile(niipath, 'CogAssessment', 'CogAssessment_covariates.csv'));
 
 % Save relevant test quantities/parameters/etc
-fname = fullfile(niipath, ['testdata_crosssectional_set1_truevals.mat']);
+fname = fullfile(niipath, 'CogAssessment', 'CogAssessment_truevals.mat');
 save(fname, 'Ytilde', 'sigma1sq', 'sigma2sq', 's0', 'beta1', 'beta2');
-
-
-
-
-
-% 
-% 
-% 
-% 
-% N = 10;
-% J = 1;
-% T = 30;
-% Ages = 1:10; % something simple for testing
-% GroupNum = [ones(5, 1); 2*ones(5, 1)];
-% Groups = ["grpA"; "grpB"];
-% variableNames = ["Filepaths", "Age", "Group"];
-% variableTypes = ["string", "double", "string"];
-% covariates = table('Size', [N, J + 2],...
-%     'VariableNames', variableNames,...
-%     'VariableTypes', variableTypes);
-% 
-% niipath = testdatapath;
-% 
-% % Create a mask file for the toy example
-% maskf = fullfile(niipath, 'testdata_crosssectional_set1_mask.nii');
-% mask = zeros(10, 10, 5);
-% mask(2:9, 2:9, 2:4) = 1;
-% masknii = make_nii(mask);
-% save_nii(masknii, maskf);
-% 
-% for i = 1:N
-%         fname = fullfile(niipath, ['testdata_crosssectional_set1_subj_', num2str(i), '.nii']);
-%         covariates(i, 1) = {fname};
-%         % Create a toy nifti file (we are just testing ability to load)
-%         toynifti = rand(10, 10, 5, T) .* mask;
-%         toynii = make_nii(toynifti);
-%         save_nii(toynii, fname);
-%     covariates(i, J+1) = {Ages(i)};
-%     covariates(i, J+2) = {Groups( GroupNum(i) )};
-% end
-% 
-% % Store the csv file for loading
-% writetable(covariates, fullfile(niipath, 'testdata_crosssectional_set1_covariates.csv'));
-% 
-% 
-% 
-
-
-
-
-
 
