@@ -149,7 +149,7 @@ weighted = true;
 unitScale = 1;
 cm = zeros(length(covariateNamesTemp), 1);
 sds = zeros(length(covariateNamesTemp), 1);
-for p = 1:length(covariateNames)
+for p = 1:length(covariateNamesTemp)
     if covTypes(p) == 0
         cm(p) = mean(covariatesTemp{:, p});
         sds(p) = std(covariatesTemp{:, p});
