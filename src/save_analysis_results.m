@@ -14,7 +14,11 @@ waitSave = waitbar(0,'Please wait while the results are saved');
 
 % Save a file with the subject level IC map information
 subjFilename = [path prefix '_subject_IC_estimates.mat'];
+
 subICmean = data.subICmean;
+if data.nVisit == 1
+    subICmean = permute(subICmean, [1, 3, 2]);
+end
 save(subjFilename, 'subICmean');
 
 waitbar(1 / (2+data.qstar))
@@ -102,7 +106,7 @@ for i=1:data.qstar
         nullAggregateMatrix(locs) = 0.0;
         for j=1:data.N
             nullAggregateMatrix(locs) = nullAggregateMatrix(locs) +...
-                1/data.N * squeeze(subICmean(i,j,:));
+                1/data.N * squeeze(subICmean(i,:, j))';
         end
         gfilename = [prefix '_aggregateIC_' num2str(i) '_visit1.nii'];
         nii = make_nii(nullAggregateMatrix);

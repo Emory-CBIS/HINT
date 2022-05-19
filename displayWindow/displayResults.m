@@ -36,11 +36,12 @@ ddat.isPreview = varargin{13};
 ddat.originator = varargin{14};
 
 
+ddat.N = size(ddat.covariates, 1);
+
 % Some other useful quantities
 ddat.sagDim = ddat.voxSize(1);
 ddat.corDim = ddat.voxSize(2);
 ddat.axiDim = ddat.voxSize(3);
-
 
 % Menu settings
 ddat.textSize = 10;
@@ -114,6 +115,15 @@ ddat.currentContrast = cell(0);
 ddat.contrastNames = cell(0);
 ddat.contrastCoefSettings = cell(0);
 ddat.contrastBeingEdited = 1;
+
+% Subjects
+ddat.currentSubject = cell(0);
+% This holds all 3 visits of the currently loaded subject's data for each
+% viewer. Only actually needed for the trajectory view
+ddat.currentSubjectMatData = cell(0);
+
+% Specific Linear combination to get the mean at each time point
+ddat.LCPopAvgTime = [ones(ddat.nVisit, 1) [-1.0 * ones(1, ddat.nVisit-1); eye(ddat.nVisit-1)] zeros(ddat.nVisit, ddat.P*ddat.nVisit)];
 
 % Effect names depend on if this is a longtidinal study or not
 if ddat.nVisit > 1
@@ -221,6 +231,7 @@ end
         % other primary panels are placed on it, so that it can be
         % shrunk/expanded as needed
         
+       
         % Primary Panels (layout)
         
         DefaultPanel = uipanel('BackgroundColor','white',...
@@ -239,12 +250,37 @@ end
             'Position',[0.0, 0.0 0.3 1.0], ...;
             'BackgroundColor',get(hs.fig,'color'));
         
+        %% Contrast and sub population Tab group:
+        CSPTabGroup = uitabgroup('Parent', ControlsPanel,...
+            'Tag','CSPTabGroup',...
+            'units', 'normalized',...
+            'Position',[0.0, 0.50000 1.0 0.5])
+        CSPTabGroupTabSubpop = uitab('Parent', CSPTabGroup,...
+            'Tag','CSPTabGroupTabSubpop',...
+            'Title', 'Sub-Populations');
+        CSPTabGroupTabContrast = uitab('Parent', CSPTabGroup,...
+            'Tag','CSPTabGroupTabContrast',...
+            'Title', 'Contrasts');
+        
+         %% Additional Information Tab Group
+        AddInfoTabGroup = uitabgroup('Parent', ControlsPanel,...
+            'Tag','AddInfoTabGroup',...
+            'units', 'normalized',...
+            'Position',[0.0, 0.0 1.0 0.499])
+        AddInfoTabGroupTraj = uitab('Parent', AddInfoTabGroup,...
+            'Tag','AddInfoTabGroupTraj',...
+            'Title', 'Trajectories');
+        %CSPTabGroupTabContrast = uitab('Parent', AddInfoTabGroup,...
+        %    'Tag','CSPTabGroupTabContrast',...
+        %    'Title', 'Contrasts');
+        
+        
         %% Sub population Panel
         SubPopulationPanel = uipanel('BackgroundColor',get(hs.fig,'color'),...
             'units', 'normalized',...
-            'Parent', ControlsPanel,...
+            'Parent', CSPTabGroupTabSubpop,...
             'Tag', 'SubPopulationPanel',...
-            'Position',[0.0, 0.0 1.0 0.5], ...
+            'Position',[0.0, 0.0 1.0 1.0], ...
             'Title', 'Subpopulation Specification');
         
         SubPopulationSpecificationSubpanel = uipanel('BackgroundColor',get(hs.fig,'color'),...
@@ -299,9 +335,9 @@ end
         %% Contrast Panel
         ContrastPanel = uipanel('BackgroundColor',get(hs.fig,'color'),...
             'units', 'normalized',...
-            'Parent', ControlsPanel,...
+            'Parent', CSPTabGroupTabContrast,...
             'Tag', 'ContrastPanel',...
-            'Position',[0.0, 0.50000 1.0 0.5], ...
+            'Position',[0.0, 0.0 1.0 1.0], ...
             'Title', 'Contrast Specification');
         
         ContrastSpecificationSubpanel = uipanel('BackgroundColor',get(hs.fig,'color'),...
@@ -363,31 +399,32 @@ end
         % points/visits
         TrajectoryPanel = uipanel('BackgroundColor',get(hs.fig,'color'),...
             'units', 'normalized',...
-            'Parent', ControlsPanel,...
+            'Parent', AddInfoTabGroupTraj,...
             'Tag', 'TrajectoryPanel',...
-            'Position',[0.0, 0.5 1.0 0.5], ...
+            'Position',[0.0, 0.0 1.0 1.0], ...
             'Title', 'Trajectory View',...
-            'visible', 'off');
+            'visible', 'on');
         
         TrajAxesAvg = axes('Parent', TrajectoryPanel, ...
             'units', 'normalized',...
-            'Position',[.05 .525 0.425 0.425],...
+            'Position',[.1 .6 0.35 0.35],...
             'Tag', 'TrajAxesAvg' ); %#ok<NASGU>
         
         TrajAxesCov = axes('Parent', TrajectoryPanel, ...
             'units', 'normalized',...
-            'Position',[.05 .05 0.425 0.425],...
+            'Position',[.1 .1 0.35 0.35],...
             'Tag', 'TrajAxesCov' ); %#ok<NASGU>
         
         TrajAxesSubpop = axes('Parent', TrajectoryPanel, ...
             'units', 'normalized',...
-            'Position',[.525 .525 0.425 0.425],...
+            'Position',[.55 .6 0.35 0.35],...
             'Tag', 'TrajAxesSubpop' ); %#ok<NASGU>
         
         TrajAxesSubj = axes('Parent', TrajectoryPanel, ...
             'units', 'normalized',...
-            'Position',[.525 .05 0.425 0.425],...
+            'Position',[.55 .1 0.35 0.35],...
             'Tag', 'TrajAxesSubj' ); %#ok<NASGU>
+       
         
         movegui(hs.fig, 'center')
         
@@ -766,6 +803,17 @@ end
             case 'Preview'
                 imagePath = fullfile(ddat.outdir, ['_iniIC_' num2str(ddat.currentIC{index}) '.nii']);
                 imageRaw = load_nii(imagePath);
+            case 'Single Subject'
+                disp('Creating subjects data...')
+                fname = fullfile(ddat.outdir, [ddat.outpre, '_subject_IC_estimates' '.mat']);
+                subjectData = load(fname);
+                imagePath = '';
+                ddat.currentSubjectMatData{index} = squeeze(subjectData.subICmean(:, :, ddat.currentSubject{index}, :));
+                imageRaw = struct();
+                imageRaw.img = zeros(size(ImageData.anatomical{1}));
+                imageRaw.img(ddat.validVoxels) = squeeze(...
+                    subjectData.subICmean(ddat.currentIC{index}, :, ddat.currentSubject{index},...
+                    ddat.currentVisit{index}));
             otherwise
                     disp('Unrecognized viewer type')
         end
@@ -823,6 +871,8 @@ end
                 end
             case 'Preview'
                 ImageData.imageScaleFactors{index} = std(ImageData.rawImages{index}(ddat.validVoxels));
+            case 'Single Subject'
+                ImageData.imageScaleFactors{index} = std(ImageData.rawImages{index}(ddat.validVoxels));
             otherwise
                 disp('Unrecognized viewer type')
         end
@@ -846,6 +896,7 @@ end
         set(findobj('tag', ['VisitSelectDropdown_' num2str(index)]), 'visible', 'off');
         set(findobj('tag', ['SubPopSelectDropdown_' num2str(index)]), 'visible', 'off');
         set(findobj('tag', ['ContrastSelectDropdown_' num2str(index)]), 'visible', 'off');
+        set(findobj('tag', ['SubjectSelectDropdown_' num2str(index)]), 'visible', 'off');
         
         switch ddat.currentViewerType{index}
             
@@ -863,6 +914,11 @@ end
                 set(findobj('tag', ['SubPopSelectDropdown_' num2str(index)]), 'visible', 'on');
             case 'Contrast'
                 set(findobj('tag', ['ContrastSelectDropdown_' num2str(index)]), 'visible', 'on');
+            case 'Single Subject'
+                set(findobj('tag', ['SubjectSelectDropdown_' num2str(index)]), 'visible', 'on');
+                if ddat.nVisit > 1
+                    set(findobj('tag', ['VisitSelectDropdown_' num2str(index)]), 'visible', 'on');
+                end
             case 'Preview'
                 set(findobj('tag', 'SubPopulationAddNew'), 'enable', 'off');
                 set(findobj('tag', 'SubPopulationRename'), 'enable', 'off');
@@ -913,6 +969,14 @@ end
             newstring{q} = strcat('IC ', num2str(q));
         end
         set(findobj('Tag', ['ICSelectDropdown_' num2str(index)]), 'String', newstring);
+    end
+
+    function setup_subject_select_dropdown(index);
+        newstring = cell(ddat.N, 1);
+        for i = 1:ddat.N
+            newstring{i} = strcat('Subject ', num2str(i));
+        end
+        set(findobj('Tag', ['SubjectSelectDropdown_' num2str(index)]), 'String', newstring);
     end
 
     %% Functions related to sub-population specification
@@ -1354,18 +1418,131 @@ end
         % No need to do this if not a longitudinal study
         if ddat.nVisit == 1; return; end
         
-        for index = 1:length(ddat.nViewer)
+                
+        % Reset the plots
+        delete(findobj('tag', 'TrajAxesAvg').Children);
+        delete(findobj('tag', 'TrajAxesCov').Children);
+        delete(findobj('tag', 'TrajAxesSubpop').Children);
+        delete(findobj('tag', 'TrajAxesSubj').Children);
+
+        % Legends for each plot
+        popAvgLegend    = cell(0);
+        covLegend       = cell(0);
+        subpopLegend    = cell(0);
+        subjLegend    = cell(0);
+        
+        colorOptions = lines(ddat.nViewer);
+        
+        for index = 1:ddat.nViewer
             
             switch ddat.currentViewerType{index}
                 case 'Sub-Population'
                     
-                    % Add a line to the sub-population viewer
-                    xxx=1;
+                    % Make sure sub populations have been defined
+                    if isempty( ddat.subpopNames )
+                        continue;
+                    end
+                    
+                    ind1 = sub2ind(ddat.voxSize, ddat.sagPos{index}, ddat.corPos{index}, ddat.axiPos{index});
+                    % Corresponding element of "validVoxels"
+                    vvInd = find(ddat.validVoxels == ind1);
+                    modelMatrix = ddat.subpopModelMats{ddat.currentSubpop{index}};
+                    est =  modelMatrix * ImageData.CoefEsts{ddat.currentIC{index}}(:, vvInd);
+                    
+                    if ~isempty(est)
+                        line(findobj('tag', 'TrajAxesSubpop'),...
+                            1:ddat.nVisit,...
+                            est,...
+                            'color', colorOptions(index, :))
+                        
+                        % Append to legend
+                        subpopLegend = [subpopLegend, ['Brain View: ', num2str(index)]];
+                    end
+                    
+                case 'Population'
+                                                            
+                    % Index of 3d brain
+                    ind1 = sub2ind(ddat.voxSize, ddat.sagPos{index}, ddat.corPos{index}, ddat.axiPos{index});
+                    % Corresponding element of "validVoxels"
+                    vvInd = find(ddat.validVoxels == ind1);
+                                        
+                    est = ddat.LCPopAvgTime * ImageData.CoefEsts{ddat.currentIC{index}}(:, vvInd);
+
+                    % Plot
+                    if ~isempty(est)
+                        line(findobj('tag', 'TrajAxesAvg'),...
+                            1:ddat.nVisit,...
+                            est,...
+                            'color', colorOptions(index, :))
+                        
+                        % Append to legend
+                        popAvgLegend = [popAvgLegend, ['Brain View: ', num2str(index)]];
+                    end
+                    
+                case 'Covariate Effect'
+                    
+                    ind1 = sub2ind(ddat.voxSize, ddat.sagPos{index}, ddat.corPos{index}, ddat.axiPos{index});
+                    % Corresponding element of "validVoxels"
+                    vvInd = find(ddat.validVoxels == ind1);
+                          
+                    covariateIndices = ddat.nVisit + ddat.currentCov{index};
+                    covariateIndices = covariateIndices:ddat.P:(ddat.nVisit*ddat.P+ddat.nVisit)
+                    est = ImageData.CoefEsts{ddat.currentIC{index}}(covariateIndices, vvInd);
+                    
+                    % Plot
+                    if ~isempty(est)
+                        line(findobj('tag', 'TrajAxesCov'),...
+                            1:ddat.nVisit,...
+                            est,...
+                            'color', colorOptions(index, :))
+                        
+                        % Append to legend
+                        covLegend = [covLegend, ['Cov: ' ddat.varNamesX{index} ', Brain View: ', num2str(index)]];
+                    end
+                
+                case 'Single Subject'
+                    ind1 = sub2ind(ddat.voxSize, ddat.sagPos{index}, ddat.corPos{index}, ddat.axiPos{index});
+                    % Corresponding element of "validVoxels"
+                    vvInd = find(ddat.validVoxels == ind1);
+                    
+                    est = squeeze(ddat.currentSubjectMatData{index}(ddat.currentIC{index}, vvInd, :));
+                    
+                    if ~isempty(est)
+                        line(findobj('tag', 'TrajAxesSubj'),...
+                            1:ddat.nVisit,...
+                            est,...
+                            'color', colorOptions(index, :))
+                        
+                        % Append to legend
+                        subjLegend = [subjLegend, ['Subj: ' num2str(ddat.currentSubject{index}) ', Brain View: ', num2str(index)]];
+                    end
+                    
                 otherwise
             end
             
         end
         
+        % Update all legends/titles etc
+        legend(findobj('tag', 'TrajAxesAvg'), popAvgLegend);
+        legend(findobj('tag', 'TrajAxesCov'), covLegend);
+        legend(findobj('tag', 'TrajAxesSubpop'), subpopLegend);
+        legend(findobj('tag', 'TrajAxesSubj'), subjLegend);
+        
+        title(findobj('tag', 'TrajAxesAvg'), 'Population Average');
+        title(findobj('tag', 'TrajAxesCov'), 'Covariate Effects');
+        title(findobj('tag', 'TrajAxesSubpop'), 'Subpopulations');
+        title(findobj('tag', 'TrajAxesSubj'), 'Selected Subjects');
+        
+        xlabel(findobj('tag', 'TrajAxesAvg'), 'Visit');
+        xlabel(findobj('tag', 'TrajAxesCov'), 'Visit');
+        xlabel(findobj('tag', 'TrajAxesSubpop'), 'Visit');
+        xlabel(findobj('tag', 'TrajAxesSubj'), 'Visit');
+        
+        xticks(findobj('tag', 'TrajAxesAvg'), 1:ddat.nVisit)
+        xticks(findobj('tag', 'TrajAxesCov'), 1:ddat.nVisit)
+        xticks(findobj('tag', 'TrajAxesSubpop'), 1:ddat.nVisit)
+        xticks(findobj('tag', 'TrajAxesSubj'),   1:ddat.nVisit)
+                
     end
 
     % This gets called when a new brain display is created
@@ -1773,6 +1950,12 @@ end
         lic(index);
     end
 
+    function select_subject(src, event)
+        index = str2double(extractAfter(src.Tag, '_'));
+        ddat.currentSubject{index} = src.Value;
+        lic(index);
+    end
+
     function toggle_zscore_checkbox(src, event)
         index = str2double(extractAfter(src.Tag, '_'));
         ddat.viewZScores{index} = src.Value;
@@ -2087,6 +2270,9 @@ end
         
         ddat.currentCov{index} = 1;
         
+        ddat.currentSubject{index} = 1;
+        ddat.currentSubjectMatData{index} = [];
+        
         ddat.viewZScores{index} = 0;
         
         create_new_brain_view_gui_components(index);
@@ -2094,6 +2280,8 @@ end
         ddat.nViewer = ddat.nViewer + 1;
         
         setup_IC_select_dropdown(index);
+        
+        setup_subject_select_dropdown(index);
         
         if index > 1
             ddat.colorbarScheme{index} = ddat.colorbarScheme{1};
@@ -2220,6 +2408,8 @@ end
             ddat.currentVisit{newIndex}  = ddat.currentVisit{altIndex};
             ddat.currentSubpop{newIndex}  = ddat.currentSubpop{altIndex};
             ddat.currentContrast{newIndex}  = ddat.currentContrast{altIndex};
+            ddat.currentSubject{newIndex}  = ddat.currentSubject{altIndex};
+            ddat.currentSubjectMatData{newIndex} = ddat.currentSubjectMatData{altIndex};
             
             % Syncing
             ddat.isSynced{newIndex} = ddat.isSynced{altIndex};
@@ -2488,6 +2678,15 @@ end
                 'String', 'Select Sub-population',...
                 'Callback', @select_subpop);
             
+            SubjectSelectDropdown = uicontrol('Parent', ImageSelectionPanel,...
+                'Style', 'popupmenu', ...
+                'Units', 'Normalized', ...
+                'Position', [0.05, 0.26, 0.40, 0.22], ...
+                'Tag', ['SubjectSelectDropdown_' num2str(index)],...
+                'visible', 'off',...
+                'String', 'Select Subject',...
+                'Callback', @select_subject);
+            
             ICSelectDropdown = uicontrol('Parent', ImageSelectionPanel,...
                 'Style', 'popupmenu', ...
                 'Units', 'Normalized', ...
@@ -2501,7 +2700,7 @@ end
                 'Units', 'Normalized', ...
                 'Position', [0.05, 0.74, 0.40, 0.22], ...
                 'Tag', ['viewerTypeDropdown_' num2str(index)],...
-                'String', {'Population', 'Sub-Population', 'Covariate Effect', 'Contrast'},...
+                'String', {'Population', 'Sub-Population', 'Covariate Effect', 'Contrast', 'Single Subject'},...
                 'Callback', @change_viewer_type);
             
             % Tweak for preview
@@ -2639,7 +2838,7 @@ end
                 'Style', 'Text', ...
                 'Units', 'Normalized', ...
                 'BackgroundColor','white',...
-                'Position', [0.90, 0.4, 0.08, 0.2], ...
+                'Position', [0.90, 0.45, 0.08, 0.1], ...
                 'Tag', ['valAtVoxelBox_' num2str(index)]);
             
             
