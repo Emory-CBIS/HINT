@@ -21,7 +21,7 @@ global analysisPrefix;
 myfont = 'default';
 
 if ispc
-    myfont = 'default';
+    myfont = 7;
 elseif ismac
     myfont = 12;
 end
@@ -31,6 +31,9 @@ hs = findall(0,'tag','hcica');
 if (isempty(hs))
     hs = addcomponents;
     set(hs.fig,'Visible','on');
+    if ispc
+        set(findall(gcf,'-property','FontSize'),'FontSize', myfont);
+    end
 else
     figure(hs);
 end
