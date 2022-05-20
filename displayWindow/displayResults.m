@@ -306,13 +306,13 @@ end
         CSPTabGroup = uitabgroup('Parent', ControlsPanel,...
             'Tag','CSPTabGroup',...
             'units', 'normalized',...
-            'Position',[0.0, 0.50000 1.0 0.5])
+            'Position',[0.0, 0.50000 1.0 0.5]);
         CSPTabGroupTabSubpop = uitab('Parent', CSPTabGroup,...
             'Tag','CSPTabGroupTabSubpop',...
             'Title', 'Sub-Populations');
         CSPTabGroupTabContrast = uitab('Parent', CSPTabGroup,...
             'Tag','CSPTabGroupTabContrast',...
-            'Title', 'Contrasts');
+            'Title', 'Linear Combinations');
         
          %% Additional Information Tab Group
         AddInfoTabGroup = uitabgroup('Parent', ControlsPanel,...
@@ -393,7 +393,7 @@ end
             'Parent', CSPTabGroupTabContrast,...
             'Tag', 'ContrastPanel',...
             'Position',[0.0, 0.0 1.0 1.0], ...
-            'Title', 'Contrast Specification');
+            'Title', 'Linear Combination Specification');
         
         ContrastSpecificationSubpanel = uipanel('BackgroundColor',get(hs.fig,'color'),...
             'units', 'normalized',...
@@ -908,7 +908,7 @@ end
                     '_visit' num2str(ddat.currentVisit{index})...
                     '.nii']);
                 imageRaw = load_nii(imagePath);
-            case 'Contrast'
+            case 'Linear Combination'
                 % Placeholder until contrast is selected
                 imagePath = '';
                 % Handle case where no contrast is specified
@@ -982,7 +982,7 @@ end
                     ddat.currentCov{index};
                 ImageData.imageScaleFactors{index}(ddat.validVoxels) =...
                     ImageData.VarCov{ddat.currentIC{index}}(varCovInd, varCovInd, :);
-            case 'Contrast'
+            case 'Linear Combination'
                 if ~isempty( ddat.contrastNames )
                     ImageData.imageScaleFactors{index}(ddat.validVoxels) =...
                         squeeze(mtimesx(...
@@ -1057,7 +1057,7 @@ end
                     set(findobj('tag', ['VisitSelectDropdown_' num2str(index)]), 'visible', 'on');
                 end
                 set(findobj('tag', ['SubPopSelectDropdown_' num2str(index)]), 'visible', 'on');
-            case 'Contrast'
+            case 'Linear Combination'
                 set(findobj('tag', ['ContrastSelectDropdown_' num2str(index)]), 'visible', 'on');
             case 'Single Subject'
                 set(findobj('tag', ['SubjectSelectDropdown_' num2str(index)]), 'visible', 'on');
@@ -1403,7 +1403,7 @@ end
         %% Part 2 - The edit window for selected contrast
                         
         if ddat.contrastBeingEdited > length(ddat.contrastNames)
-            newTitle = 'No contrast selected';
+            newTitle = 'No combination selected';
             set(findobj('tag', 'ContrastSpecificationTable'), 'enable', 'off');
             set(findobj('tag', 'ContrastSpecificationTable'), 'data', {});
         else
@@ -1412,7 +1412,7 @@ end
             newData = ddat.defaultContrastTableData;
             newData(:, 2) = num2cell(ddat.contrastCoefSettings{ddat.contrastBeingEdited});            
             set(findobj('tag', 'ContrastSpecificationTable'), 'data', newData);
-            set(findobj('tag', 'ContrastSpecificationTable'), 'ColumnName', {'Parameter', 'Contrast Coefficient'});
+            set(findobj('tag', 'ContrastSpecificationTable'), 'ColumnName', {'Parameter', 'Coefficient'});
         end
         set(findobj('tag', 'ContrastSpecificationSubpanel'), 'title', newTitle);
         
@@ -1427,7 +1427,7 @@ end
     function add_new_contrast_to_listbox(src, event)
         currentContrasts = ddat.contrastNames;
         % Code below is to generate a temporary name for the contrast
-        newContrastString = 'Contrast ';
+        newContrastString = 'LC ';
         isUnique = 0;
         counter = 1;
         while isUnique == 0
@@ -1451,7 +1451,7 @@ end
         index = get(findobj('tag', 'ContrastListbox'), 'Value');
         
         % Ask user for new sub-population name
-        newName = inputdlg('Input Name For Contrast', 'Name Contrast');
+        newName = inputdlg('Input Name For Linear Combination', 'Name Linear Combination');
 
         if isempty(newName); return; end
         if isempty(strtrim(newName{1})); return; end
@@ -1461,7 +1461,7 @@ end
         % Make sure name does not already exist
         indexMatch = strcmpi(ddat.contrastNames, newName);
         if ~isempty(find(indexMatch, 1))
-            disp('Cannot change contrast name. Requested contrast name is already in use.');
+            disp('Cannot change name. Requested name is already in use.');
             return
         end
         
@@ -1501,7 +1501,7 @@ end
                 if selectedContrast > 1
                     ddat.currentContrast{index} = ddat.currentContrast{index} - 1;
                 end
-                if strcmp(ddat.currentViewerType{index}, 'Contrast')
+                if strcmp(ddat.currentViewerType{index}, 'Linear Combination')
                     lic(index)
                 end
             end
@@ -1531,7 +1531,7 @@ end
             ddat.contrastCoefSettings{ddat.contrastBeingEdited}(covEdited) = newValue;
 
             for index = 1:ddat.nViewer
-                if strcmpi(ddat.currentViewerType{index}, 'Contrast')
+                if strcmpi(ddat.currentViewerType{index}, 'Linear Combination')
                     if ddat.currentContrast{index} == ddat.contrastBeingEdited
                         lic(index)
                     end
@@ -2130,11 +2130,14 @@ end
         anatImg = imshow(ImageData.anatomicalAxiSlices{index},  'Parent', ax1);
         set(ax1, 'tag', ['AnatAxiAxes_' num2str(index)]);
         %if isempty(ax2.Children)
+                delete(ax2.Children)
+
             funcImg = imshow(ImageData.axiSlices{index}, 'Parent', ax2);
 %             set(funcImg, 'Tag', ['AnatAxiImage_' num2str(index)]);
 %         else
 %             set(findobj('tag', ['AnatAxiImage_' num2str(index)]), 'CData', ImageData.axiSlices{index});
 %         end
+
         set(ax2, 'tag', ['AxiAxes_' num2str(index)]);
         set(funcImg,'ButtonDownFcn', {@update_selected_voxel, index} )
         %set(findobj('tag', ['AnatAxiImage_' num2str(index)]),'ButtonDownFcn', {@update_selected_voxel, index} )
@@ -2160,8 +2163,10 @@ end
         anatImg = imshow( rot90(ImageData.anatomicalSagSlices{index}),  'Parent', ax1);
         set(ax1, 'tag', ['AnatSagAxes_' num2str(index)]);
         funcSliceRotated = rot90(ImageData.sagSlices{index});
+        % Clear child image
+        delete(ax2.Children)
         %if isempty(ax2.Children)
-            funcImg = imshow(funcSliceRotated, 'Parent', ax2);
+        funcImg = imshow(funcSliceRotated, 'Parent', ax2);
         %    set(funcImg, 'Tag', ['AnatSagImage_' num2str(index)]);
         %else
         %    set(findobj('tag', ['AnatSagImage_' num2str(index)]), 'CData', funcSliceRotated);
@@ -2194,6 +2199,7 @@ end
         funcSliceRotated = rot90(ImageData.corSlices{index});
         %funcImg = imshow(funcSliceRotated, 'Parent', ax2);
         %if isempty(ax2.Children)
+                delete(ax2.Children)
             funcImg = imshow(funcSliceRotated, 'Parent', ax2);
         %    set(funcImg, 'Tag', ['AnatCorImage_' num2str(index)])
         %else
@@ -2232,7 +2238,7 @@ end
         % Make fill the axes it is plotted to
         % Changing width also moves the plot side to side. Try centering first if
         % this does not work.
-        ax.Position = [-4.6 0.2 5.0 0.9];
+        ax.Position = [-4.6 0.2 5.0 0.7];
         %set(ax, 'tag', ['colorMap_' num2str(index)]);
         
         % Show correct map in dropdown menu
@@ -2259,7 +2265,7 @@ end
             src.String = num2str(ddat.thresholdVal{index});
         else
             ddat.thresholdVal{index} = abs(newVal);
-            frc(1);
+            frc(index);
         end
     end
 
@@ -3072,7 +3078,7 @@ end
                 'Units', 'Normalized', ...
                 'Position', [0.05, 0.74, 0.40, 0.22], ...
                 'Tag', ['viewerTypeDropdown_' num2str(index)],...
-                'String', {'Population', 'Sub-Population', 'Covariate Effect', 'Contrast', 'Single Subject'},...
+                'String', {'Population', 'Sub-Population', 'Covariate Effect', 'Linear Combination', 'Single Subject'},...
                 'Callback', @change_viewer_type);
             
             % Tweak for preview

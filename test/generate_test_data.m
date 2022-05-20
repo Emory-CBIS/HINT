@@ -32,7 +32,7 @@ sigmasq3z = [0.5 0.1; 0.4 0.1; 0.3 0.1];
 % (column). Note that this will not be the strength of the final map, which
 % is scaled by multiplying by the magnitude of the region mask (which is
 % scaled between 0 and 1)
-beta_magnitude = [1.0 1.0; 1.0 1.0; 1.0 1.0];
+beta_magnitude = [1.5 1.5; 1.5 1.5; 1.5 1.5];
 alpha_magnitude = [1.0; 1.0; 1.0];
 
 % List of the NIFTI files used to generate the different ICs
@@ -84,12 +84,12 @@ for q = 1:Q
     for j = 1:J
         beta1q = load_nii(Beta1files{q});
         beta1qvec = beta1q.img(validVoxels);
-        beta1qvec = beta1qvec * beta_magnitude(q, 1) * j;
+        beta1qvec = beta1qvec * beta_magnitude(q, 1);
         beta1(q, :, j) = beta1qvec;
 
         beta2q = load_nii(Beta2files{q, 1});
         beta2qvec = beta2q.img(validVoxels);
-        beta2qvec = beta2qvec * beta_magnitude(q, 2) * j;
+        beta2qvec = beta2qvec * beta_magnitude(q, 2);
         beta2_1(q, :, j) = beta2qvec;
         
         beta2q = load_nii(Beta2files{q, 2});
@@ -221,7 +221,7 @@ for i = 1:N
         
         % Create this subjects IC maps (Sij)
         Sij = s0 + vis2*squeeze(alpha(:, :, 2)) + vis3*squeeze(alpha(:, :, 3)) + ...
-            squeeze(X(i, 1)*beta1(:, :, j)) + squeeze(X(i, 2)*beta2_1(:, :, j)) + squeeze(X(i, 3)*beta2_2(:, :, j)) + ...
+            squeeze(X(i, 1)*beta1(:, :, j)) + squeeze((X(i, 2) > 0)*beta2_1(:, :, j)) + squeeze((X(i, 3) > 0)*beta2_2(:, :, j)) + ...
             level2errors(:, :, i, j);
         
         % Generate the prewhitened time series for this subject
@@ -308,7 +308,7 @@ sigma2sq = [0.1; 0.5; 0.7];
 
 % Specification of the MoG terms. First column is the active 
 % setting and second is the background noise
-mu3z      = [3.0 0.0; 3.5 0.0; 3.0 0.0];
+mu3z      = [6.0 0.0; 6.5 0.0; 6.0 0.0];
 sigmasq3z = [0.5 0.1; 0.4 0.1; 0.3 0.1];
 
 % This is the raw beta magnitude at each visit (row) and covariate
