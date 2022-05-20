@@ -319,20 +319,20 @@ beta_magnitude = [2.0 -2.0 -2.0; 2.0 -2.0 -2.0; 2.0 -2.0 -2.0];
 
 % List of the NIFTI files used to generate the different ICs
 S0files = {fullfile(resourcepath, 'DMN_Population_Level.nii');
-    fullfile(resourcepath, 'FPR_Population_Level.nii');
+    fullfile(resourcepath, 'FPL_Population_Level.nii');
     fullfile(resourcepath, 'VIS_Population_Level.nii')};
 
 Beta1files = {fullfile(resourcepath, 'DMN_PCC_1.nii');
-    fullfile(resourcepath, 'FPR_posterior_0.nii');
+    fullfile(resourcepath, 'FPL_posterior_0.nii');
     fullfile(resourcepath, 'VIS_Sphere1_0.nii')};
 
 Beta2files = {fullfile(resourcepath, 'DMN_LAG_1.nii');
-    fullfile(resourcepath, 'FPR_frontal_1.nii');
+    fullfile(resourcepath, 'FPL_frontal_1.nii');
     fullfile(resourcepath, 'VIS_Sphere2_0.nii')};
 
 % Interaction Term
 Beta3files = {fullfile(resourcepath, 'DMN_LAG_1.nii');
-    fullfile(resourcepath, 'FPR_frontal_inv_1.nii');
+    fullfile(resourcepath, 'FPL_frontal_inv_1.nii');
     fullfile(resourcepath, 'VIS_Sphere2_0.nii')};
 
 % Setup mask and data size information
