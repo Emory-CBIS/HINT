@@ -24,7 +24,7 @@ end
 X = cellstr(X);
 
 % Defaults
-defaultWeighted = true;
+defaultWeighted = false;
 defaultRef = X{1};
 
 p = inputParser;

@@ -145,7 +145,7 @@ for p = 1:length(covTypes)
     effectsCodingsEncoders{p} = generate_effects_coding(covariatesTemp{:, p});
 end
 % Create the corresponding model matrix
-weighted = true;
+weighted = false;
 unitScale = 1;
 cm = zeros(length(covariateNamesTemp), 1);
 sds = zeros(length(covariateNamesTemp), 1);
@@ -160,6 +160,13 @@ covariateSDevs = sds;
 [X, varNamesX] = generate_model_matrix(covTypes, [1 1 1],...
     covariatesTemp, effectsCodingsEncoders, unitScale, weighted,...
     zeros(0, P), covariateNamesTemp, covariateMeans, covariateSDevs);
+
+ti = zeros(1, P);
+ti(1, 1:2) = 1;
+[X, varNamesX] = generate_model_matrix(covTypes, [1 1 1],...
+    covariatesTemp, effectsCodingsEncoders, unitScale, weighted,...
+    ti, covariateNamesTemp, covariateMeans, covariateSDevs);
+
 
 
 % Create variance estimate files
@@ -273,6 +280,18 @@ save(fname, 'Ytilde', 'sigma1sq', 'sigma2sq', 's0', 'beta1', 'beta2_1','beta2_2'
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
 %% Test Data 2 - Cross-sectional data
 
 
@@ -289,26 +308,31 @@ sigma2sq = [0.1; 0.5; 0.7];
 
 % Specification of the MoG terms. First column is the active 
 % setting and second is the background noise
-mu3z      = [6.0 0.0; 6.5 0.0; 6.0 0.0];
+mu3z      = [3.0 0.0; 3.5 0.0; 3.0 0.0];
 sigmasq3z = [0.5 0.1; 0.4 0.1; 0.3 0.1];
 
 % This is the raw beta magnitude at each visit (row) and covariate
 % (column). Note that this will not be the strength of the final map, which
 % is scaled by multiplying by the magnitude of the region mask (which is
 % scaled between 0 and 1)
-beta_magnitude = [1.0 1.0; 1.0 1.0; 1.0 1.0];
+beta_magnitude = [2.0 -2.0 -2.0; 2.0 -2.0 -2.0; 2.0 -2.0 -2.0];
 
 % List of the NIFTI files used to generate the different ICs
 S0files = {fullfile(resourcepath, 'DMN_Population_Level.nii');
-    fullfile(resourcepath, 'SM_Population_Level.nii');
+    fullfile(resourcepath, 'FPR_Population_Level.nii');
     fullfile(resourcepath, 'VIS_Population_Level.nii')};
 
 Beta1files = {fullfile(resourcepath, 'DMN_PCC_1.nii');
-    fullfile(resourcepath, 'SM_ROI1_0.nii');
+    fullfile(resourcepath, 'FPR_posterior_0.nii');
     fullfile(resourcepath, 'VIS_Sphere1_0.nii')};
 
 Beta2files = {fullfile(resourcepath, 'DMN_LAG_1.nii');
-    fullfile(resourcepath, 'SM_ROI2_0.nii');
+    fullfile(resourcepath, 'FPR_frontal_1.nii');
+    fullfile(resourcepath, 'VIS_Sphere2_0.nii')};
+
+% Interaction Term
+Beta3files = {fullfile(resourcepath, 'DMN_LAG_1.nii');
+    fullfile(resourcepath, 'FPR_frontal_inv_1.nii');
     fullfile(resourcepath, 'VIS_Sphere2_0.nii')};
 
 % Setup mask and data size information
@@ -322,6 +346,7 @@ V = length(validVoxels);
 s0    = zeros(Q, V);
 beta1 = zeros(Q, V);
 beta2 = zeros(Q, V);
+beta3 = zeros(Q, V);
 
 % Generate the maps using the specified settings
 for q = 1:Q
@@ -342,16 +367,19 @@ for q = 1:Q
     beta2qvec = beta2q.img(validVoxels);
     beta2qvec = beta2qvec * beta_magnitude(q, 2);
     beta2(q, :) = beta2qvec;
+    
+    beta3q = load_nii(Beta3files{q});
+    beta3qvec = beta3q.img(validVoxels);
+    beta3qvec = beta3qvec * beta_magnitude(q, 3);
+    beta3(q, :) = beta3qvec;
 
 end
 
 % Setup covariate table (some initialized to missing)
-Scores = unifrnd(0, 2, N, 1); % something simple for testing
-Scores = (Scores - mean(Scores)); % center
-Scores = (Scores) / max(abs(Scores)); % scale
+Age = round(unifrnd(50, 80, N, 1), 2); 
 GroupNum = [ones(N/2, 1); 2*ones(N/2, 1)];
 Groups = ["HC"; "AD"];
-variableNames = ["File", "CogScore", "Group"];
+variableNames = ["File", "Age", "Group"];
 variableTypes = ["string", "double", "string"];
 covariates = table('Size', [N, P + 1],...
     'VariableNames', variableNames,...
@@ -359,8 +387,8 @@ covariates = table('Size', [N, P + 1],...
 
 niipath = testdatapath;
 
-if not(isfolder(fullfile(testdatapath, 'CogAssessment')))
-    mkdir(fullfile(testdatapath, 'CogAssessment'))
+if not(isfolder(fullfile(testdatapath, 'Alzheimers')))
+    mkdir(fullfile(testdatapath, 'Alzheimers'))
 end
 
 %% Create the effects coded covariate matrix
@@ -368,7 +396,7 @@ covariatesTemp = table('Size', [N, P],...
     'VariableNames', variableNames(2:end),...
     'VariableTypes', variableTypes(2:end));
 for i = 1:N
-    covariatesTemp(i, 1) = {Scores(i)};
+    covariatesTemp(i, 1) = {Age(i)};
     covariatesTemp(i, 2) = {Groups( GroupNum(i) )};
 end
 covariateNamesTemp = covariatesTemp.Properties.VariableNames;
@@ -378,7 +406,7 @@ for p = 1:length(covTypes)
     effectsCodingsEncoders{p} = generate_effects_coding(covariatesTemp{:, p});
 end
 % Create the corresponding model matrix
-weighted = true;
+weighted = false;
 unitScale = 1;
 cm = zeros(length(covariateNamesTemp), 1);
 sds = zeros(length(covariateNamesTemp), 1);
@@ -392,22 +420,15 @@ covariateMeans = cm;
 covariateSDevs = sds;
 [X, varNamesX] = generate_model_matrix(covTypes, [1 1],...
     covariatesTemp, effectsCodingsEncoders, unitScale, weighted,...
-    zeros(0, P), covariateNamesTemp, covariateMeans, covariateSDevs);
-
+    ones(1, 2), covariateNamesTemp, covariateMeans, covariateSDevs);
 
 % Create variance estimate files
 varEstDim = P;
 betaVarEst = ones( varEstDim, varEstDim, dx, dy, dz );
 varEst2 = ones( varEstDim, varEstDim, dx, dy, dz );
 
-% Save the data 
-% TODO create correct version of variance at each voxel using the true
-% sigmas
-% fname1 = fullfile(testdatapath, 'testdata_crosssectional_set1_varianceest_IC1.mat');
-% save(fname1, 'betaVarEst')
-
 % Create a mask file for this longitudinal example
-maskf = fullfile(niipath, 'CogAssessment', 'CogAssessment_mask.nii');
+maskf = fullfile(niipath, 'Alzheimers', 'Alzheimers_mask.nii');
 mask = zeros(dx, dy, dz);
 mask(validVoxels) = 1;
 masknii = make_nii(mask);
@@ -424,15 +445,11 @@ end
 % Create the data for each subject
 Ytilde = zeros(Q, V, N);
 for i = 1:N
-    covariates(i, 1+1) = {Ages(i)};
+    covariates(i, 1+1) = {Age(i)};
     covariates(i, 1+2) = {Groups( GroupNum(i) )};
-    cov_ref = 0;
-    if strcmp(covariates(i, 1+2), 'grpB') 
-        cov_ref = 1;
-    end
         
     % File path information for this subject
-    fname = fullfile(niipath, 'CogAssessment', ['CogAssessment_subj_', num2str(i), '.nii']);
+    fname = fullfile(niipath, 'Alzheimers', ['Alzheimers_subj_', num2str(i), '.nii']);
     covariates(i, 1) = {fname};
 
     % Create this subject's mixing matrix
@@ -440,9 +457,8 @@ for i = 1:N
     Aij = Aij_temp*real(inv(Aij_temp'*Aij_temp)^(1/2));
 
     % Create this subjects IC maps (Sij)
-    % recall: beta(:, 1, :, :) is ALPHA
     Sij = s0 +...
-        squeeze(covariates{i, 2}*beta1(:, :)) + squeeze(cov_ref*beta2(:, :)) +...
+        squeeze(X(i, 1)*beta1(:, :)) + (squeeze(X(i, 2) > 0)*beta2(:, :)) + X(i, 3) * (X(i, 2) > 0) *beta3(:, :) + ...
         level2errors(:, :, i);
 
     % Generate the prewhitened time series for this subject
@@ -482,9 +498,9 @@ for i = 1:N
 end
 
 % Store the csv file for loading
-writetable(covariates, fullfile(niipath, 'CogAssessment', 'CogAssessment_covariates.csv'));
+writetable(covariates, fullfile(niipath, 'Alzheimers', 'Alzheimers_covariates.csv'));
 
 % Save relevant test quantities/parameters/etc
-fname = fullfile(niipath, 'CogAssessment', 'CogAssessment_truevals.mat');
+fname = fullfile(niipath, 'Alzheimers', 'Alzheimers_truevals.mat');
 save(fname, 'Ytilde', 'sigma1sq', 'sigma2sq', 's0', 'beta1', 'beta2');
 

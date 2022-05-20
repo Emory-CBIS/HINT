@@ -125,6 +125,13 @@ ddat.currentSubjectMatData = cell(0);
 % Specific Linear combination to get the mean at each time point
 ddat.LCPopAvgTime = [ones(ddat.nVisit, 1) [-1.0 * ones(1, ddat.nVisit-1); eye(ddat.nVisit-1)] zeros(ddat.nVisit, ddat.P*ddat.nVisit)];
 
+% Effect Information
+ddat.currentEffectInfoView = 1;
+ddat.currentEffectInfoViewType = 'Population';
+ddat.currentEffectCurrentSubpop = 1;
+ddat.currentEffectDrawVisit = 0;
+ddat.currentEffectCurrentCovariate = 1;
+
 % Effect names depend on if this is a longtidinal study or not
 if ddat.nVisit > 1
     ddat.contrastBetaLabels = [compose('Visit %g', 2:ddat.nVisit) ];
@@ -141,6 +148,51 @@ ddat.defaultContrastTableData(:, 2) = {0};
 % this is for keeping widths of columns the same when user changes them
 ddat.currentUserContrastTableExtent = [];
 
+
+% Construct a mapping from individual covariates (NOT CODED) to
+% corresponding element of the parameter vec/ col of model matrix
+paramIncludesVar = zeros(length(ddat.covariateNames), length(ddat.varNamesX));
+currentIndex = 1;
+% Main Effects
+for iCov = 1:length(ddat.covariateNames)
+    if ddat.covTypes(iCov) == 0
+        paramIncludesVar(iCov, currentIndex) = 1;
+        currentIndex = currentIndex + 1;
+    else
+        encoderi = ddat.variableCodingInformation.effectsCodingsEncoders{iCov};
+        nleveli = length(encoderi.variableNames);
+        for jEC = 1:nleveli
+            paramIncludesVar(iCov, currentIndex) = 1;
+            currentIndex = currentIndex + 1;
+        end
+    end
+end
+
+% Interactions
+for iInt = 1:size(ddat.interactions, 1)
+    % figure out how many parameters correspond to this interaction
+    covInd = find(ddat.interactions(iInt, :) == 1);
+    if ddat.covTypes(covInd(1)) == 0
+        ncov1 = 1;
+    else
+        ncov1 = length(unique(ddat.covariates{:, covInd(1)})) - 1;
+    end
+    if ddat.covTypes(covInd(2)) == 0
+        ncov2 = 1;
+    else
+        ncov2 = length(unique(ddat.covariates{:, covInd(2)})) - 1;
+    end
+    
+    totalCovColumns = ncov1 * ncov2;
+    
+    for iCovCol = 1:totalCovColumns
+        paramIncludesVar(covInd(1), currentIndex) = 1;
+        paramIncludesVar(covInd(2), currentIndex) = 1;
+        currentIndex = currentIndex + 1;
+    end
+
+end
+ddat.paramIncludesVar = paramIncludesVar;
 
 ddat.nViewer = 0;
 
@@ -266,7 +318,10 @@ end
         AddInfoTabGroup = uitabgroup('Parent', ControlsPanel,...
             'Tag','AddInfoTabGroup',...
             'units', 'normalized',...
-            'Position',[0.0, 0.0 1.0 0.499])
+            'Position',[0.0, 0.0 1.0 0.499]);
+        AddInfoTabEffectInfo = uitab('Parent', AddInfoTabGroup,...
+            'Tag','AddInfoTabEffectInfo',...
+            'Title', 'Effect Information');
         AddInfoTabGroupTraj = uitab('Parent', AddInfoTabGroup,...
             'Tag','AddInfoTabGroupTraj',...
             'Title', 'Trajectories');
@@ -424,6 +479,92 @@ end
             'units', 'normalized',...
             'Position',[.55 .1 0.35 0.35],...
             'Tag', 'TrajAxesSubj' ); %#ok<NASGU>
+        
+        %% Effect information panel
+        EffectInformationPanel = uipanel('BackgroundColor',get(hs.fig,'color'),...
+            'units', 'normalized',...
+            'Parent', AddInfoTabEffectInfo,...
+            'Tag', 'EffectInformationPanel',...
+            'Position',[0.0, 0.0 1.0 1.0], ...
+            'Title', 'Effect Information',...
+            'visible', 'on');
+        
+        % Axes showing the effects
+        EffectInformationAxes = axes('Parent', EffectInformationPanel, ...
+            'units', 'normalized',...
+            'Position',[.2 .4 0.6 0.5],...
+            'Tag', 'EffectInformationAxes' ); %#ok<NASGU>
+        
+        EffectInformationControlPanel = uipanel('BackgroundColor',get(hs.fig,'color'),...
+            'units', 'normalized',...
+            'Parent', EffectInformationPanel,...
+            'Tag', 'EffectInformationControlPanel',...
+            'Position',[0.1, 0.0 0.8 0.3], ...
+            'Title', 'Effect Information Options',...
+            'visible', 'on');
+        
+        EffectInformationBrainViewSelect = uicontrol('Parent', EffectInformationControlPanel,...
+                'Style', 'popupmenu', ...
+                'Units', 'Normalized', ...
+                'Position', [0.35, 0.7, 0.40, 0.22], ...
+                'Tag', 'EffectInformationBrainViewSelect',...
+                'visible', 'on',...
+                'String', 'select',...
+                'Callback', @select_effect_information_brain_view);
+            
+        EffectInformationBrainViewType = uicontrol('Parent', EffectInformationControlPanel,...
+                'Style', 'popupmenu', ...
+                'Units', 'Normalized', ...
+                'Position', [0.35, 0.4, 0.40, 0.22], ...
+                'Tag', 'EffectInformationBrainViewType',...
+                'visible', 'on',...
+                'String', {'Population', 'Covariate', 'Sub-population'},...
+                'Callback', @select_effect_information_brain_view_type);
+        
+        EffectInformationSubpopDropdown = uicontrol('Parent', EffectInformationControlPanel,...
+            'Style', 'popupmenu', ...
+            'Units', 'Normalized', ...
+            'Position', [0.10, 0.1, 0.4, 0.2], ...
+            'Tag', 'EffectInformationSubpopDropdown',...
+            'visible', 'off',...
+            'String', {'Create a sub-population'},...
+            'Callback', @select_effect_information_subpopulation);
+        
+        EffectInformationCovariateDropdown = uicontrol('Parent', EffectInformationControlPanel,...
+            'Style', 'popupmenu', ...
+            'Units', 'Normalized', ...
+            'Position', [0.10, 0.1, 0.4, 0.2], ...
+            'Tag', 'EffectInformationCovariateDropdown',...
+            'visible', 'off',...
+            'String', ddat.covariateNames,...
+            'Callback', @select_effect_information_covariate);
+        
+        EffectInformationDrawVisitsCheckbox  = uicontrol('Parent', EffectInformationControlPanel,...
+                'Style', 'checkbox', ...
+                'Units', 'Normalized', ...
+                'Position', [0.55, 0.1, 0.40, 0.22], ...
+                'Tag', ['EffectInformationDrawVisitsCheckbox'],...
+                'String', 'Display visit averages', ...
+                'Callback', @toggle_effect_information_show_visit_averages); %#ok<NASGU>
+            
+        if ddat.nVisit == 1
+            EffectInformationDrawVisitsCheckbox.Visible = 'off';
+        end
+        
+        EffectInformationSourceText = uicontrol('Parent', EffectInformationControlPanel, ...
+                'Style', 'Text', ...
+                'Units', 'Normalized', ...
+                'String', 'Voxel/IC Source: ',...
+                'Position', [0.10, 0.7, 0.2, 0.2], ...
+                'Tag', 'EffectInformationSourceText');
+            
+        EffectInformationViewTypeText = uicontrol('Parent', EffectInformationControlPanel, ...
+                'Style', 'Text', ...
+                'Units', 'Normalized', ...
+                'String', 'View Type: ',...
+                'Position', [0.10, 0.4, 0.2, 0.2], ...
+                'Tag', 'EffectInformationViewTypeText');
+        
        
         
         movegui(hs.fig, 'center')
@@ -685,6 +826,7 @@ end
         % would be more efficient not to redo, but makes tracking difficult
         set_trajectory_views;
         set_mask_dropdown_options;
+        set_effect_information;
         
     end
 
@@ -720,10 +862,7 @@ end
     end
 
     % edit images cycle - any changes required to the underlying maps 
-    % 1. What is loaded
-    % 2. Any scaling terms that need to be calculated
-    % 3. Any subpopulations/contrasts
-    % 4. Any masks
+   
     function eic(index);
         
         frc(index);
@@ -833,8 +972,10 @@ end
         
         switch ddat.currentViewerType{index}
             case 'Population'
+%                 ImageData.imageScaleFactors{index}(ddat.validVoxels) =...
+%                     ImageData.VarCov{ddat.currentIC{index}}(1, 1, :);
                 ImageData.imageScaleFactors{index}(ddat.validVoxels) =...
-                    ImageData.VarCov{ddat.currentIC{index}}(1, 1, :);
+                    std(ImageData.rawImages{index}(ddat.validVoxels));
             case 'Covariate Effect'
                 varCovInd = ddat.nVisit + ...
                     ddat.P * (ddat.currentVisit{index}-1) + ...
@@ -854,19 +995,23 @@ end
                 if ~isempty( ddat.subpopNames )
                     modelMatrix = ddat.subpopModelMats{ddat.currentSubpop{index}};
                     if ddat.nVisit == 1
+%                         ImageData.imageScaleFactors{index}(ddat.validVoxels) =...
+%                             squeeze(mtimesx(...
+%                                 mtimesx(modelMatrix,...
+%                                 ImageData.VarCov{ddat.currentIC{index}}),...
+%                                 modelMatrix'...
+%                             ));
                         ImageData.imageScaleFactors{index}(ddat.validVoxels) =...
-                            squeeze(mtimesx(...
-                                mtimesx(modelMatrix,...
-                                ImageData.VarCov{ddat.currentIC{index}}),...
-                                modelMatrix'...
-                            ));
+                            std(ImageData.rawImages{index}(ddat.validVoxels));
                     else
+%                         ImageData.imageScaleFactors{index}(ddat.validVoxels) =...
+%                             squeeze(mtimesx(...
+%                                 mtimesx(modelMatrix(ddat.currentVisit{index}, :),...
+%                                 ImageData.VarCov{ddat.currentIC{index}}),...
+%                                 modelMatrix(ddat.currentVisit{index}, :)'...
+%                             ));
                         ImageData.imageScaleFactors{index}(ddat.validVoxels) =...
-                            squeeze(mtimesx(...
-                                mtimesx(modelMatrix(ddat.currentVisit{index}, :),...
-                                ImageData.VarCov{ddat.currentIC{index}}),...
-                                modelMatrix(ddat.currentVisit{index}, :)'...
-                            ));
+                            std(ImageData.rawImages{index}(ddat.validVoxels));
                     end
                 end
             case 'Preview'
@@ -1544,6 +1689,228 @@ end
         xticks(findobj('tag', 'TrajAxesSubj'),   1:ddat.nVisit)
                 
     end
+
+    
+    %% Functions related to effect information
+    function select_effect_information_brain_view(src, event)
+        ddat.currentEffectInfoView = src.Value;
+        set_effect_information;
+    end
+
+    function select_effect_information_brain_view_type(src, event)
+        ddat.currentEffectInfoViewType = src.String{src.Value};
+        set_effect_information;
+    end
+
+    function select_effect_information_subpopulation(src, event)
+        ddat.currentEffectCurrentSubpop = src.Value;
+        set_effect_information;
+    end
+
+    function select_effect_information_covariate(src, event)
+        ddat.currentEffectCurrentCovariate = src.Value;
+        set_effect_information;
+    end
+
+    function populate_effect_information_brain_view_panel;
+        newString = compose('Brain View %g', 1:ddat.nViewer);
+        if ddat.currentEffectInfoView > ddat.nViewer
+            ddat.currentEffectInfoView = 1;
+        end
+        set(findobj('tag', 'EffectInformationBrainViewSelect'), 'value', ddat.currentEffectInfoView);
+        set(findobj('tag', 'EffectInformationBrainViewSelect'), 'String', newString);
+    end
+
+    function populate_effect_information_subpop_dropdown;
+        if isempty(ddat.subpopNames)
+            newString = {'Select sub-population'};
+            ddat.currentEffectCurrentSubpop = 1;
+        else
+            newString = ddat.subpopNames;
+            if ddat.currentEffectCurrentSubpop > length(newString)
+                ddat.currentEffectCurrentSubpop = 1;
+            end
+        end
+        set(findobj('tag', 'EffectInformationSubpopDropdown'), 'String', newString);
+        set(findobj('tag', 'EffectInformationSubpopDropdown'), 'Value', ddat.currentEffectCurrentSubpop);
+    end
+
+    function toggle_effect_information_show_visit_averages(src, event)
+        ddat.currentEffectDrawVisit = src.Value;
+        set_effect_information;
+    end
+    
+    function set_effect_information
+        
+        if ddat.isPreview == 1; return; end
+        
+        populate_effect_information_brain_view_panel;
+        populate_effect_information_subpop_dropdown;
+        
+        % Remove current plot        
+        delete(findobj('tag', 'EffectInformationAxes').Children);
+        
+        % Start with flat line at s0 value
+        ind1 = sub2ind(ddat.voxSize, ddat.sagPos{ddat.currentEffectInfoView}, ddat.corPos{ddat.currentEffectInfoView}, ddat.axiPos{ddat.currentEffectInfoView});
+        % Corresponding element of "validVoxels"
+        vvInd = find(ddat.validVoxels == ind1);
+        voxelEffects =  ImageData.CoefEsts{ddat.currentIC{ddat.currentEffectInfoView}}(:, vvInd);
+        if isempty(voxelEffects)
+            return
+        end
+        ax1 = findobj('tag', 'EffectInformationAxes');  
+        s0 = voxelEffects(1);
+        % Add horizontal line at s0
+        hold all
+        line(ax1,...
+            0:ddat.nVisit+1,...
+            s0 * ones(ddat.nVisit+2, 1))
+      
+        % Determine the total number of lines that will be drawn per visit. This is
+        % used to decide on their widths and x-axis locations (so that all
+        % are visible).
+        totalLine = 0;
+        if ddat.currentEffectDrawVisit == 1; totalLine = 1; end
+        linePositions = zeros(ddat.nVisit, 1); % default
+        
+        % Turn off options (they get reenabled in the switch statement
+        % below).
+        set(findobj('tag', 'EffectInformationSubpopDropdown'), 'visible', 'off');
+        set(findobj('tag', 'EffectInformationCovariateDropdown'), 'visible', 'off');
+        
+        % If population average - create each visit effect
+        switch ddat.currentEffectInfoViewType
+            case 'Population'
+                % do nothing
+            case 'Sub-population'
+                set(findobj('tag', 'EffectInformationSubpopDropdown'), 'visible', 'on')
+                totalLine = totalLine + 1;
+                linePositions = linspace(-0.3, 0.3, totalLine+2);
+                linePositions(1) = []; linePositions(end) = [];
+                
+                % Make sure subpopulation exists
+                if isempty(ddat.subpopNames); return; end
+                
+                modelMatrix = ddat.subpopModelMats{ddat.currentEffectCurrentSubpop};
+                est = modelMatrix * voxelEffects;
+                for jj = 1:ddat.nVisit
+                    L = line(ax1,...
+                        [linePositions(end)+jj,linePositions(end)+jj],...
+                        [s0, est(jj)],...
+                        'color', 'red',...
+                        'tag', ['evSubpop_' num2str(jj)],...
+                        'LineWidth', 6);
+                end
+                
+                
+            case 'Covariate'
+                set(findobj('tag', 'EffectInformationCovariateDropdown'), 'visible', 'on');
+                
+                % TODO determine interactions that include the covariate!!
+                % Determine if covariate is continuous or categorical
+                if ddat.covTypes(ddat.currentEffectCurrentCovariate) == 0
+                    nLevel = 1;
+                else
+                    nLevel = length(ddat.variableCodingInformation.effectsCodingsEncoders{ddat.currentEffectCurrentCovariate}.encoder);
+                end
+                totalLine = totalLine + nLevel;
+                linePositions = linspace(-0.3, 0.3, totalLine+2);
+                linePositions(1) = []; linePositions(end) = [];
+                
+                % if continuous, plot the one-unit increase
+                if ddat.covTypes(ddat.currentEffectCurrentCovariate) == 0
+                    for jj = 1:ddat.nVisit
+                        est = voxelEffects(ddat.nVisit + (jj-1)*ddat.P + ddat.currentEffectCurrentCovariate);
+                        line(ax1,...
+                            [linePositions(ddat.currentEffectDrawVisit+1)+jj, linePositions(ddat.currentEffectDrawVisit+1)+jj],...
+                            [s0, s0 + est],...
+                            'color', 'red',...
+                            'LineWidth', 6)
+                    end
+                    
+                    % if categorical, plot a separate line for each effect
+                else
+                    xxx=1;
+                    %betas = 
+                    encoder = ddat.variableCodingInformation.effectsCodingsEncoders{ddat.currentEffectCurrentCovariate};
+                    nME = length(encoder.variableNames);
+                    %encoder.encoder(encoder.referenceCategory)
+                    
+                    % Check if other covariate is categorical - if so
+                    % construct both interaction pieces
+                    %ddat.interactions ddat.covTypes
+                    
+                    relevantParams = ddat.paramIncludesVar(ddat.currentEffectCurrentCovariate, :)'...
+                        .* voxelEffects(ddat.nVisit + 1:ddat.nVisit+ddat.P );
+                    
+                    % THIS IS TEMPORARY - SKIPPING INTERACTIONS
+                    for jj = 1:ddat.nVisit
+                        relevantParams = ddat.paramIncludesVar(ddat.currentEffectCurrentCovariate, :)'...
+                            .* voxelEffects( (ddat.nVisit + 1:ddat.nVisit+ddat.P) + (jj-1) * ddat.P );
+                        
+                         rp = relevantParams(relevantParams ~= 0.0);
+                    
+                        est0 = sum(-1.0 * rp(1:nME));
+                        line(ax1,...
+                                [linePositions(ddat.currentEffectDrawVisit+1)+jj, linePositions(ddat.currentEffectDrawVisit+1)+jj],...
+                                [s0, s0 + est0],...
+                                'color', 'red',...
+                                'LineWidth', 6)
+                        if (s0 + est0) >= s0
+                            text(ax1, [linePositions(ddat.currentEffectDrawVisit+1)+jj],[s0 + est0],  encoder.referenceCategory, 'rotation', 90);
+                        else
+                            text(ax1, [linePositions(ddat.currentEffectDrawVisit+1)+jj],...
+                                [s0 + est0],  encoder.referenceCategory,...
+                                'rotation', 90,...
+                                 'HorizontalAlignment', 'right');
+
+                        end
+                            
+                        for ecVar = 1:nME
+                            est0 = rp(ecVar);
+                             line(ax1,...
+                            [linePositions(ddat.currentEffectDrawVisit+1 + ecVar)+jj, linePositions(ddat.currentEffectDrawVisit+1 + ecVar)+jj],...
+                                [s0, s0 + est0],...
+                                'color', 'red',...
+                                'LineWidth', 6);
+                            if (s0 + est0) >= s0
+                                text(ax1, [linePositions(ddat.currentEffectDrawVisit+1 + ecVar)+jj],[s0 + est0], encoder.variableNames{ecVar}, 'rotation', 90);
+                            else
+                                text(ax1, [linePositions(ddat.currentEffectDrawVisit+1 + ecVar)+jj],...
+                                    [s0 + est0], encoder.variableNames{ecVar},...
+                                    'rotation', 90,...
+                                     'HorizontalAlignment', 'right');
+     
+                            end
+                        end
+                    end
+                    
+                   
+                    
+                end
+                
+            otherwise
+        end
+        
+        % Check if user has requested visit specific averages:
+        if ddat.currentEffectDrawVisit == 1
+            est = ddat.LCPopAvgTime * voxelEffects;
+            for jj = 1:ddat.nVisit
+                line(ax1,...
+                    [linePositions(1)+jj, linePositions(1)+jj],...
+                    [s0, est(jj)],...
+                    'LineWidth', 6)
+            end
+        end
+        
+        
+        ax1.Tag = 'EffectInformationAxes';
+
+        
+        
+    end
+    
+    %% Image Creation/Storage
 
     % This gets called when a new brain display is created
     % TODO choose type based on other current views
@@ -2436,6 +2803,11 @@ end
             ddat.syncICs{newIndex} = ddat.syncICs{altIndex};
             ddat.syncThresholding{newIndex} = ddat.syncThresholding{altIndex};
             ddat.syncColormaps{newIndex} = ddat.syncColormaps{altIndex};
+            
+            % Check if need to move effect information viewer
+            if ddat.currentEffectInfoView == altIndex
+                ddat.currentEffectInfoView = newIndex;
+            end
 
             % Separate structure that contains image related data. This should not get
             % stored

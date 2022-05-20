@@ -1,5 +1,6 @@
 function [X, varNamesX] = generate_ints_from_covariates_unweighted(X, interactionsBase,...
-    covTypes, covariates, variableNames, effectsCodingsEncoders, varNamesX)
+    covTypes, covariates, variableNames, effectsCodingsEncoders, varNamesX,...
+    covariateMeans, covariateSDevs, unitScale)
 
 for iInt = 1:size( interactionsBase )
     
@@ -20,7 +21,10 @@ for iInt = 1:size( interactionsBase )
             varNamesX1{length(varNamesX1) + 1} = [varName1 '_' effectsCodingsEncoders{ind1}.variableNames{iset}];
         end
     else
-        X1 = covariateValues - mean(covariateValues);
+        X1 = covariateValues - covariateMeans(ind1);
+        if unitScale == 1
+            X1 = X1 ./ covariateSDevs(ind1);
+        end
         varNamesX1{length(varNamesX1) + 1} = varName1;
     end
     
@@ -35,7 +39,10 @@ for iInt = 1:size( interactionsBase )
             varNamesX2{length(varNamesX2) + 1} = [varName2 '_' effectsCodingsEncoders{ind2}.variableNames{iset}];
         end
     else
-        X2 = covariateValues - mean(covariateValues);
+        X2 = covariateValues - covariateMeans(ind2);
+        if unitScale == 1
+            X2 = X2 ./ covariateSDevs(ind2);
+        end
         varNamesX2{length(varNamesX2) + 1} = varName2;
     end
 

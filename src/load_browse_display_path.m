@@ -46,7 +46,6 @@ close(waitLoad);
 global keeplist
 keeplist = ones(vis_qstar, 1);
 
-disp('WARNING THIS NEEDS LICA VAR EST')
 
 end
 

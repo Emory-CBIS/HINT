@@ -31,6 +31,11 @@ ModelSpecData.unitScale = parser.Results.unitScale;
 ModelSpecData.X = parser.Results.X;
 ModelSpecData.varNamesX = parser.Results.varNamesX;
 
+ModelSpecData.weighted = 0;
+
+ModelSpecData.covariateMeans = zeros(0,1);
+ModelSpecData.covariateSDevs = zeros(0,1);
+
 hs = findall(0,'tag','modelSpecWindow');
 if (isempty(hs))
     hs = add_model_specification_window_components;
@@ -313,9 +318,12 @@ delete(hs.fig);
             'Tag', 'weightedEffectsCheckbox',...
             'string', 'Use weighted effects coding',...
             'units', 'normalized',...
-            'value', ModelSpecData.weighted,...
+            'value', 0,...
+            'visible', 'off',...
             'callback', @set_effects_coding_type,...
             'Position',[0.05, 0.5 0.7 0.45]);
+                    %'value', ModelSpecData.weighted,...
+
         
         scaleContinuousCovsCheckbox = uicontrol('Parent', codingSchemePanel,...
             'style', 'checkbox',...
@@ -777,6 +785,9 @@ delete(hs.fig);
     
     function display_current_model_matrix
         
+        ModelSpecData.covariateMeans = zeros(sum(ModelSpecData.varInModel),1);
+        ModelSpecData.covariateSDevs = zeros(sum(ModelSpecData.varInModel),1);
+        
         % First, get the main effects for each covariate
         % TODO replace with generate_model_matrix function from src folder
         ModelSpecData.X = [];
@@ -791,9 +802,11 @@ delete(hs.fig);
                         ModelSpecData.varNamesX{length(ModelSpecData.varNamesX) + 1} = [varName '_' ModelSpecData.effectsCodingsEncoders{p}.variableNames{iset}];
                     end
                 else
-                    covariateValues = covariateValues - mean(covariateValues);
+                    ModelSpecData.covariateMeans(p) = mean(covariateValues);
+                    ModelSpecData.covariateSDevs(p) = std(covariateValues);
+                    covariateValues = covariateValues - ModelSpecData.covariateMeans(p);
                     if (ModelSpecData.unitScale == 1)
-                        covariateValues = covariateValues / std(covariateValues);
+                        covariateValues = covariateValues / ModelSpecData.covariateSDevs(p);
                     end
                     ModelSpecData.X = [ModelSpecData.X covariateValues];
                     ModelSpecData.varNamesX{length(ModelSpecData.varNamesX) + 1} = varName;
@@ -805,11 +818,13 @@ delete(hs.fig);
         if ModelSpecData.weighted == 1
             [ModelSpecData.X, ModelSpecData.varNamesX] = generate_ints_from_covariates_weighted(ModelSpecData.X, ModelSpecData.interactionsBase,...
                 ModelSpecData.covTypes,  ModelSpecData.covariates,...
-                ModelSpecData.variableNames,  ModelSpecData.effectsCodingsEncoders, ModelSpecData.varNamesX);
+                ModelSpecData.variableNames,  ModelSpecData.effectsCodingsEncoders, ModelSpecData.varNamesX,...
+                ModelSpecData.covariateMeans, ModelSpecData.covariateSDevs, ModelSpecData.unitScale);
         else
             [ModelSpecData.X, ModelSpecData.varNamesX] = generate_ints_from_covariates_unweighted(ModelSpecData.X, ModelSpecData.interactionsBase,...
                 ModelSpecData.covTypes,  ModelSpecData.covariates,...
-                ModelSpecData.variableNames,  ModelSpecData.effectsCodingsEncoders, ModelSpecData.varNamesX);
+                ModelSpecData.variableNames,  ModelSpecData.effectsCodingsEncoders, ModelSpecData.varNamesX,...
+                ModelSpecData.covariateMeans, ModelSpecData.covariateSDevs, ModelSpecData.unitScale);
         end
                 
         % Convert to a table

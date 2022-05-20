@@ -67,7 +67,7 @@ function [InputData] = parse_and_format_input_files(maskf, covf, nVisit, studyTy
         % model_specification_window as needed
         effectsCodingsEncoders = cell(1, length(InputData.covTypes));
         for p = 1:length(InputData.covTypes)
-            effectsCodingsEncoders{p} = generate_effects_coding(InputData.covariates{1:nVisit:end, p});
+            effectsCodingsEncoders{p} = generate_effects_coding(InputData.covariates{1:nVisit:end, p}, 'weighted', false);
         end
         InputData.effectsCodingsEncoders = effectsCodingsEncoders;
         InputData.covariates = InputData.covariates(1:nVisit:end, :);

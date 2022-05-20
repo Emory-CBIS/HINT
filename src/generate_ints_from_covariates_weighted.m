@@ -1,5 +1,6 @@
 function [X, varNamesX] = generate_ints_from_covariates_weighted(X, interactionsBase,...
-    covTypes, covariates, variableNames, effectsCodingsEncoders, varNamesX)
+    covTypes, covariates, variableNames, effectsCodingsEncoders, varNamesX,...
+    covariateMeans, covariateSDevs, unitScale)
 
 for iInt = 1:size( interactionsBase )
     
@@ -26,7 +27,10 @@ for iInt = 1:size( interactionsBase )
         inds(vals < 0.0) = 1;
         freqTableInds1 = inds;
     else
-        X1 = covariateValues - mean(covariateValues);
+        X1 = covariateValues - covariateMeans(ind1);
+        if unitScale == 1
+            X1 = X1 ./ covariateSDevs(ind1);
+        end
         varNamesX1{length(varNamesX1) + 1} = varName1;
     end
     
@@ -47,7 +51,10 @@ for iInt = 1:size( interactionsBase )
         inds(vals < 0.0) = 1;
         freqTableInds2 = inds;
     else
-        X2 = covariateValues - mean(covariateValues);
+        X2 = covariateValues - covariateMeans(ind2);
+        if unitScale == 1
+            X2 = X2 ./ covariateSDevs(ind2);
+        end
         varNamesX2{length(varNamesX2) + 1} = varName2;
     end
     
@@ -67,16 +74,19 @@ for iInt = 1:size( interactionsBase )
             catInd = ind1;
         end
         
+        nCatCol = size(catX, 2);
+        
         indsLevel = {};
         SSLevel = {};
         MSDE = effectsCodingsEncoders{catInd};
         refInds = find(strcmp(covariates{:, catInd}, MSDE.referenceCategory));
         refSS   = sum((contX(refInds, :) - mean(contX(refInds, :))).^2);
+        
         for iCat = 1:length(MSDE.variableNames)
             indsLevel{iCat} = find(strcmp(covariates{:, catInd}, MSDE.variableNames{iCat}));
             SSLevel{iCat} = sum((contX(indsLevel{iCat}, :) - mean(contX(indsLevel{iCat}, :))).^2);
             catX(catX(:, iCat) < 0.0, iCat) = -1.0 * SSLevel{iCat} / refSS;
-        end
+        end            
         
         if typeCov2 == 1
             X2 = catX;
