@@ -29,8 +29,7 @@ function [theta, beta, z_mode, subICmean, subICvar, grpICmean, grpICvar,...
 %    outpath    - path of the output folder. Used for saving parameter
 %                   estimates after each iteration
 %    prefix     - prefix for the analysis
-%    isScriptVersion - boolean. Is 1 is 'estimateFromSavedData' calls the
-%                       function
+%    isScriptVersion - boolean. 
 %    studyType  - Cross-Sectional or Longitudinal
 %
 % Outputs:
@@ -45,7 +44,6 @@ function [theta, beta, z_mode, subICmean, subICvar, grpICmean, grpICvar,...
 %    iter       - the final iteration number
 %
 % See also: UpdateThetaBetaAprx_Vect.m, UpdateThetaBeta.m,
-% estimateFromSavedData.m
 
     global keepRunning
     global writelog
