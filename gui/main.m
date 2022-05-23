@@ -1247,7 +1247,7 @@ hintFnPath = which('hint.m');
 % Save the run infoformation into a file called runinfo.mat.
     function saveContinueButton_Callback(~,~)
         
-        [analysisPrefix] = save_analysis_preparation(data);
+        [analysisPrefix] = save_analysis_preparation(data, 0);
         
         % If user did not input anything, then do not continue
         if isempty(analysisPrefix); return; end

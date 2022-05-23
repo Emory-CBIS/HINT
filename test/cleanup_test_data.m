@@ -5,14 +5,25 @@ spath = which('generate_test_data.m');
 [testdatapathtemp, ~, ~] = fileparts(spath);
 testdatapath = fullfile(testdatapathtemp, 'testdata');
 
-%% Remove all data from longitudinal set 1
-all_files = dir( fullfile(testdatapath, 'testdata_longitudinal_set1*') );
-for ifile = 1:length(all_files)
-    delete( fullfile(all_files(ifile).folder, all_files(ifile).name) );
+%% Remove all data 
+alzdir = fullfile(testdatapath, 'Alzheimers');
+if isfolder(alzdir)
+    rmdir(alzdir,'s');
 end
 
-%% Remove all data from crosssectional set 1
-all_files = dir( fullfile(testdatapath, 'testdata_crosssectional_set1*') );
-for ifile = 1:length(all_files)
-    delete( fullfile(all_files(ifile).folder, all_files(ifile).name) );
+outdir = fullfile(testdatapath, 'out');
+if isfolder(outdir)
+    rmdir(outdir, 's');
+end
+
+
+medDir = fullfile(testdatapath, 'Medication');
+if isfolder(medDir)
+    rmdir(medDir, 's');
+end
+
+
+CogAssessmentDir = fullfile(testdatapath, 'CogAssessment');
+if isfolder(CogAssessmentDir)
+    rmdir(CogAssessmentDir, 's');
 end

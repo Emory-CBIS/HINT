@@ -1,9 +1,18 @@
-function [ prefix ] = save_analysis_preparation( data )
+function [ prefix ] = save_analysis_preparation( data, prefix )
 %save_analysis_preparation - function to save all of the preprocessing work
 %in panel 1 to the runinfo file.
+% if prefix is 0, asks user for prefix, otherwise uses input
     
+prefixNotProvided = all((prefix == 0) == 1);
+
 % Ask the user for a prefix for the analysis
-prefix = inputdlg('Please input a prefix for the analysis', 'Prefix Selection');
+if prefixNotProvided
+    prefix = inputdlg('Please input a prefix for the analysis', 'Prefix Selection');
+else
+    ptemp = prefix;
+    prefix = cell(0);
+    prefix{1} = ptemp;
+end
 
 if ~isempty(prefix)
     
@@ -11,7 +20,7 @@ if ~isempty(prefix)
     
     % Check if this prefix is already in use. If it is, ask the user to
     % verify that they want to continue + delete current contents
-    if exist([data.outpath '/' prefix '_results'], 'dir')
+    if exist([data.outpath '/' prefix '_results'], 'dir') && prefixNotProvided == 1
         qans = questdlg(['This prefix is already in use. If you continue, all previous results in the ', [data.outpath '/' prefix '_results'], ' folder will be deleted. Do you want to continue?' ] );
         % If yes, delete old results and proceed
         if strcmp(qans, 'Yes')
