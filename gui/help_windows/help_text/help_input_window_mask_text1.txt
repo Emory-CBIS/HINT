@@ -1,7 +1,4 @@
 The mask is used to isolate the brain (or gray matter) voxels from the rest of the image.
-
-The mask should be in NIFTI format.
-
-Note that the mask (and all subject fMRI nii files) should be registered to a common space. This can be a well known template space such as 2mm MNI space or Talaraich space, or an average subject space generated from your data.
-
-If you have registered to a common templace space, such as MNI, then there are likely pre-made masks you can use.
+\nThe mask should be in NIFTI format.
+\nNote that the mask (and all subject fMRI nii files) should be registered to a common space. This can be a well known template space such as 2mm MNI space or Talaraich space, or an average subject space generated from your data.
+\nIf you have registered to a common templace space, such as MNI, then there are likely pre-made masks you can use.
