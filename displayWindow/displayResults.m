@@ -1642,7 +1642,7 @@ end
                             'color', colorOptions(index, :))
                         
                         % Append to legend
-                        covLegend = [covLegend, ['Cov: ' ddat.varNamesX{index} ', Brain View: ', num2str(index)]];
+                        covLegend = [covLegend, ['Cov: ' ddat.varNamesX{ddat.currentCov{index}} ', Brain View: ', num2str(index)]];
                     end
                 
                 case 'Single Subject'
