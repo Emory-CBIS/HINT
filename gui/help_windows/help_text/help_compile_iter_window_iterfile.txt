@@ -1,0 +1,5 @@
+HINT writes out the current state of the parameter estimates after each
+iteration of the EM algorithm. These files can be used to check the current
+state of the estimates, or to generate a new set of output if the original
+output is lost or deleted. The files should be of the form iter#_parameter_estimates.mat
+where # is the iteration number.

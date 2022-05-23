@@ -63,8 +63,9 @@ function [varBeta1] = VarEst_hcica(theta_est, beta_est, X,...
 		W_var1(:,:,v)  = diag(Sigma3z + theta_est.sigma2_sq) + theta_est.sigma1_sq*eye(q); 
 		
 		%%% Estimating the variance-covariance of vec(beta(v)'): %%%
-		W_varinv1 = inv(W_var1(:,:,v));
+		W_varinv1 = inv(W_var1(:,:,v)) ;
 		
+        varBetaall1 = zeros(size(varBetaall1));
 		for i =1:N
 			Xistar = [eye(q) kron(reshape(X(i,:),[1 p]),eye(q))];
 			varBetaall1 = varBetaall1 + Xistar'*W_varinv1*Xistar;
@@ -79,16 +80,18 @@ function [varBeta1] = VarEst_hcica(theta_est, beta_est, X,...
     for iIC = 1:q
         % Create an indexing array to grab the right elements of the
         % estimates
-        indArrStart = (iIC + q);
+        indArrStart = q;
         indArr = indArrStart:q:size(varBeta1, 1);
         % Fill out the variance estimate
         newMap = zeros( [p, p, voxSize] ); % empty for intermediate var map
         tempData = squeeze(varBeta1(indArr, indArr, :));
-        newMap( :,:, validVoxels ) = tempData;
-        betaVarEst = newMap;
+%         newMap( :,:, validVoxels ) = tempData;
+%         betaVarEst = newMap;
+        
+        varEstIC = tempData;
         % Save as a .mat file to be loaded in the display viewer
-        fname = fullfile(outpath, [prefix '_BetaVarEst_IC_' num2str(iIC) '.mat']);
-        save(fname, 'betaVarEst');
+        fname = fullfile(outpath, [prefix '_BetaVarEst_IC' num2str(iIC) '.mat']);
+        save(fname, 'varEstIC');
     end
 
 end

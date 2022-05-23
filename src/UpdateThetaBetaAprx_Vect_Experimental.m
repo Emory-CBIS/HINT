@@ -1,6 +1,6 @@
 function [theta_new, beta_new, z_mode, subICmean, subICvar,...
-        grpICmean, grpICvar, err, G_z_dict] = UpdateThetaBetaAprx_Vect_Experimental (...
-        Y, X_mtx, theta, C_matrix_diag, beta, N, T, q, p, m, V)
+        grpICmean, grpICvar, err, G_z_dict, PostProbs] = UpdateThetaBetaAprx_Vect_Experimental (...
+        Y, X_mtx, theta, C_matrix_diag, beta, N, T, nVisit, q, p, m, V)
 % UpdateThetaBetaAprx_Vect - Function to run hc-ICA approximate EM algorithm
 % Each run of this function performs one iteration of EM approximate
 % algorithm
@@ -57,6 +57,8 @@ function [theta_new, beta_new, z_mode, subICmean, subICvar,...
     grpICmean = zeros(q, V);
     grpICvar = zeros(q, q, V);
     A = zeros( (N * T), (N * q) ) ;
+    
+    PostProbs = zeros(q, 2, V);
     
     % Store the mixing matrix (A) in proper format
     for i = 1:N
@@ -141,6 +143,10 @@ function [theta_new, beta_new, z_mode, subICmean, subICvar,...
     VoxelIC = squeeze( maxid_all_new);
     clear('maxid_all_new')
     z_mode = VoxelIC;
+    
+    for v = 1:V
+        PostProbs(z_mode(v), 1, v) = 1;
+    end
 
     % Variance and mean terms for calculating expectation of s0, si, beta
     sigma23z_diag = bsxfun( @rdivide, eye((N + 1) * q ), Sigma23z);
@@ -186,6 +192,8 @@ function [theta_new, beta_new, z_mode, subICmean, subICvar,...
     % sigma2sq
     addedVariance = N*grpICvar;
     
+    %grpICvar = Sigma_star_all((q*N+1):(q*(N+1)), (q*N+1):(q*(N+1)),VoxelIC);
+    
     for iSubj = 1:N
         % Corresponding elements from (q+1)N size structures
         startv = ((iSubj-1)*q)+1;
@@ -224,6 +232,7 @@ function [theta_new, beta_new, z_mode, subICmean, subICvar,...
     xBetaSquared = mtimesx( xprimeBetatemp, 'T', xprimeBetatemp);
     
     % Update second level variance
+    % this is sum over N part
      sigma2_sq_all_V = addedVariance +...
          mtimesx( 2*bsxfun( @minus, reshape(grpICmean, [q, 1, V]), subICmean),...
          xprimeBeta ) + ...
@@ -242,6 +251,8 @@ function [theta_new, beta_new, z_mode, subICmean, subICvar,...
         theta_new.miu3(2 + (l-1) * m) = mean( grpICmean(l, nois));
         theta_new.sigma3_sq(1 + (l-1) * m) = mean( grpICvar(l, l, act));
         theta_new.sigma3_sq(2 + (l-1) * m) = mean( grpICvar(l, l, nois));
+        %theta_new.sigma3_sq(1 + (l-1) * m) = var( grpICmean(l, act));
+        %theta_new.sigma3_sq(2 + (l-1) * m) = var( grpICmean(l, nois));
     end
     theta_new.sigma3_sq = theta_new.sigma3_sq - theta_new.miu3 .^ 2;
     
@@ -262,7 +273,7 @@ function [theta_new, beta_new, z_mode, subICmean, subICvar,...
     end
 
     % Calculations for sigma 1 squared
-    firstRow = sum( sum(Y .^ 2));
+    firstRow = sum( sum(Y .^ 2)); 
     theta_new_A_cell = num2cell( theta_new.A, [1, 2]);
     theta_term = blkdiag( theta_new_A_cell{:}); 
     subICmean_term = reshape( subICmean, [q * N, V]);

@@ -7,12 +7,21 @@ function varargout = hint(varargin)
 %
 %See also: hint.m
 
+    % https://undocumentedmatlab.com/articles/modifying-matlab-look-and-feel
+%     if usejava('swing') 
+%         %javax.swing.UIManager.setLookAndFeel('com.apple.laf.AquaLookAndFeel');
+%         javax.swing.UIManager.setLookAndFeel('javax.swing.plaf.nimbus.NimbusLookAndFeel');
+%     end
+
+    hintFnPath = which('hint.m');
+    [hcicadir, ~, ~] = fileparts(hintFnPath);
+
     % Add paths to all subfolders
-    addpath(genpath('toolboxes'))
-    addpath(genpath('displayWindow'))
-    addpath('src')
-    addpath('gui')
-    addpath(genpath('toolboxes/GroupICATv4.0b'))
+    addpath(genpath(fullfile(hcicadir, 'toolboxes')))
+    addpath(genpath(fullfile(hcicadir, 'displayWindow')))
+    addpath(genpath(fullfile(hcicadir, 'src')))
+    addpath(genpath(fullfile(hcicadir, 'gui')))
+    addpath(genpath(fullfile(hcicadir, 'test')))    
 
     % Run the main GUI script
     main();

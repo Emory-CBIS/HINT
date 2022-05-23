@@ -1,0 +1,7 @@
+The output directory is where all results from the analyses you perform on this data will be stored.
+
+After performing preprocessing and obtaining initial values for the model parameters, you will be asked to provide an analysis-specific prefix. 
+
+The HINT toolbox will create a subfolder within the output directory you specified to contain the analysis-specific results.
+
+This means that you can store several analyses within this folder. See example.
