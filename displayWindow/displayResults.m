@@ -1015,9 +1015,9 @@ end
                     end
                 end
             case 'Preview'
-                ImageData.imageScaleFactors{index} = std(ImageData.rawImages{index}(ddat.validVoxels));
+                ImageData.imageScaleFactors{index}(ddat.validVoxels) = std(ImageData.rawImages{index}(ddat.validVoxels));
             case 'Single Subject'
-                ImageData.imageScaleFactors{index} = std(ImageData.rawImages{index}(ddat.validVoxels));
+                ImageData.imageScaleFactors{index}(ddat.validVoxels) = std(ImageData.rawImages{index}(ddat.validVoxels));
             otherwise
                 disp('Unrecognized viewer type')
         end
