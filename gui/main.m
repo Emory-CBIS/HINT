@@ -80,20 +80,18 @@ hintFnPath = which('hint.m');
             'Position',[0.01,0.87, 0.4, 0.12],'CreateFcn',@axes2_CreateFcn); %#ok<NASGU>
         
         fileMenu = uimenu('Label','File');
-        uimenu(fileMenu,'Label','Save','Callback','disp(''save'')');
         uimenu(fileMenu,'Label','Quit','Callback',@closeFig,...
             'Separator','on','Accelerator','Q');
-        helpMenu = uimenu('Label','Help'); %#ok<NASGU>
         
         textalign = 'left';
         
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %% Toolbar:
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        
-        toolMenu = uimenu('Label','Tools');
-        compileIterationResultOption = uimenu(toolMenu,'Label',...
-            'Compile Iteration Results', 'Callback', @compileIterationResults);
+%         
+%         toolMenu = uimenu('Label','Tools');
+%         compileIterationResultOption = uimenu(toolMenu,'Label',...
+%             'Compile Iteration Results', 'Callback', @compileIterationResults);
         %createScriptAnalysisOption = uimenu(toolMenu,'Label',...
         %    'Create a GUI-free script', 'Callback', @createScriptAnalysis);
         
