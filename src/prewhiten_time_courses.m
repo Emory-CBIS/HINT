@@ -13,9 +13,11 @@ function whitenedData = prewhiten_time_courses(timeCourses, nIC)
     end
     
     % Check for NANs
-    if any(isnan(X_tilde_all(:)))
-        error(['ERROR - NAs detected in time courses. Please check brain mask.']);
+    if any(isnan(uniqueVals(:)))
+        error('ERROR - NAs detected in time courses. Please check brain mask.');
     end
+    
+    disp( ['Number of voxels: ' num2str(size(X_tilde_all, 1)) ', Number of time points: ' num2str(size(X_tilde_all, 2))] )
 
     [U_incr, D_incr] = pcamat(X_tilde_all, 1,...
         size (X_tilde_all, 1),'off', 'off');
