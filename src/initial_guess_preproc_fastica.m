@@ -44,7 +44,7 @@ function [stackedWhitenedData, S0Init] = initial_guess_preproc_fastica(niifiles,
         stackIndexEnd   = stackIndexEnd + nPC;
         
         stackedPCs(stackIndexStart:stackIndexEnd, :) = components;
-        stackedPCA1Tsfm(stackIndexStart:stackIndexEnd, :) = tsfmMat;
+        %stackedPCA1Tsfm(stackIndexStart:stackIndexEnd, :) = tsfmMat;
          
     end
     
