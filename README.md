@@ -18,7 +18,7 @@ Run the HINT.m file in Matlab to start the Toolbox.
 
 ## Versioning
 
-HINT's 2.0 release was 5/23/2022. This release includes longitudinal hc-ICA.
+HINT's 2.0 release was 5/23/2022. This release includes longitudinal hc-ICA. A tutorial for this version of the toolbox can be found [here](https://www.youtube.com/watch?v=lacy1bnKTYA).
 
 ## License
 
